@@ -35,6 +35,63 @@ beginnt.** Der Zweck ist nicht Buchhaltung, sondern zweierlei:
 
 ---
 
+## V002 · 2026-08-08 · `DefendBase` — gebaut, gemessen, **verworfen**
+
+**Status:** im Labor gemessen, **Code zurückgenommen** · **Basis:** V001 (`3f596d6`)
+
+Kein Commit im Code. Dieser Eintrag existiert, damit die Regel nicht in drei
+Monaten ein zweites Mal gebaut wird.
+
+### Was gebaut wurde
+
+Ein Feld `DefenseRadiusCells` (16) im Profil und ein Zweig in Schritt (6) von
+`SkirmishAiSystem`: Ist ein **bewaffneter** Feind innerhalb des Radius um das
+eigene HQ sichtbar, wählt die Armee ihr Ziel aus diesem Bereich und marschiert
+dorthin — **ohne** Angriffsschwelle, weil Verteidigen nichts ist, wofür ein Slot
+zu klein sein darf. Ein unbewaffneter Harvester am Zaun löste bewusst nichts
+aus. Determinismus geprüft, 95 Kettenglieder identisch, Exit 0.
+
+### Schlechter — auf jeder gemessenen Achse
+
+| | V001 ohne | V002 mit |
+|---|---:|---:|
+| Entscheidungstick | 8.715 | 9.470 |
+| Verluste | 70 / 97 | 75 / 107 |
+| Intents je 1000 Ticks | 39,4 / 41,7 | 44,3 / **51,4** |
+| `late-push` | 8.228 Ticks, 72 verloren | **13.953 Ticks, 146 verloren** |
+
+Siegquoten aller sechs Kandidaten: **unverändert**. Die Verteidigung kostet
+also und liefert nichts zurück, was diese Szenarien messen können.
+
+### Widerlegt
+
+> **Am Radius liegt es nicht.** Gemessen: 8 → Tick 9.564, 16 → 9.470,
+> 24 → **byte-identisch zu 16** (die Kämpfe finden ohnehin innerhalb von 16
+> Zellen statt). Alle drei liegen über den 8.715 ohne Verteidigung. Wer die
+> Regel wieder aufgreift, braucht einen anderen Ansatz, keine andere Zahl.
+
+> **Das Pendeln ist die wahrscheinlichste Ursache.** +23 % Intent-Rauschen bei
+> Slot 1 heisst: es werden mehr Befehle neu erteilt, nicht mehr Ziele getroffen.
+> Die Armee wird zwischen Front und Basis hin- und hergezogen. Der Plan sieht
+> dagegen `switchHysteresis` vor (§4.6) — ein Zielwechsel verlangt Vorsprung,
+> statt bei jedem Sichtkontakt umzuschalten. Ohne Hysterese ist ein zweiter
+> Anlauf sinnlos.
+
+### Einschränkung, die zum Befund gehört
+
+**Gemessen wurde symmetrisches KI-gegen-KI.** Beide Slots verteidigen, also
+bleiben beide zu Hause und die Partien ziehen sich. Gegen einen Menschen, der
+die Basis wirklich überfällt, könnte dieselbe Regel wertvoll sein — das kann
+dieses Labor nicht zeigen. „Kostet in KI-gegen-KI" ist nicht „nutzlos".
+
+### Nachweis des Rückbaus
+
+Nach dem Zurücknehmen liefert die Referenzpartie wieder Tick **8.715** und
+Endzustand **`0x5D8FB2D45FFD16B6`**, und alle Artefakte sind byte-identisch zu
+V001 bis auf `elapsedMilliseconds` — Wanduhr, keine Simulationsausgabe.
+
+---
+
 ## V001 · 2026-08-08 · Score-Targeting statt Reihenfolge
 
 **Lauf:** [`runs/20260808-2035-ab6cb9a1.md`](runs/20260808-2035-ab6cb9a1.md) ·
