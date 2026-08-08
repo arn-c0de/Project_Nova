@@ -274,6 +274,11 @@ Fundstelle im Code. Damit ist ein Fund für den Maintainer nachvollziehbar,
 statt eine Behauptung zu sein — und das ist der einzige Weg, wie er je behoben
 wird.
 
+**Der Weg nach draußen ist nicht der PR.** `docs/production/hashkrieg/` gehört
+laut v1.1.0 dem Maintainer, und dort steht ausdrücklich: „Befunde kommen per Mail
+oder Issue, nicht per PR." Die `findings/`-Einträge sind also Vorlage für eine
+Meldung, nicht selbst der Beitrag.
+
 Ein bereits bekannter Kandidat steht in §5: `SetRallyPoint` lehnt das Refinery
 ab, weil die Producer-Liste älter ist als der D-077-Umzug.
 
@@ -475,9 +480,12 @@ teilten keine Sicht.
 | Nötig | Datei | Eigentümer |
 |---|---|---|
 | Freund/Feind | `Simulation/Combat/` | **uns** ✅ |
-| geteilte Sicht | `Simulation/Vision/` | nicht zugeteilt ❌ |
-| Niederlage je Seite | `Simulation/Victory/` | nicht zugeteilt ❌ |
+| geteilte Sicht | `Simulation/Vision/` | Netzstrang ❌ |
+| Niederlage je Seite | `Simulation/Victory/` | Netzstrang ❌ |
 | Slot-/Modusvertrag | `MatchConfig`, `mvp-v1.json` | Netzstrang / Governance ❌ |
+
+Seit v1.1.0 hat jeder dieser Pfade einen Eigentümer — der Vorschlag aus E10 hat
+damit einen Adressaten statt eines offenen Endes.
 
 Im Labor ist eine 4-Slot-Partie *ohne* Bündnisse sofort machbar und liefert
 schon viel. Echte Teams sind ein Vorschlag, keine einseitige Umsetzung. Der
@@ -487,19 +495,43 @@ Harness wird ab E1 N-Slot-fähig gebaut.
 
 ## 7. Scope-Landkarte (nur für PR-Inhalte)
 
+Stand nach `13-15_Parallelbetrieb.md` **v1.1.0** (Commit `c107c1f`, 2026-08-08).
+Die Schreibhoheitstabelle ist seitdem **vollständig** — ein unzugeordneter Pfad
+ist ein Fehler im Dokument, kein Freiraum.
+
 | Vorhaben | Pfad | Status |
 |---|---|---|
 | Goal-System, Angriffserkennung, Rückzug, Score-Targeting | `Scripts/AI/` | ✅ **uns** |
-| Profile und Gewichte als Daten | `Scripts/AI.Data/` | ✅ **uns** (leer) |
-| Freund/Feind für Teams | `Simulation/Combat/` | ✅ **uns** |
+| Profile und Gewichte als Daten | `Scripts/AI.Data/` | ✅ **uns** (leer, Datenschicht entsteht hier) |
+| Freund/Feind, Waffen, Rüstung | `Simulation/Combat/` | ✅ **uns** |
 | Bewegung am Ziel | `Simulation/Movement/` | ✅ **uns** |
+| Flow-Field, Wegfindung | `Simulation/Pathfinding/` | ✅ **uns (13–15)** — neu seit v1.1.0 |
 | Legion-Waffenidentität | `Simulation/Factions/` | ✅ **uns** |
 | Tests zu neuen Entscheidungen | `tools/Nova.SimRunner.Tests/` | ✅ **uns** (außer den 4 Baselines) |
-| Geteilte Team-Sicht | `Simulation/Vision/` | ❌ nicht zugeteilt |
-| Team-Niederlage | `Simulation/Victory/` | ❌ nicht zugeteilt |
-| Mehr als ein KI-Slot im Spiel | `Gameplay/Match/MatchConfig` | ❌ Netzstrang |
-| KI-Snapshot-Block | `Snapshots/SnapshotBlockIds` | ❌ **nur mit D-ID** |
-| Fingerprint / Schemaversion | `Replays/MatchFingerprint` | ❌ **nur mit D-ID** |
+| `WeaponDefinition`/`UnitDefinition` | `Simulation/Definitions/` | ⚠️ geteilt — Absprache nötig |
+| Fog of War, Team-Sicht | `Simulation/Vision/` | ❌ **Netzstrang** |
+| Victory, Commanders | `Simulation/{Victory,Commanders}/` | ❌ **Netzstrang** |
+| Economy, Construction, Production | `Simulation/{Economy,Construction,Production}/` | ❌ Netzstrang ab Sprint 16, in 13–15 niemand |
+| Systemregistrierung, Modus, Slots | `Gameplay/Match/` | ❌ **Netzstrang** |
+| Kernel, `ISimSystem`, CommandsV1, Snapshots, Replays, State | `Simulation/…` | ❌ **niemand ohne D-ID** |
+
+**Zwei Vertragsflächen** — Verhalten frei, Vertrag nur nach Absprache:
+
+| Fläche | Wir sind | Regel |
+|---|---|---|
+| `Pathfinding.CostField` | Eigentümer | `ConstructionSystem` konsumiert ab Sprint 16 die Platzierungsprüfung. Flow-Field-Erzeugung und Interna sind frei; Signatur und Begehbarkeits-Semantik von `IsWalkable` nur nach Absprache |
+| `FogOfWarSystem.GetTeamView` | Konsument | `CombatSystem` braucht sie für die Zielerlaubnis. Wird **benutzt, nicht geändert** |
+
+**Wo neues Verhalten hingehört.** Die Tick-Reihenfolge ist die
+Registrierungsreihenfolge in `MatchRunner.cs` — und die gehört dem Netzstrang.
+Auflösung laut v1.1.0: Reaktionsverhalten bevorzugt **in `SkirmishAiSystem`**, das
+zwischen `Combat` und `Victory` bereits registriert ist und den Reaktionsraum
+abdeckt. Damit wird `MatchRunner` gar nicht angefasst.
+
+Das bestätigt den Ansatz aus §4: Das Goal-System wird **kein eigenes System**,
+sondern wächst in `SkirmishAiSystem`. Bräuchte es doch eines, käme es **ohne**
+Registrierung in den PR, mit gewünschter Position und Begründung im Text; ein
+Maintainer setzt die Zeile in einem Mini-PR nach.
 
 ---
 
@@ -637,7 +669,8 @@ Aufklärungsgedächtnis. Metamorphic-Tests nach `AIArchitecture.md` §6.
 | 11 | **Keine skalare Gütefunktion, kein Auto-Optimierer** | Eine Zahl belohnt das Falsche; für „sieht im Spiel richtig aus" gibt es keine Kennzahl (§3.6) |
 | 12 | Referenz: eingefrorene heutige KI + eigene Momentaufnahmen | Fester Maßstab plus Verlaufsvergleich; Rückschritt fällt auf (§3.7) |
 | 13 | Kanonische Startaufstellung, Kartenvarianz erst nach E6 | Sonst tunt man gegen die gebrochene `GetEnemyStartAreaCell`-Annahme (E1) |
-| 14 | Fremde Befunde sammeln und melden, nicht reparieren | Arbeitsvertrag §6; mit Seed und Replay reproduzierbar (§3.8) |
+| 14 | Fremde Befunde sammeln und melden, nicht reparieren | Arbeitsvertrag §6; per Mail oder Issue, nicht per PR (§3.8) |
+| 15 | Goal-System wächst in `SkirmishAiSystem`, wird kein eigenes System | `MatchRunner` gehört dem Netzstrang; v1.1.0 nennt genau diesen Weg als bevorzugt (§7) |
 
 ## 11. Was Inhaberentscheidung bleibt
 
