@@ -35,6 +35,63 @@ beginnt.** Der Zweck ist nicht Buchhaltung, sondern zweierlei:
 
 ---
 
+## B001 · 2026-08-08 · **Gespielte Beobachtung** — Mensch gegen KI
+
+**Quelle:** Partie am Rechner, kein Laborlauf · **KI-Verhalten:** `r2.A037B84D`
+
+> [!IMPORTANT]
+> Dies ist die **einzige** Eintragsart in diesem Journal, die kein Laborlauf
+> ist — und die einzige, die im Sinne des Repos etwas *beweist*. Alles andere
+> hier ist Diagnose. Beobachtungen bekommen deshalb ein eigenes Kürzel `B`
+> statt `V`: Sie messen nichts nach, sie stellen fest.
+
+Vier Beobachtungen, wörtlich und dann eingeordnet:
+
+**1. „Manchmal kommen sie in kleiner Gruppe, oft danach einzeln."**
+Bestätigt NEXT-STEPS §1 aus der Spielersicht. Die erste Welle ist die Armee,
+die bei Erreichen der Schwelle stand; alles danach ist Nachschub, der einzeln
+losläuft. Im Labor sah man davon nur eine gleichmässig steigende Verlustkurve.
+
+**2. „Rennen immer auf Headquarter."**
+Das ist kein Zufall und kein Balancing-Problem, das ist eine Zeile: Ist das
+feindliche HQ sichtbar, bricht `FindBestVisibleEnemyByScore` sofort ab und
+liefert es zurück — und die Marschzelle wird die HQ-Zelle. Ist gar nichts
+sichtbar, marschiert die Armee zum entferntesten Aetherium-Feld, und das liegt
+neben der Basis. **Beide Wege zeigen auf denselben Punkt.**
+
+> **Diese Beobachtung widerlegt eine Entscheidung aus V001.** Dort steht:
+> „Das feindliche HQ bleibt ein Kurzschluss und ist bewusst kein Gewicht: sein
+> Verlust entscheidet die Partie (D-077). Eine Siegbedingung ist keine
+> Vorliebe." Das ist als Regel richtig und als *Verhalten* falsch. Es macht die
+> KI vollständig vorhersagbar und schickt sie durch jede Verteidigung, die
+> zwischen ihr und dem HQ steht. Der Kurzschluss gehört durch ein hohes
+> **Gewicht** ersetzt — hoch genug, dass ein freiliegendes HQ gewinnt, nicht so
+> hoch, dass ein verteidigtes alles andere überstimmt.
+
+**3. „Halten keinen Abstand zu meinen Fernkampfangreifern."**
+Die Laborzahl dazu ist der Standoff-Überlauf, aber sie misst die *eigene*
+Reichweite. Der Spieler beschreibt die andere Hälfte: Die KI erkennt die
+Reichweite des **Gegners** überhaupt nicht und läuft in sie hinein. Im Labor
+bisher nicht gemessen — es gibt kein Szenario dafür.
+
+**4. „Laufen einfach straight line, anstatt diese zu umlaufen, solange
+Leben sparen sich mehr rentiert als der Umweg, den sie nehmen müssten."**
+Das ist die präziseste Formulierung des Problems in diesem ganzen Journal, und
+sie enthält bereits die Regel: **Umweg nehmen, solange der Umweg billiger ist
+als die Verluste auf der geraden Linie.** Beides ist ganzzahlig rechenbar —
+Zellen gegen erwarteten Schaden — und braucht keinen Zufall und kein Gedächtnis.
+
+### Was daraus folgt
+
+- NEXT-STEPS §2 wird um den HQ-Kurzschluss erweitert; er ist die Ursache, nicht
+  nur `GetEnemyStartAreaCell`.
+- Die Kostenregel aus Beobachtung 4 wird die Formulierung, gegen die gebaut wird.
+- Ein Laborszenario für Beobachtung 3 fehlt: eine Gruppe läuft gegen einen
+  **stehenden Fernkämpfer** und die Frage ist, wie viel Schaden sie auf dem Weg
+  frisst. Das ist ein `movement`-Szenario, kein Duell.
+
+---
+
 ## V002 · 2026-08-08 · `DefendBase` — gebaut, gemessen, **verworfen**
 
 **Status:** im Labor gemessen, **Code zurückgenommen** · **Basis:** V001 (`3f596d6`)

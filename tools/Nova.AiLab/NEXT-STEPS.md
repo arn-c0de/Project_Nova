@@ -17,6 +17,110 @@ ersten Minute sieht, an den Anfang.
 
 ---
 
+## 0 · Eine Ursache, eine Bauform — vor allen sechs Punkten
+
+Die sechs Punkte unten sind sechs Beobachtungen, aber nicht sechs Ursachen.
+Schritt (6) in `SkirmishAiSystem.cs` hat genau **eine** Form: *ein* Ziel und
+*eine* Marschzelle für die **ganze** Armee, das Ganze hinter einem Gate auf
+`AttackSquadThreshold`. Daraus folgen fünf der sechs Symptome fast mechanisch.
+
+| Symptom | Folgt aus |
+|---|---|
+| 1 · Armee tröpfelt | jede neue Einheit bekommt sofort denselben globalen Marschbefehl |
+| 2 · immer dieselbe Linie | *eine* Zielzelle aus `GetEnemyStartAreaCell` |
+| 3 · kein Rückzug | ein globales Ziel kann „diese eine Einheit dreht ab" nicht ausdrücken |
+| 4 · kein Zielen unter sechs Einheiten | der ganze Block hängt am Schwellen-Gate |
+| — · `DefendBase` (V002) | globaler Zielwechsel je Kadenz → Pendeln, +23 % Intent-Rauschen |
+
+Wer die Punkte einzeln in diese Form hineinbaut, baut jedes Mal einen
+Sonderfall an ein Konstrukt, das den Fall nicht ausdrücken kann. Deshalb steht
+vor Punkt 1 eine **Formänderung ohne Verhaltensänderung**.
+
+### Die Bauform: Absicht je Einheit statt Befehl für die Armee
+
+Schritt (6) wird zu einer reinen Funktion in drei Stufen — weiterhin
+zustandslos, weiterhin **in `SkirmishAiSystem`**: kein neues System, keine
+Änderung der Tick-Reihenfolge (`AGENTS.md` §4), `MatchRunner` bleibt unberührt.
+
+```
+ArmyPosture posture = ResolvePosture(...);          // abgeleitet, nicht gespeichert
+foreach (Einheit u)  UnitIntent i = ResolveUnitIntent(u, posture);
+GroupAndSubmit(intents);                            // gleiche Befehle → ein Intent
+```
+
+`UnitIntent` ist ein kleiner Struct (`Kind: Attack | MoveTo | Hold`,
+`targetRaw`, `cellX/cellY`). Das Gruppieren ist keine Kosmetik, sondern die
+Absicherung gegen den Fehlermodus, an dem V002 gescheitert ist: **die Intents
+je 1.000 Ticks dürfen nicht steigen.** Diese Zahl ist bei jedem der Schritte
+unten die erste, die man anschaut — sie hat `DefendBase` gekippt, bevor die
+Siegquoten überhaupt etwas sagten.
+
+### Hysterese ohne Sidecar
+
+Ein Sidecar-Block wäre Inhaberentscheidung und ist damit gesperrt. Er wird
+nicht gebraucht: **der stehende Befehl der Einheit ist das Gedächtnis**, und er
+wird ohnehin serialisiert (`TargetGridPos`, `AttackTarget`, `IsMoving`,
+`CurrentHealth`, `HarvestFieldId`, `IsReturningCargo`).
+
+- Eine Einheit **ist auf Rückzug**, wenn `TargetGridPos` die Sammel- bzw.
+  Basiszelle ist **und** `CurrentHealth < exitHealthPercent`. Eintritt bei
+  25 %, Austritt erst bei 60 % — echte Hysterese, kein Timer, kein neues Feld.
+- Eine Einheit **wartet**, wenn ihre Zelle innerhalb `stagingToleranceCells`
+  um den Sammelpunkt liegt.
+- Eine **Welle ist unterwegs**, wenn mindestens eine eigene Kampfeinheit näher
+  am Ziel steht als der Sammelpunkt. Abgeleitet, nicht gemerkt.
+
+Save/Restore reproduziert das von selbst, weil nichts davon neben der Welt
+liegt. Ganzzahlig, aufsteigende Scans, Gleichstand über die niedrigere rohe
+Entity-Id — die Regeln aus §4 des Arbeitsvertrags bleiben unangetastet.
+
+### Neue Profilwerte
+
+Alle `int`, alle in `AiProfile`: `waveSize`, `stagingDistanceCells`,
+`stagingToleranceCells`, `retreatEnterHealthPercent`,
+`retreatExitHealthPercent`, `engageRangeSlackCells`.
+
+Ein angehängtes Feld ändert `AiBehaviorId.ProfileHash` und damit den
+angezeigten Bezeichner — das ist der Zweck des Hashes, kein Nebeneffekt.
+`AiProfileTests` bekommt seine Zusicherungen im selben PR (keine der vier
+Baseline-Dateien). `AiProfile.SchemaVersion` bleibt bei 1: Felder anhängen ist
+keine Bedeutungsänderung.
+
+### Drei Fallen, im Code nachgesehen
+
+> **Ein expliziter Angriffsbefehl ausserhalb der Reichweite macht die Einheit
+> passiv.** `CombatSystem` Phase 2 überspringt jede Einheit mit gültigem
+> `AttackTarget`, Phase 3 *hält* einen Befehl, dessen Ziel ausser Reichweite
+> oder unsichtbar ist. Wer also Punkt 4 baut („zielen ab der ersten Einheit"),
+> muss explizite Ziele **auf Waffenreichweite + `engageRangeSlackCells`
+> begrenzen** — sonst steht die Einheit da und feuert nicht, wo die
+> Auto-Acquisition geschossen hätte. Das wäre ein Rückschritt, kein Fortschritt.
+
+> **Der Rally-Punkt ist lesbar.** `ProductionSystem.TryGetProducer(raw, out
+> entryCount, out rallyXRaw, out rallyYRaw)` gibt ihn heraus — die
+> Doppelbefehl-Unterdrückung für Punkt 5 ist also zustandslos machbar. Beim
+> allerersten Mal existiert die Producer-Zeile eventuell noch nicht;
+> `SetRallyPoint` legt sie an, danach ist der Wert lesbar. Es entsteht kein
+> dauerhaftes Rauschen. `ValidateSetRallyPoint` verlangt eigenes,
+> **fertiggestelltes** Produktionsgebäude und ein Ziel auf der Karte.
+
+> **Eigene Einheiten filtert nur die Zielwahl.** `ValidateDomain` hat für
+> `AttackTarget` keinen Case, die Feuerphase prüft Reichweite und Sicht, nie
+> den Besitzer. Der Filter in `FindBestVisibleEnemyByScore` ist die einzige
+> Stelle, die das verhindert — er muss in jede neue Zielwahl mitwandern.
+
+### Was zuerst passiert: PR 0, verhaltensneutral
+
+Schritt (6) bekommt die neue Form **mit exakt den heutigen Regeln**. Der
+Nachweis, dass die Umstellung sauber war, ist kein Test, sondern eine Zahl:
+Entscheidungstick **8.715** und Endzustand **`0x5D8FB2D45FFD16B6`** bleiben
+gleich, die Artefakte sind byte-identisch bis auf `elapsedMilliseconds`. Kein
+`Revision`-Bump, kein Journaleintrag nötig — und danach ist jeder Schritt
+unten klein genug, um einzeln gemessen zu werden. Genau das hat V002
+überhaupt erst auswertbar gemacht.
+
+---
+
 ## 1 · Die Armee tröpfelt einzeln in den Tod
 
 **Was der Spieler sieht.** Kein Angriff, sondern ein Förderband: Soldat läuft
@@ -46,32 +150,55 @@ nachprüfbar, nicht nur an der Tabelle.
 
 ---
 
-## 2 · Der Angriff läuft immer dieselbe Linie
+## 2 · Sie rennen immer aufs Headquarter, immer die gerade Linie
 
-**Was der Spieler sieht.** Nach zwei Partien weiss man, wo die KI langkommt, und
-stellt sich hin. Sie ändert daran nichts, nie.
+> **Gespielt beobachtet** ([Journal B001](reports/behavior-log.md)): *„Rennen
+> immer auf Headquarter … laufen einfach straight line, anstatt diese zu
+> umlaufen, solange Leben sparen sich mehr rentiert als der Umweg, den sie
+> nehmen müssten."*
 
-**Warum.** `GetEnemyStartAreaCell` liefert **das entfernteste Aetherium-Feld** —
-einen einzigen festen Punkt. Kein Umweg, kein zweites Ziel, keine Flanke. Die
-Annahme dahinter („beim entferntesten Feld steht die Feindbasis") ist zudem
-schon bei vier Slots falsch: Die 4-Slot-Partie endet deshalb im
+**Was der Spieler sieht.** Nach zwei Partien weiss man, wohin die KI läuft und
+auf welcher Linie. Man stellt sich hin und räumt sie ab.
+
+**Warum — zwei Ursachen, die zufällig dasselbe Ziel ergeben.**
+
+1. **Der HQ-Kurzschluss.** Ist das feindliche HQ sichtbar, bricht die Zielwahl
+   sofort ab und liefert es zurück; die Marschzelle wird die HQ-Zelle. Das war
+   eine bewusste Entscheidung aus V001 — „eine Siegbedingung ist keine
+   Vorliebe" — und sie ist als Regel richtig und als Verhalten falsch.
+2. **`GetEnemyStartAreaCell`** liefert das **entfernteste Aetherium-Feld**,
+   wenn gar nichts sichtbar ist. Das liegt neben der Basis. Beide Wege zeigen
+   also auf denselben Punkt.
+
+Dazu: Die Annahme „beim entferntesten Feld steht die Feindbasis" ist bei vier
+Slots ohnehin falsch — die 4-Slot-Partie endet deshalb im
 Zeitlimit-Unentschieden.
 
 **Was zu bauen ist — in dieser Reihenfolge:**
 
-1. **Erst ein zweites lohnendes Ziel**, nicht gleich Flankenrouten. Harvester
-   und Refinery des Gegners sind weich, wichtig und stehen abseits. Das
-   Score-Targeting aus V001 kann das schon bewerten — es sieht diese Ziele nur
-   nie, weil die Armee an ihnen vorbeiläuft.
-2. **Dann die Annäherung.** `Simulation/Pathfinding/` gehört uns seit v1.1.0
-   (Flow-Field und `CostField` inbegriffen, unter der `IsWalkable`-Auflage) —
-   eine Route, die nicht die Luftlinie ist, ist damit im eigenen Scope machbar.
+1. **Den Kurzschluss durch ein Gewicht ersetzen.** Hoch genug, dass ein
+   freiliegendes HQ gewinnt; nicht so hoch, dass ein *verteidigtes* alles andere
+   überstimmt. Ein Profilwert, `targetHqWeight`, und der `return` fällt weg.
+2. **Ein zweites lohnendes Ziel zulassen.** Harvester und Refinery sind weich,
+   wichtig und stehen abseits. Das Score-Targeting kann sie längst bewerten —
+   es kommt nur nie dazu, weil Punkt 1 vorher abbricht.
+3. **Die Annäherung nach Kosten wählen.** Die Regel steht schon in der
+   Beobachtung und ist ganzzahlig rechenbar:
+
+   > **Umweg nehmen, solange der Umweg billiger ist als die Verluste auf der
+   > geraden Linie.**
+
+   Konkret: erwarteter Schaden entlang der Luftlinie — Summe des Waffenschadens
+   sichtbarer Feinde, in deren Reichweite die Linie verläuft, mal der Ticks, die
+   man darin steht — gegen die Mehrkosten des Umwegs in Zellen. Kein Zufall,
+   kein Gedächtnis, nur committed State. `Simulation/Pathfinding/` gehört uns
+   seit v1.1.0, Flow-Field und `CostField` inbegriffen.
 
 **Wenn es wirkt:** Der Spieler kann sich nicht mehr an eine Stelle stellen. Das
 merkt man sofort und in keiner Kennzahl.
 
 **Scope:** `AI/` uns, `Pathfinding/` uns (13–15). Die `IsWalkable`-Semantik
-selbst wird **nicht** angefasst.
+selbst wird **nicht** angefasst — das ist die Auflage aus v1.1.0.
 
 ---
 
@@ -147,10 +274,27 @@ darauf. Nebeneffekt: Das Harvester-Micromanagement kann entfallen.
 
 ---
 
-## 6 · Die KI kann ihre Artillerie nicht benutzen
+## 6 · Abstand — die KI kennt weder ihre eigene Reichweite noch deine
 
-**Was der Spieler sieht.** Artillerie mit 20 Zellen Reichweite läuft auf
-Tuchfühlung heran und stirbt an Infanterie.
+> **Gespielt beobachtet** ([Journal B001](reports/behavior-log.md)): *„Halten
+> keinen Abstand zu meinen Fernkampfangreifern."*
+
+Das sind **zwei** Fehler, die gern für einen gehalten werden:
+
+| | eigene Reichweite | Reichweite des Gegners |
+|---|---|---|
+| Was passiert | Artillerie läuft bis auf Abstand 0 heran | Die Armee läuft ohne zu zögern in die Reichweite gegnerischer Fernkämpfer |
+| Gemessen | ja — nutzbarer Überlauf **7** von 7 | **nein**, es gibt kein Szenario dafür |
+| Gehört zu | Issue 03, `Movement/` | Punkt 2, die Annäherung nach Kosten |
+
+Das Labor kann die zweite Spalte heute nicht messen. **Das fehlende Szenario:**
+eine Gruppe läuft auf einen *stehenden Fernkämpfer* zu, gemessen wird der
+Schaden, den sie auf dem Weg frisst, gegen den Schaden bei einem Umweg. Das ist
+ein `movement`-Szenario, kein Duell — und es ist die Vorarbeit, ohne die Punkt 2
+nur behauptet statt belegt werden kann.
+
+**Was der Spieler bei der eigenen Reichweite sieht.** Artillerie mit 20 Zellen
+Reichweite läuft auf Tuchfühlung heran und stirbt an Infanterie.
 
 **Warum.** Gemessen: nomineller Überlauf 20 (Allianz) und 18 (Legion), nutzbarer
 Überlauf **7** — die Einheiten rücken über die Entfernung hinaus vor, auf der sie
@@ -171,6 +315,37 @@ Schuss, weil die Waffenreichweite über der Sichtweite liegt (20 gegen 10).
 
 ---
 
+## Reihenfolge der PRs — je einer, je eine Verhaltensänderung
+
+Die Reihenfolge oben sagt, was ein Spieler zuerst merkt. Diese hier sagt, in
+welcher Folge man es baut, ohne zweimal dasselbe anzufassen: Zielen vor
+Marschieren, Sammelpunkt vor Rally-Punkt, Rückzug erst, wenn es einen Ort
+gibt, an den man sich zurückzieht.
+
+| # | Was | Punkt | Ort | Messgrösse, an der es hängt |
+|---:|---|---|---|---|
+| 0 | Form: Absicht je Einheit, **verhaltensneutral** | §0 | `AI/` | Tick 8.715 und `0x5D8FB2D45FFD16B6` **unverändert** |
+| 1 | Zielen unabhängig von der Schwelle, begrenzt auf Waffenreichweite | 4 | `AI/`, `AI.Data/` | Verluste in den ersten 2.000 Ticks, `armyHealthSum` |
+| 2 | Sammelpunkt und Wellengrösse | 1 | `AI/`, `AI.Data/` | Verlustkurve in Sprüngen statt Stufen; Verluste je zerstörtem Gegner |
+| 3 | Rally-Punkt der Kaserne auf den Sammelpunkt | 5 | `AI/` | Intents je 1.000 Ticks (sollen **sinken**), Zeit bis zum Wellenstart |
+| 4 | `Retreat` als Einheitenfilter mit Hysterese | 3 | `AI/`, `AI.Data/` | `unitsLost` gegen `healthLost` |
+| 5 | Zweites lohnendes Ziel (Harvester, Refinery) | 2 | `AI/` | Entscheidungstick, Ziele je Partie; 4-Slot-Lauf endet nicht mehr im Zeitlimit |
+| 6 | Annäherung über eine Route statt der Luftlinie | 2 | `AI/`, `Pathfinding/` | zweimal dieselbe Partie, zwei verschiedene Wege |
+| 7 | Abstandhalten **plus** Aufklärung | 6 | `Movement/`, `AI/` | `usableRangeOvershootCells`, kontaktlose Duelle (heute 100 von 576) |
+
+Zwei Reihenfolgeregeln, die nicht verhandelbar sind: **3 nach 2**, weil der
+Rally-Punkt derselbe Punkt ist wie der Sammelpunkt, und **7 als Paar**, weil
+„auf Reichweite stehenbleiben" ohne Aufklärung im Kontrolllauf über 2.000
+Ticks null Schaden angerichtet hat.
+
+Bei jedem PR ab 1: Referenz sichern, Determinismus zuerst (Exit 2 = Ende),
+Hash-Kette gegen die Referenz diffen (der **erste abweichende Tick** ist die
+wertvollste Zahl), beide Suiten fahren, `AiBehaviorId.Revision` bumpen,
+Journaleintrag mit Abschnitt „Schlechter". Der Abschnitt „Im laufenden Spiel
+gesehen" bleibt leer, solange der Linux-Build aussteht.
+
+---
+
 ## Nicht anfangen — begründet
 
 | Vorhaben | Warum nicht |
@@ -186,15 +361,22 @@ Schuss, weil die Waffenreichweite über der Sichtweite liegt (20 gegen 10).
 ## Wie man merkt, dass es wirkt
 
 Die Laborzahlen sind **Diagnose**. Ob eine Änderung im Spiel etwas taugt,
-entscheidet eine gespielte Partie — und die steht bis heute aus, weil der
-Linux-Build Bringschuld des Netzstrangs ist. Bis dahin gilt jede Zeile hier als
-ungespielt, und genau so gehört sie in einen PR-Text.
+entscheidet eine gespielte Partie — und die gibt es inzwischen: die vier
+Beobachtungen in [Journal B001](reports/behavior-log.md) stammen aus einer
+Partie am Rechner, nicht aus einem Lauf. Sie sind der Grund, warum die Punkte 1,
+2 und 6 oben so stehen, wie sie stehen.
 
-Drei Dinge, die man beim Spielen anschauen sollte, sobald es geht:
+**Das ändert nichts an der PR-Regel.** Beobachtet wurde der *Ist-Zustand*
+`r2.A037B84D`. Ob eine der Änderungen von dieser Liste im Spiel etwas taugt,
+ist damit weiterhin ungesehen, und genau so gehört es in einen PR-Text. Was
+fehlt, ist eine gespielte Partie **nach** der Änderung — dafür braucht es den
+Linux-Build, der Bringschuld des Netzstrangs ist.
+
+Drei Fragen, an denen sich die nächste gespielte Partie messen lässt:
 
 1. **Kommt die Armee als Welle oder als Kette?** (Punkt 1)
-2. **Drehen angeschlagene Einheiten ab?** (Punkt 3)
-3. **Läuft der Angriff zweimal hintereinander denselben Weg?** (Punkt 2)
+2. **Läuft der Angriff zweimal hintereinander denselben Weg aufs HQ?** (Punkt 2)
+3. **Drehen angeschlagene Einheiten ab?** (Punkt 3)
 
-Alle drei sieht man in einer Partie, ohne eine Zahl zu lesen. Das ist der
-Massstab, den diese Liste meint.
+Alle drei sieht man, ohne eine Zahl zu lesen. Das ist der Massstab, den diese
+Liste meint — und die Sorte Satz, die als einzige in den PR-Text gehört.
