@@ -149,19 +149,19 @@ Nicht Teil dieser Idee:
 
 ## 8. Berührte Dateien
 
-| Datei | Sprint-12-Überschneidung |
+| Datei | Rolle |
 | --- | --- |
-| `Simulation/State/UnitCommandStateView.cs` | keine |
-| `Simulation/CommandsV1/CommandPayloads.cs` | keine |
-| `Simulation/CommandsV1/CommandKind.cs` | keine |
-| `Simulation/CommandsV1/CommandPayloadValidation.cs` | keine |
-| `Presentation/UI/RtsDeviceInput.cs` | +24 −3 |
-| `Simulation/CommandsV1/CommandIngress.cs` | +7 −0 |
+| `Simulation/CommandsV1/CommandKind.cs` | neuer Wire-Wert |
+| `Simulation/CommandsV1/CommandPayloads.cs` | neues Payload |
+| `Simulation/CommandsV1/CommandPayloadValidation.cs` | Validierung der neuen Art |
+| `Simulation/State/UnitCommandStateView.cs` | Slot-Generator |
+| `Presentation/UI/RtsDeviceInput.cs` | Eingabe und Modusumschaltung |
+| `Simulation/CommandsV1/CommandIngress.cs` | Durchreichen des Intents |
 
-Stand `upstream/codex/feat/sprint-12-network-combat` (81cb20c) gegen
-`upstream/main` (dedd3a2). Die Simulationsseite ist unberührt, nur die zwei
-Presentation-Dateien überschneiden sich geringfügig. `upstream/main` ist damit
-die sinnvolle Basis; ein Rebase nach dem Merge von PR #28 bleibt klein.
+Sprint 12 ist mit PR #28 (`42d659c`, 2026-08-08) in `main` gemergt. Gegen
+diesen Stand geprüft: die Formationslogik in `ApplyMove` ist unverändert
+vorhanden, und `LoadRequest = 17` bleibt der höchste Wire-Wert – `18` ist
+weiterhin frei.
 
 ## 9. Offene Fragen
 
