@@ -97,14 +97,24 @@ deshalb steht sie hier:
 
 | Kandidat | Siegquote | Entscheidungstick | Verluste |
 |---|---|---|---|
-| `early-push` | **50 % → 0 %** | 16.299 → 15.401 | 156 → 150 |
+| `early-push` | 50 % → 0 % | 16.299 → 15.401 | 156 → 150 |
 | `greedy-economy` | 50 % → 50 % | 8.635 → **11.470** | 86 → **114** |
 | `fast-cadence` | 50 % → 50 % | 11.454 → **12.948** | 110 → **132** |
 
-`early-push` greift mit drei Einheiten an. Die Score-Formel zieht eine so
-kleine Gruppe zum nächstgelegenen lohnenden Ziel statt stur zur Basis — bei
-drei Mann ist das offenbar der Unterschied zwischen 50 % und 0 %. Nicht
-verstanden, nur gemessen.
+**Nachgesehen statt vermutet — und die erste Zeile trägt nicht.** „50 % → 0 %"
+klingt nach Einbruch und ist eine einzige gekippte Partie. `early-push` spielt
+zwei Partien: eine verliert es vorher wie nachher nach rund 7.200 Ticks. Die
+andere ist ein Zermürbungskrieg über **23.500 von 27.000 Ticks** — 87 % des
+Budgets, über 470 tote Einheiten zusammen — und *die* kippte von Slot 0 auf
+Slot 1. In der aufgezeichneten Partie verliert `early-push` dabei sogar
+**weniger** Einheiten als der Gegner (211 gegen 264).
+
+Das ist keine Eigenschaft der Score-Formel, sondern die Auflösungsgrenze des
+Messaufbaus: **bei zwei Partien je Kandidat ist ein Siegquotensprung von 50
+Punkten genau eine Partie.** Die Seed-Achse ist leer, es gibt also keine
+Streuung, aus der sich das herausmitteln liesse. `greedy-economy` und
+`fast-cadence` sind aus demselben Grund Einzelmessungen — ihre Tick- und
+Verlustzahlen sind echt, aber sie sind je *eine* Beobachtung, keine Tendenz.
 
 Ausserdem sinkt in der Referenzpartie der Endkassenstand (33.460 / 38.810 →
 21.790 / 25.020) und die Armee am Ende ist kleiner (7/7 → 7/4). Beides ist
@@ -135,17 +145,49 @@ niemand es später als eigenständigen Effekt liest.
 > Baseline wird also weiterhin maschinell abgelehnt. Nur die Begründung „er
 > wäre ohnehin rot" trägt hier nicht.
 
+> **Eine Siegquote aus `compare` hat drei mögliche Werte: 0 %, 50 %, 100 %.**
+> Zwei Partien je Kandidat, keine Seed-Streuung — jeder Sprung ist eine
+> gekippte Partie, und eine Partie, die 87 % des Tickbudgets läuft, kippt an
+> allem. Wer aus dieser Spalte eine Tendenz liest, liest Rauschen. Brauchbar
+> wird sie erst mit einer echten Varianzquelle; bis dahin sind
+> Entscheidungstick und Verlustzahlen die belastbareren Spalten, und selbst
+> die sind Einzelmessungen.
+
 > **`SkirmishAiTests` fängt eine Zielverhaltensänderung nicht.** Der
 > End-to-End-Test prüft Ausgang, Sieger und „mindestens 6 Infanteristen", nicht
 > den Entscheidungstick. Er blieb grün, während sich die Partie um 4.260 Ticks
-> verschob. Wer Zielverhalten absichern will, braucht einen eigenen Test.
+> verschob. **Geschlossen** durch
+> `SkirmishAi_ShootsTheDangerousTarget_NotTheFirstOneInTheVisibleList`: ein
+> Harvester (zuerst gespawnt, also niedrigerer Entity-Index) und ein
+> BattleTank erscheinen gleichzeitig neben der Armee — die alte Regel hätte
+> den Harvester gewählt. Der Test ist nachweislich tragend: mit
+> `targetThreatWeight: 0` fällt er.
+
+> **Unterhalb der Angriffsschwelle gibt es überhaupt kein KI-Zielverhalten.**
+> Beim Schreiben des Tests gemessen: mit fünf Einheiten (Schwelle 6) reicht die
+> KI **keinen einzigen** `AttackTarget`-Befehl ein. Was die Einheiten tragen,
+> ist ausschliesslich D-087-Auto-Acquisition, und die nimmt das *nächste*
+> sichtbare Ziel, nicht das gefährlichste: **vier von fünf schiessen auf den
+> Harvester, während der Panzer eine Zelle daneben steht.** In dem Moment, in
+> dem die sechste Einheit fertig wird, springen alle fünf auf den Panzer.
+> Der Score regiert also erst ab der Schwelle — darunter regiert die
+> Entfernung. Das ist kein Fehler dieser Änderung, sondern eine Lücke, die
+> vorher niemand sehen konnte.
 
 ### Offen
 
-- **Warum kippt `early-push`?** Drei Angreifer und ein Ziel, das die Formel
-  aussucht — im Sichtfenster nachschauen, nicht raten.
+- ~~Warum kippt `early-push`?~~ **Nachgesehen, siehe „Schlechter":** eine
+  gekippte Partie an der Auflösungsgrenze, keine Eigenschaft der Formel. Was
+  offen *bleibt*: warum diese Paarung überhaupt 23.500 Ticks braucht. Zwei
+  Armeen, die sich gegenseitig endlos nachbauen und aufreiben, ohne dass eine
+  Seite die Basis der anderen erreicht — das ist ein Verhaltensbefund für
+  sich, unabhängig vom Zielverhalten.
 - **Ziel je Einheit** statt ein Armeeziel. Heute ohne Unterschied (homogene
   Armee), sobald die KI Fahrzeuge baut nicht mehr.
+- **Die Lücke unterhalb der Schwelle.** Zwischen dem ersten Soldaten und dem
+  sechsten schiesst die Armee nach Entfernung statt nach Gefahr. Ob das
+  überhaupt stört, ist offen — verteidigen muss sie in dieser Phase ohnehin,
+  und `DefendBase` aus E7 wird genau dort ansetzen.
 - **Kein Spielbericht.** E7 ist erst mit einer echten Partie fertig, inklusive
   eines Falls, in dem die Reaktion falsch war. Das hängt am Linux-Build, der
   Bringschuld des Netzstrangs ist.
