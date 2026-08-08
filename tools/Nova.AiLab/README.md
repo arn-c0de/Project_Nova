@@ -1,5 +1,16 @@
 # Nova.AiLab — KI-Simulationslabor
 
+## → [Gesamtübersicht](reports/README.md) · [Letzter Lauf](reports/latest.md) · [Verhaltensjournal](reports/behavior-log.md)
+
+| Wohin | Was dort steht |
+|---|---|
+| **[reports/README.md](reports/README.md)** | die Gesamtübersicht: jeder archivierte Laborlauf eine Zeile, der Verlauf innerhalb der aktuellen Definitionstabelle, Links in die Historie |
+| **[reports/latest.md](reports/latest.md)** | der zuletzt vermessene Lauf vollständig — Partie, Kandidatenprofile, Gegentabelle, Belagerung, Bewegung. Ohne Browser lesbar |
+| **[reports/behavior-log.md](reports/behavior-log.md)** | das Verhaltensjournal, **von Hand geführt**: was geändert wurde, was besser und was schlechter wurde, und was schon widerlegt ist. Vor jeder neuen Änderung lesen |
+
+Die interaktive Fassung derselben Zahlen ist `out/dashboard.html` — sie braucht
+einen Browser, die drei Seiten oben nicht.
+
 **Werkzeug, kein Beitrag.** Das Labor lebt ausschliesslich im Branch
 `lab/ai-simulation` — dort ist es versioniert, damit die Arbeit daran nicht
 verloren geht. In `main` und in jedem `feat/`-Branch existiert es nicht, es wird

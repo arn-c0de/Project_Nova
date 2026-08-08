@@ -470,6 +470,7 @@ def index_markdown(summaries):
     out = [
         '# Nova.AiLab — Berichte', '',
         BANNER, '',
+        '↩ zurück zum [Labor](../README.md) · [Handreichung für Agenten](../AGENTS.md)', '',
         'Dieser Ordner ist die **lesbare Fassung** der Laborläufe: [`latest.md`](latest.md) ist '
         'immer der zuletzt vermessene Lauf, `runs/` die Historie, `data/` die verdichteten '
         'Messwerte, aus denen beides jederzeit neu entsteht. Die interaktive Fassung mit Kurven, '
