@@ -157,7 +157,8 @@ Je Metriktick und Slot, alles aus dem committed State:
 `intentsRejected` ist die unterschätzte Zahl: Sie zeigt, wo die KI gegen
 Executor-Regeln anrennt — heute schweigend, weil `Submit()` den Verdikt
 absichtlich nicht auswertet. `goalSwitches` ist das Frühwarnsignal für
-Zielzappeln.
+Zielzappeln. Keine dieser Zahlen wird zu einer Gesamtnote verrechnet — warum
+nicht, steht in §3.6.
 
 ### 3.4 Das 2D-Sichtfenster
 
@@ -211,6 +212,70 @@ Größe: ~200 Entitäten × ~30 Byte × 600 Frames ≈ 4 MB je Partie. Über
    behauptet (`MatchFingerprint` verweigert den Start bei jeder Abweichung).
    **Das ist die Brücke zurück:** Was das Labor findet, wird so gegengeprüft,
    bevor es als „gesehen" gilt.
+
+### 3.6 Bewertung: Vergleich statt Rangliste
+
+**Das Labor rankt nicht. Es legt nebeneinander.**
+
+Es gibt bewusst *keine* skalare Gütefunktion, aus der eine Bestenliste fällt.
+Ein Vergleichsbericht zeigt Siegrate, Zeit bis Entscheidung, Wirtschaftskurve,
+Verluste, `goalSwitches` und `intentsRejected` nebeneinander; die Auswahl trifft
+ein Mensch — mit dem Sichtfenster daneben.
+
+Der Grund ist nicht Bequemlichkeit. Eine einzelne Zahl belohnt zuverlässig das
+Falsche: eine KI, die 5 % häufiger gewinnt, weil sie den Gegner mit Bauarbeitern
+zumüllt, ist keine bessere KI. Und für „sieht im Spiel richtig aus" existiert
+keine Kennzahl.
+
+**Folgen, die man aussprechen muss:**
+
+- **Kein automatischer Optimierer.** Rastersuche erzeugt Kandidaten, sie wählt
+  nicht aus. Verfahren, die einen Skalar brauchen, sind damit aus dem Plan —
+  nicht vertagt, sondern nicht vorgesehen.
+- **Der Vergleichsbericht ist ein Produkt, kein Nebenprodukt.** Er muss so
+  lesbar sein, dass die Auswahl in Minuten fällt, nicht in einer Stunde
+  Tabellenlesen. Kernform: eine Zeile je Kandidat, Spalten je Kennzahl,
+  Abweichung zur Referenz farbig, Link zum Sichtfenster-Lauf.
+- **Das Sichtfenster wird dadurch Teil der Bewertung**, nicht nur der
+  Fehlersuche. Das ist der Grund, warum es vor dem Sweep steht (E3 vor E4).
+
+### 3.7 Gegnerarchiv: gegen frühere Fassungen seiner selbst
+
+Getunt wird gegen zwei Sorten Referenz: die **eingefrorene heutige KI** als
+unbeweglicher Maßstab, und **Momentaufnahmen früherer eigener Fassungen**, damit
+Fortschritt über Monate vergleichbar bleibt und ein Rückschritt auffällt.
+
+Dabei gibt es einen Unterschied, an dem man sich sonst verrechnet:
+
+| Was eingefroren wird | Mechanik | Vergleich |
+|---|---|---|
+| **Profil** (ab E5 nur Daten) | alte Profildatei läuft im aktuellen Binary | echtes Kopf-an-Kopf im selben Lauf |
+| **Codestand** (Goal-System, E6+) | läuft *nicht* im selben Binary | nur über **eingefrorene Ergebnismengen**: gleiche Seeds, gleiche Spec, gespeicherte Kennzahlen |
+
+Der zweite Fall ist der Normalfall bei Verhaltensarbeit — und er stellt eine
+Bedingung: Die **Referenz-Seedmenge und die Spec-Version müssen fixiert sein**.
+Ändert sich die Startaufstellung oder die Spec, ist jeder Vergleich mit alten
+Ergebnismengen wertlos, und das muss auffallen statt durchzurutschen. Deshalb
+trägt jede Ergebnismenge Spec-Version, Seedliste und `ComputeDefinitionsHash64()`
+mit; passt eines nicht, verweigert der Bericht den Vergleich.
+
+**Tuningmenge und Referenzmenge bleiben getrennt.** Sonst gewinnt die KI
+Benchmarks und verliert Partien.
+
+### 3.8 Befundliste für fremdes Terrain
+
+Das Labor wird Dinge aufdecken, die uns nicht gehören — in Economy,
+Pathfinding, Production, Vision. Diese Funde werden gesammelt und weitergegeben,
+nicht selbst repariert (Arbeitsvertrag §6: „fragen, nicht entscheiden").
+
+Je Befund im Labor unter `findings/`: Beobachtung, betroffener Pfad und
+Eigentümer, **Seed und MatchSpec zur Reproduktion**, das `match.replay`, und die
+Fundstelle im Code. Damit ist ein Fund für den Maintainer nachvollziehbar,
+statt eine Behauptung zu sein — und das ist der einzige Weg, wie er je behoben
+wird.
+
+Ein bereits bekannter Kandidat steht in §5: `SetRallyPoint` lehnt das Refinery
+ab, weil die Producer-Liste älter ist als der D-077-Umzug.
 
 ---
 
@@ -473,6 +538,14 @@ Sekunden — die Durchsatzerwartung aus E2 ist damit eher konservativ.
 N-Slot-fähig gebaut, **erst mit 2 Slots belegt** — 4 Slots sind danach eine
 Konfigurationszeile. Reihenfolge-Test gegen `MatchRunner`.
 
+**Startaufstellung exakt kanonisch** (`MatchBootstrap`): je Slot ein
+Aetherium-Feld, fertiges HQ, ein Builder, 3.000 AE — und dieselbe Spawn-
+Reihenfolge, Slot 0 vor Slot 1, weil sie Entity-Ids und Snapshots bestimmt.
+Kartenvarianz kommt erst nach E6: Die KI setzt heute voraus, dass das
+entfernteste Feld die Feindbasis markiert (`GetEnemyStartAreaCell`) — bei freier
+Aufstellung bricht diese Annahme, und man tunt gegen einen Fehler statt gegen
+das Verhalten.
+
 *Fertig, wenn:* Eine KI-gegen-KI-Partie liefert Outcome und Endzustands-Hash,
 und zwei Läufe mit gleichem Seed liefern identische Hashes.
 
@@ -496,12 +569,19 @@ einem einzelnen nicht erkennt, was schiefging.
 abgeschlossener Lauf im Browser zurückspulbar — **und ein Test belegt, dass ein
 Lauf mit und ohne Sichtfenster dieselbe Hash-Kette liefert.**
 
-### E4 — Sweep und Auswertung *(lokal)*
+### E4 — Vergleichsbericht und Gegnerarchiv *(lokal)*
 
-Matrix aus Seeds × Profilen × Fraktionen, Aggregation (Siegrate,
-Median-Entscheidungstick, Wirtschaftskurven, `intentsRejected`), Vergleich gegen
-eine eingefrorene Referenzmenge. Referenzmenge **getrennt** von der Tuningmenge
-halten — sonst gewinnt die KI Benchmarks und verliert Partien.
+Matrix aus Seeds × Profilen × Fraktionen. Ergebnis ist der Vergleichsbericht aus
+§3.6 — **Kennzahlen nebeneinander, keine Rangliste**: eine Zeile je Kandidat,
+Abweichung zur Referenz hervorgehoben, Link zum Sichtfenster-Lauf.
+
+Dazu das Archiv aus §3.7: eingefrorene heutige KI als Maßstab, Momentaufnahmen
+eigener Fassungen als Verlaufsvergleich. Ergebnismengen tragen Spec-Version,
+Seedliste und `ComputeDefinitionsHash64()`; passt eines nicht, verweigert der
+Bericht den Vergleich statt still Unvergleichbares zu mischen.
+
+*Fertig, wenn:* Zwei Kandidaten sind in Minuten gegeneinander beurteilbar —
+Bericht lesen, auffälligen Lauf im Sichtfenster nachschauen, entscheiden.
 
 ### E5 — Profile zu Daten *(PR, verhaltensneutral)*
 
@@ -554,6 +634,10 @@ Aufklärungsgedächtnis. Metamorphic-Tests nach `AIArchitecture.md` §6.
 | 8 | Datenumstellung verhaltensneutral, getrennt von Verhalten | Grüne Baselines beweisen, dass nichts verschoben wurde (§4.6) |
 | 9 | Laborergebnisse sind Diagnose, nie Nachweis | Deckungsgleich mit der `output/`-Praxis (D-061/D-064) |
 | 10 | Beide Sichtdarstellungen in einem Zug | Gemeinsamer Frame-Strom, Mehraufwand gering (§3.4) |
+| 11 | **Keine skalare Gütefunktion, kein Auto-Optimierer** | Eine Zahl belohnt das Falsche; für „sieht im Spiel richtig aus" gibt es keine Kennzahl (§3.6) |
+| 12 | Referenz: eingefrorene heutige KI + eigene Momentaufnahmen | Fester Maßstab plus Verlaufsvergleich; Rückschritt fällt auf (§3.7) |
+| 13 | Kanonische Startaufstellung, Kartenvarianz erst nach E6 | Sonst tunt man gegen die gebrochene `GetEnemyStartAreaCell`-Annahme (E1) |
+| 14 | Fremde Befunde sammeln und melden, nicht reparieren | Arbeitsvertrag §6; mit Seed und Replay reproduzierbar (§3.8) |
 
 ## 11. Was Inhaberentscheidung bleibt
 
