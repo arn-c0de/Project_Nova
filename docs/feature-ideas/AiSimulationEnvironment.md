@@ -89,7 +89,7 @@ xxHash64, byte-genaue Serialisierung, bis hin zur Duell-Asymmetrie im Combat).
 | **R7** | Reagierendes Goal-System | ❌ KI ist bewusst zustandslos |
 | **R8** | Eine Stelle zum Ändern | ❌ Werte stecken im Code |
 | **R9** | 2D-Sichtfenster | ✅ seit E3 — Terminal live, HTML-Abspieler zur Nachschau |
-| **R10** | Waffen-, Rüstungs- und Bewegungsarbeit messbar (Issues 01–03) | ❌ in einer Partie nicht sauber messbar (§3.9) |
+| **R10** | Waffen-, Rüstungs- und Bewegungsarbeit messbar (Issues 01–03) | ✅ seit E5 — `duel` und `movement`, Sekunden statt Partieauswertung |
 
 R6–R10 sind die Arbeit.
 
@@ -991,7 +991,7 @@ verglichen — 5 % Rechenzeit gegen geteilten Zustand zwischen parallelen Matche
 *Fertig, wenn:* Zwei Kandidaten sind in Minuten gegeneinander beurteilbar —
 Bericht lesen, auffälligen Lauf im Sichtfenster nachschauen, entscheiden.
 
-### E5 — Duell-Arena und Bewegungsszenario *(lokal)*
+### E5 — Duell-Arena und Bewegungsszenario ✅ **erledigt (2026-08-08)**
 
 Die zwei schmalen Laufarten aus §3.9, gleicher Host, identische
 Systemregistrierung. `duel` über alle Rollenpaare beider Fraktionen, mit
@@ -1006,6 +1006,55 @@ duplizieren.
 
 *Fertig, wenn:* Die Gegentabelle fällt aus einem Kommando, und ein
 Bewegungsszenario zeigt im Sichtfenster, wo eine Gruppe hängenbleibt.
+
+**Nachweis.** `duel` fährt **576 Duelle in 2,2 s** — beide Fraktionen, alle
+sechs Kampfrollen gegeneinander, drei Startabstände, beide Laufrichtungen, dazu
+die Belagerungsstaffel. `movement` fährt die vier Szenarien je Fraktion in
+Sekunden. Beide teilen den Host mit `match`; ein Test nagelt fest, dass die
+Arena **dieselbe G1-Registrierung** benutzt — Economy, Construction und
+Production ticken über leere Tabellen mit, nur die KI-Systeme fehlen, weil das
+Szenario befiehlt. Befehle laufen über eine eigene Session je Slot
+(`SlotController.Scripted`), also über den kanonischen Befehlspfad statt über
+direkten Zugriff auf Entity-Zustand.
+
+**Vier Befunde aus dem ersten Lauf** — drei davon Fehler im *Messaufbau*, die
+erst auffielen, weil die Zahlen unmöglich aussahen:
+
+| Was die erste Fassung zeigte | Was tatsächlich los war |
+|---|---|
+| 83 Einheiten je Seite | Ein globales AE-Budget ist falsch. Das Budget wird jetzt **je Paarung** so bemessen, dass die *teurere* Seite sechs Einheiten stellt; die billigere stellt, was dasselbe AE kauft — das *ist* die Parität aus Entscheidung 20 |
+| 144 von 144 Weitdistanz-Duellen „unentschieden", niemand verletzt | Beide Seiten liefen auf die *Position* der Gegenseite, tauschten die Plätze und standen wieder 34 Zellen auseinander. Jetzt laufen beide auf den **Mittelpunkt** — 144 von 144 entscheiden |
+| 0 abgelehnte Befehle, obwohl nichts passierte | `TrySubmitIntent` liefert am Peer-Ingress **immer `Accepted`**; das Host-Verdikt kennt nur der Transport. Gezählt wird jetzt dort |
+| Belagerung: 6 bis 12 Gebäude je Zeile | Die Belagerung ist keine AE-Paritätsfrage. Ziel ist jetzt **ein** Gebäude, gemessen werden Ticks bis Abriss und eingesetztes AE — wie §3.9 es beschreibt |
+
+**Und zwei Befunde über das Spiel**, die genau das sind, wofür die Laufarten
+gebaut wurden:
+
+> **Explosiv reißt ein Kraftwerk in 27 Ticks ein, Kinetik braucht 236** — Faktor
+> **8**, nicht die 2,5, die der Matrixmultiplikator allein vorhersagt (30 % gegen
+> 75 % auf `Building`). Nachladezeit und Gebäude-Lebenspunkte machen aus dem
+> Faktor 2,5 einen Faktor 8. Genau der Unterschied, den §3.9 zwischen
+> abgelesenem Matrixwert und gemessenem Duellausgang meint. Basisinfanterie
+> stirbt an der `DefensePlatform`, dem einzigen Gebäude, das zurückschießt.
+
+> **Fernkämpfer halten überhaupt keinen Abstand.** Allianz-Artillerie mit
+> **20 Zellen Reichweite** läuft auf **0 Zellen** an den Feind heran, Legion mit
+> 18 ebenso — Überlauf 20 bzw. 18, also der volle Reichweitenvorteil verschenkt.
+> Das ist die Zahl, die Issue 03 meint, jetzt als Kommando messbar. Ein Test
+> hält sie fest und schlägt fehl, sobald der Überlauf schrumpft — dann landet
+> die Verhaltensarbeit.
+
+Zwei Nebenbefunde: Ein **`AttackTarget`-Befehl allein bewegt nichts** — Artillerie
+40 Zellen vor einem Ziel steht und feuert nie (GB-002 in der Praxis, kein
+Attack-Move); die Annäherung muss explizit befohlen werden, wie die KI es tut.
+Und **16 Einheiten fädeln ohne messbare Blockade durch eine Ein-Zellen-Engstelle**
+(erste Ankunft Tick 161, letzte 176) — ein positiver Befund über die Bewegung,
+kein Problem.
+
+Die 44 Duelle „ohne Berührung" auf Waffenreichweite sind ein eigener Ausgang im
+Bericht, kein Unentschieden: Eine Waffe, die weiter reicht als ihre Sicht
+(Artillerie 20/18 Tiles gegen 10 Tiles Standardsicht), kann ihre Reichweite ohne
+Aufklärung nicht nutzen — der Befund, den Entscheidung 21 vorhergesagt hat.
 
 ### E6 — Profile zu Daten *(PR, verhaltensneutral)*
 
