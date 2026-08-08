@@ -1,12 +1,13 @@
 # Nova.AiLab — KI-Simulationslabor
 
-## → [Gesamtübersicht](reports/README.md) · [Letzter Lauf](reports/latest.md) · [Verhaltensjournal](reports/behavior-log.md)
+## → [Gesamtübersicht](reports/README.md) · [Letzter Lauf](reports/latest.md) · [Verhaltensjournal](reports/behavior-log.md) · [Nächste Schritte](NEXT-STEPS.md)
 
 | Wohin | Was dort steht |
 |---|---|
 | **[reports/README.md](reports/README.md)** | die Gesamtübersicht: jeder archivierte Laborlauf eine Zeile, der Verlauf innerhalb der aktuellen Definitionstabelle, Links in die Historie |
 | **[reports/latest.md](reports/latest.md)** | der zuletzt vermessene Lauf vollständig — Partie, Kandidatenprofile, Gegentabelle, Belagerung, Bewegung. Ohne Browser lesbar |
 | **[reports/behavior-log.md](reports/behavior-log.md)** | das Verhaltensjournal, **von Hand geführt**: was geändert wurde, was besser und was schlechter wurde, und was schon widerlegt ist. Vor jeder neuen Änderung lesen |
+| **[NEXT-STEPS.md](NEXT-STEPS.md)** | was als nächstes ansteht — sortiert danach, **was ein Spieler in einer Partie merkt**, nicht nach Laborkennzahl. Dazu die begründete Liste dessen, was man nicht anfangen sollte |
 
 Die interaktive Fassung derselben Zahlen ist `out/dashboard.html` — sie braucht
 einen Browser, die drei Seiten oben nicht.
