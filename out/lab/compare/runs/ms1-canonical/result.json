@@ -1,0 +1,23 @@
+{
+  "specVersion": 1,
+  "seed": "0x6656D5210FB2CE85",
+  "slotCount": 2,
+  "aiSlotCount": 2,
+  "tickBudget": 27000,
+  "outcome": "VictoryElimination",
+  "winnerSlot": 0,
+  "decidedTick": 12975,
+  "finalTick": 12975,
+  "finalStateHash": "0x2C955B157EC9EE80",
+  "definitionsHash64": "0x6326FA3E56CFF5A3",
+  "traceIntervalTicks": 100,
+  "hashIntervalTicks": 500,
+  "traceSamples": 130,
+  "hashChainEntries": 26,
+  "elapsedMilliseconds": 783,
+  "slots": [
+    { "slot": 0, "faction": "alliance", "controller": "ai", "profile": "canonical" },
+    { "slot": 1, "faction": "legion", "controller": "ai", "profile": "canonical" }
+  ],
+  "evidence": "DIAGNOSIS — a lab run is never proof; what was not seen in the running game is reported as unseen."
+}

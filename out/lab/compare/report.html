@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nova AI Lab — candidate comparison</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0d1117; color:#c9d1d9;
+         font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  header { padding:12px 16px; border-bottom:1px solid #21262d; }
+  h1 { font-size:15px; margin:0 0 3px; font-weight:600; }
+  .sub { color:#8b949e; font-size:12px; }
+  .warn { color:#d29922; font-size:12px; margin-top:6px; }
+  .note { margin:12px 16px 0; padding:8px 12px; border-left:3px solid #d29922;
+          background:#1c1a12; color:#c9d1d9; font-size:12px; }
+  main { padding:14px 16px 32px; }
+  table { border-collapse:collapse; width:100%; font-size:12px; }
+  th,td { padding:5px 9px; border-bottom:1px solid #21262d; text-align:right; white-space:nowrap; }
+  th { color:#8b949e; font-weight:600; text-align:right; position:sticky; top:0; background:#0d1117; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align:left; }
+  td.changes { white-space:normal; color:#8b949e; font-size:11px; max-width:280px; }
+  tr.ref { background:#161b22; }
+  tr.ref td { border-bottom:1px solid #30363d; }
+  .tag { color:#58a6ff; font-size:10px; border:1px solid #1f6feb; border-radius:3px; padding:0 4px; }
+  .name { color:#e6edf3; }
+  .dim { color:#484f58; }
+  td.num .d { color:#8b949e; font-size:10px; margin-left:5px; }
+  td.small { color:#d29922; }
+  td.big { color:#f85149; }
+  .legend { margin-top:18px; color:#8b949e; font-size:12px; max-width:70ch; }
+  .legend b { color:#c9d1d9; }
+  a { color:#58a6ff; }
+</style>
+</head>
+<body>
+<header><h1>Nova AI Lab — candidate comparison</h1><div class="sub">6 candidates · 1 seeds · budget 27000 ticks · commit bf8a59c0 · definitions 0x6326FA3E56CFF5A3</div><div class="warn">DIAGNOSIS, never proof — nothing here was seen in the running game. There is no ranking on purpose: read the columns, then look at the run.</div></header>
+<main><table>
+<thead><tr><th>candidate</th><th>changed against reference</th><th>win %</th><th>W/L/D</th><th>decided tick</th><th>credits</th><th>army</th><th>lost</th><th>intents</th><th>rejected</th><th>run</th></tr></thead>
+<tbody>
+<tr class="ref"><td class="name">ms1-canonical <span class="tag">reference</span></td><td class="changes"><span class="dim">—</span></td><td class="num ">50%</td><td>1/1/0</td><td class="num ">12975</td><td class="num ">36000</td><td class="num ">7</td><td class="num ">124</td><td class="num ">1012</td><td class="num ">0</td><td><a href="runs/ms1-canonical/player.html">view</a></td></tr>
+<tr><td class="name">early-push</td><td class="changes">armySize 12→10 · squadThreshold 6→3</td><td class="num ">50%</td><td>1/1/0</td><td class="num big">16299<span class="d">+25%</span></td><td class="num big">44715<span class="d">+24%</span></td><td class="num big">4<span class="d">-42%</span></td><td class="num big">156<span class="d">+25%</span></td><td class="num big">1780<span class="d">+75%</span></td><td class="num ">0</td><td><a href="runs/early-push/player.html">view</a></td></tr>
+<tr><td class="name">late-push</td><td class="changes">armySize 12→20 · squadThreshold 6→12</td><td class="num big">100%<span class="d">+100%</span></td><td>2/0/0</td><td class="num small">12598<span class="d">-2%</span></td><td class="num small">36570<span class="d">+1%</span></td><td class="num big">15<span class="d">+114%</span></td><td class="num small">126<span class="d">+1%</span></td><td class="num small">1109<span class="d">+9%</span></td><td class="num ">0</td><td><a href="runs/late-push/player.html">view</a></td></tr>
+<tr><td class="name">greedy-economy</td><td class="changes">harvesters 2→4 · armySize 12→16 · squadThreshold 6→8</td><td class="num ">50%</td><td>1/1/0</td><td class="num big">8635<span class="d">-33%</span></td><td class="num big">44410<span class="d">+23%</span></td><td class="num small">6<span class="d">-14%</span></td><td class="num big">86<span class="d">-30%</span></td><td class="num small">947<span class="d">-6%</span></td><td class="num ">0</td><td><a href="runs/greedy-economy/player.html">view</a></td></tr>
+<tr><td class="name">power-buffer</td><td class="changes">powerReserve 0→30</td><td class="num big">0%<span class="d">-100%</span></td><td>0/2/0</td><td class="num big">7025<span class="d">-45%</span></td><td class="num big">16280<span class="d">-54%</span></td><td class="num big">2<span class="d">-71%</span></td><td class="num big">60<span class="d">-51%</span></td><td class="num big">456<span class="d">-54%</span></td><td class="num ">0</td><td><a href="runs/power-buffer/player.html">view</a></td></tr>
+<tr><td class="name">fast-cadence</td><td class="changes">cadence 20→10</td><td class="num ">50%</td><td>1/1/0</td><td class="num small">11454<span class="d">-11%</span></td><td class="num small">32310<span class="d">-10%</span></td><td class="num small">8<span class="d">+14%</span></td><td class="num small">110<span class="d">-11%</span></td><td class="num big">1477<span class="d">+45%</span></td><td class="num ">0</td><td><a href="runs/fast-cadence/player.html">view</a></td></tr>
+</tbody></table>
+<section class="legend"><p><b>How to read this.</b> Colour marks DEVIATION from the reference row, not goodness — more credits is not better than fewer, a faster decision is not better than a slower one. Nothing here is summed into a score, and nothing is sorted by merit; a single number would reliably reward the wrong behaviour.</p><p><b>Every candidate played both factions</b> against the frozen reference. Alliance and Legion are deliberately asymmetric, and playing both also cancels the spawn-order advantage.</p><p><b>rejected</b> is the underestimated column: it shows where the AI ran into executor rules, which is silent everywhere else.</p><p><b>Then open the run.</b> A win rate does not explain that half the army was stuck on a building corner — the view window does.</p></section>
+</main>
+</body>
+</html>
