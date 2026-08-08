@@ -65,17 +65,64 @@ namespace Nova.AiLab
 
         /// <summary>Units that stood still while moving for at least StuckTicks (blocking).</summary>
         public int BlockedUnits;
+        /// <summary>Full stand-still duration of every run that reached the threshold, summed over units.</summary>
         public int BlockedTicksTotal;
         public int LongestSingleBlockTicks;
 
         /// <summary>
-        /// Smallest centre distance a ranged unit actually reached, against its
-        /// own AttackRange. The OVERSHOOT — how far inside its range it walked
-        /// — is the number Issue 03 is about (standoff).
+        /// The opening the wall scenarios actually left, MEASURED back out of
+        /// the cost field rather than assumed from the parameters (blocking,
+        /// detour). It cannot be narrower than the 3-cell building footprint,
+        /// and the old code left a second, unintended opening at the top map
+        /// edge — so this number is reported instead of trusted.
+        /// </summary>
+        public int WallGapStartCell;
+        public int WallGapCells;
+
+        /// <summary>
+        /// Smallest centre distance a ranged unit actually reached (standoff).
+        /// <para>
+        /// READ THIS WITH <see cref="FirstContactDistanceCells"/>, never alone.
+        /// The group is ordered to MOVE onto the enemy — an attack order alone
+        /// moves nothing (GB-002, no attack-move), so the approach has to be
+        /// commanded, exactly as the AI commands it. A closest approach of 0 is
+        /// therefore first of all obedience to that order.
+        /// </para>
         /// </summary>
         public int ClosestApproachCells;
         public int AttackRangeCells;
+
+        /// <summary>Default sight radius in cells — the reason the nominal range is not the usable one.</summary>
+        public int SightRadiusCells;
+
+        /// <summary>
+        /// The distance at which the target first LOST HEALTH: the range at
+        /// which the weapon actually became usable. -1 when nothing was ever
+        /// hit.
+        /// <para>
+        /// This is the number Issue 03 needs. Measured: artillery with a
+        /// 20-cell gun and a 10-cell sight opens fire at 10, not at 20 — and a
+        /// control run ordered to stop at 20 cells never fired a shot. "Keeps
+        /// no distance" and "cannot see that far" are two different findings,
+        /// and only this field separates them.
+        /// </para>
+        /// </summary>
+        public int FirstContactDistanceCells = -1;
+
+        /// <summary>
+        /// How far inside its NOMINAL range the unit walked. Not an Issue 03
+        /// verdict on its own — see <see cref="UsableRangeOvershootCells"/>.
+        /// </summary>
         public int OvershootCells => AttackRangeCells - ClosestApproachCells;
+
+        /// <summary>
+        /// How far inside its USABLE range the unit walked: the distance it
+        /// opened fire at, minus the distance it ended up at. This is the part
+        /// that behaviour work can actually recover, because it does not ask
+        /// the unit to shoot at something it cannot see.
+        /// </summary>
+        public int UsableRangeOvershootCells =>
+            FirstContactDistanceCells < 0 ? 0 : FirstContactDistanceCells - ClosestApproachCells;
 
         public int RejectedOrders;
         public uint FinalTick;
@@ -170,12 +217,19 @@ namespace Nova.AiLab
         private static void RunBlocking(MultiSlotAiHost host, MovementSpec spec, MovementResult result)
         {
             // A gap between two footprints: the big group has to file through
-            // it while a second group crosses their path.
-            // A ONE-CELL gap: three cells wide let eight units walk through
-            // abreast and nothing ever queued. The bottleneck has to actually
-            // be one, or "no blocking" is a property of the scenario rather
-            // than of the movement code.
-            PlaceWall(host, 1, spec.Faction, spec.MapHeight, columnX: 64, gapY: 64, gapHeight: 1);
+            // it while a second group crosses their path. The bottleneck has to
+            // actually BE one, or "no blocking" is a property of the scenario
+            // rather than of the movement code — so the opening is measured
+            // back out of the cost field and reported with the row.
+            //
+            // The narrowest opening a 3x3 footprint can leave here is two
+            // cells. Asking for one does not produce one, and the earlier
+            // comment claiming a one-cell bottleneck was describing a
+            // three-cell one.
+            PlaceWall(host, 1, spec.MapWidth, spec.MapHeight, columnX: 64, gapY: 64, gapHeight: 1,
+                out int gapStart, out int gapCells);
+            result.WallGapStartCell = gapStart;
+            result.WallGapCells = gapCells;
 
             // The main group is deliberately larger than the caller's default:
             // a queue needs a crowd.
@@ -208,6 +262,9 @@ namespace Nova.AiLab
                 throw new ArgumentException($"unknown unit definition ({spec.Faction}, {spec.Role})");
             }
             result.AttackRangeCells = def.AttackRangeTiles;
+            // The nominal range is not the usable one, and that gap is the
+            // whole reason this scenario needs two numbers instead of one.
+            result.SightRadiusCells = UnitState.DefaultSightRadius.Floor();
 
             // THE SHOOTERS MUST START WELL OUTSIDE THEIR OWN RANGE, otherwise
             // the "closest approach" is just the spawn distance and the whole
@@ -222,7 +279,10 @@ namespace Nova.AiLab
 
             // A standing target of the opposing slot. Huge health, so the
             // measurement is the approach and not how fast the target dies.
-            SimDefinitions.TryGetUnit(Other(spec.Faction), UnitRole.BasicInfantry, out SimUnitDefinition targetDef);
+            if (!SimDefinitions.TryGetUnit(Other(spec.Faction), UnitRole.BasicInfantry, out SimUnitDefinition targetDef))
+            {
+                throw new ArgumentException($"unknown unit definition ({Other(spec.Faction)}, BasicInfantry)");
+            }
             EntityId target = host.Entities.SpawnUnit(
                 1, new Transform2D(SimFixed.FromInt(targetX), SimFixed.FromInt(64)),
                 targetDef.MoveSpeed, maxHealth: 100000, role: targetDef.Role);
@@ -237,16 +297,35 @@ namespace Nova.AiLab
             // it means the approach has to be ordered explicitly, exactly as
             // the AI does it.
             //
-            // What this then measures is Issue 03's question: with a 20-cell
-            // gun and an order to walk onto the enemy, how far in does the unit
-            // actually go before it stops shooting from range?
+            // WHAT THIS DOES AND DOES NOT MEASURE — the distinction the first
+            // version of this scenario got wrong. The group is ordered onto the
+            // target's own cell, so a closest approach of 0 is in the first
+            // place a unit obeying its order; it is NOT by itself proof that
+            // ranged units fail to hold distance. A control run settles it:
+            // ordered to stop at exactly 20 cells, the same artillery reached
+            // 19 cells and did ZERO damage over 2000 ticks, because sight is 10
+            // cells and CombatSystem needs the target Visible. So the naive
+            // reading — "stop at weapon range" — would make the gun useless.
+            //
+            // Hence two numbers: ClosestApproachCells (how far in it walked)
+            // and FirstContactDistanceCells (where it could actually shoot
+            // from). The second is what behaviour work can move.
             Order(host, 0, shooters, targetX, 64);
             peer.Ingress.TrySubmitIntent(
                 CommandIntent.Create(new AttackTargetPayload(shooters.ToArray(), targetRaw)), out _);
 
             // The closest approach is a running minimum: the interesting moment
             // is the deepest point, not where the unit happens to end up.
+            //
+            // The SECOND number is the one that carries Issue 03: the distance
+            // at which the target first loses health. That is the range the
+            // weapon is actually usable at, and it is not the range on the
+            // definition — sight is 10 cells, the gun reaches 20. Without it
+            // the row says "walked in to 0, wasted 20 cells of range", which
+            // reads like a movement defect and is half a vision one.
             result.ClosestApproachCells = int.MaxValue;
+            int previousTargetHealth = -1;
+
             for (int i = 0; i < spec.TickBudget; i++)
             {
                 host.Step();
@@ -255,6 +334,7 @@ namespace Nova.AiLab
                 int targetCellX = SimFixed.WorldToGrid(targetState.Transform.PositionX);
                 int targetCellY = SimFixed.WorldToGrid(targetState.Transform.PositionY);
 
+                int nearestThisTick = int.MaxValue;
                 foreach (uint raw in shooters)
                 {
                     if (!TryReadUnit(host, raw, out UnitState shooter)) continue;
@@ -262,8 +342,18 @@ namespace Nova.AiLab
                         SimFixed.WorldToGrid(shooter.Transform.PositionX),
                         SimFixed.WorldToGrid(shooter.Transform.PositionY),
                         targetCellX, targetCellY);
-                    if (distance < result.ClosestApproachCells) result.ClosestApproachCells = distance;
+                    if (distance < nearestThisTick) nearestThisTick = distance;
                 }
+                if (nearestThisTick < result.ClosestApproachCells) result.ClosestApproachCells = nearestThisTick;
+
+                if (previousTargetHealth >= 0
+                    && targetState.CurrentHealth < previousTargetHealth
+                    && result.FirstContactDistanceCells < 0
+                    && nearestThisTick != int.MaxValue)
+                {
+                    result.FirstContactDistanceCells = nearestThisTick;
+                }
+                previousTargetHealth = targetState.CurrentHealth;
             }
 
             if (result.ClosestApproachCells == int.MaxValue) result.ClosestApproachCells = 0;
@@ -275,7 +365,10 @@ namespace Nova.AiLab
 
         private static void RunDetour(MultiSlotAiHost host, MovementSpec spec, MovementResult result)
         {
-            PlaceWall(host, 1, spec.Faction, spec.MapHeight, columnX: 64, gapY: 20, gapHeight: 3);
+            PlaceWall(host, 1, spec.MapWidth, spec.MapHeight, columnX: 64, gapY: 20, gapHeight: 3,
+                out int gapStart, out int gapCells);
+            result.WallGapStartCell = gapStart;
+            result.WallGapCells = gapCells;
 
             var group = SpawnGroup(host, 0, spec.Faction, spec.Role, spec.GroupSize, 40, 100);
             const int targetX = 90, targetY = 100;
@@ -378,7 +471,12 @@ namespace Nova.AiLab
                         if (run >= spec.StuckTicks)
                         {
                             everBlocked.Add(raw);
-                            result.BlockedTicksTotal++;
+                            // The FULL stand-still duration, not only the ticks
+                            // past the threshold: the plan asks for the total
+                            // duration, and counting from the threshold onward
+                            // silently drops the first StuckTicks of every
+                            // blockage.
+                            result.BlockedTicksTotal += run == spec.StuckTicks ? spec.StuckTicks : 1;
                             if (run > result.LongestSingleBlockTicks) result.LongestSingleBlockTicks = run;
                         }
                     }
@@ -447,27 +545,109 @@ namespace Nova.AiLab
         }
 
         /// <summary>
-        /// A wall of completed buildings with one gap. Footprints have been
-        /// impassable since the troop-command sprint, so this is a real
-        /// obstacle for the cost field — no special terrain needed.
+        /// A wall of completed buildings across the whole map with exactly ONE
+        /// opening. Footprints have been impassable since the troop-command
+        /// sprint, so this is a real obstacle for the cost field — no special
+        /// terrain needed.
+        /// <para>
+        /// THE WALL SPANS THE WHOLE MAP. A partial wall is not a bottleneck:
+        /// the first version was 60 cells tall on a 128-cell map and the group
+        /// simply walked around it, which is why "blocking" reported zero
+        /// blocked units — a property of the scenario, not of the movement
+        /// code. Two later versions of the same mistake, both silent:
+        /// </para>
+        /// <list type="number">
+        /// <item><b>A second opening at the top edge.</b> The old loop ran
+        /// <c>y &lt;= mapHeight - step</c> in 3-cell strides. 128 is not a
+        /// multiple of 3, so rows 126 and 127 stayed walkable. The detour group
+        /// walked through THAT, not through the intended gap: 84 cells
+        /// travelled against a 50-cell straight line, where the intended gap
+        /// costs more than 160. The scenario measured an opening nobody
+        /// designed.</item>
+        /// <item><b>An opening narrower than the lattice allows.</b>
+        /// <c>gapHeight: 1</c> produced a three-cell opening, because skipping
+        /// one 3x3 footprint frees three rows. The comment claiming a one-cell
+        /// bottleneck described something that was never built.</item>
+        /// </list>
+        /// <para>
+        /// So: tile from BOTH map edges toward the gap, check every placement
+        /// verdict, and then MEASURE the opening back out of the cost field.
+        /// The caller is told the gap that exists, not the gap that was asked
+        /// for — and a layout that would leave two openings fails loudly here
+        /// instead of quietly producing a number.
+        /// </para>
         /// </summary>
-        private static void PlaceWall(MultiSlotAiHost host, byte slot, FactionId faction, int mapHeight,
-            int columnX, int gapY, int gapHeight)
+        private static void PlaceWall(MultiSlotAiHost host, byte slot, int mapWidth, int mapHeight,
+            int columnX, int gapY, int gapHeight, out int gapStart, out int gapCells)
         {
-            // THE WALL SPANS THE WHOLE MAP. A partial wall is not a bottleneck:
-            // the first version was 60 cells tall on a 128-cell map and the
-            // group simply walked around it, which is why "blocking" reported
-            // zero blocked units — a property of the scenario, not of the
-            // movement code.
+            // The definition follows the SLOT's faction, not the caller's: the
+            // wall belongs to the opposing slot, and handing it the other
+            // faction's building was an inconsistency waiting to matter.
+            FactionId faction = host.Economy.GetSlotFaction(slot);
             ushort defId = SimDefinitions.ToDefinitionId(faction, UnitRole.Power);
             int step = SimDefinitions.BuildingFootprintCells;
-            int top = mapHeight - step;
-            int bottom = 0;
+            int gapEnd = gapY + gapHeight;
 
-            for (int y = bottom; y <= top; y += step)
+            // Below the gap, upward from the bottom edge.
+            for (int y = 0; y + step <= gapY; y += step) PlaceWallBlock(host, slot, defId, columnX, y);
+            // Above the gap, upward from the first row past it — this is what
+            // closes the top edge that the old stride left open.
+            for (int y = gapEnd; y + step <= mapHeight; y += step) PlaceWallBlock(host, slot, defId, columnX, y);
+
+            MeasureOpening(host, columnX, mapHeight, out gapStart, out gapCells);
+        }
+
+        /// <summary>
+        /// One wall block, with its verdict checked. <c>PlaceCompletedBuilding</c>
+        /// returns <c>EntityId.Invalid</c> on an occupied footprint, an
+        /// off-map origin or an exhausted placement table
+        /// (<c>MaxBuildings = 256</c>) — and a wall with a silent hole in it
+        /// turns "nobody was blocked" into a property of the scenario.
+        /// </summary>
+        private static void PlaceWallBlock(MultiSlotAiHost host, byte slot, ushort defId, int x, int y)
+        {
+            if (host.Construction.PlaceCompletedBuilding(slot, defId, x, y).IsValid) return;
+            throw new InvalidOperationException(
+                $"[AiLab] wall block at ({x},{y}) was refused — the wall would have a hole in it, " +
+                "and the scenario would measure the hole instead of the movement code");
+        }
+
+        /// <summary>
+        /// Reads the wall column back out of the cost field and insists on
+        /// exactly one contiguous opening. Asserting the geometry is the whole
+        /// point: both wall bugs this scenario had were invisible in the
+        /// results and visible immediately in the walkability map.
+        /// </summary>
+        private static void MeasureOpening(MultiSlotAiHost host, int columnX, int mapHeight,
+            out int gapStart, out int gapCells)
+        {
+            gapStart = -1;
+            gapCells = 0;
+            int openings = 0;
+            bool inRun = false;
+
+            for (int y = 0; y < mapHeight; y++)
             {
-                if (y + step > gapY && y < gapY + gapHeight) continue; // the gap
-                host.Construction.PlaceCompletedBuilding(slot, defId, columnX, y);
+                bool walkable = host.Pathfinding.CostField.IsWalkable((ushort)columnX, (ushort)y);
+                if (walkable && !inRun)
+                {
+                    openings++;
+                    if (openings == 1) gapStart = y;
+                    inRun = true;
+                }
+                else if (!walkable)
+                {
+                    inRun = false;
+                }
+                if (walkable && openings == 1) gapCells++;
+            }
+
+            if (openings != 1)
+            {
+                throw new InvalidOperationException(
+                    $"[AiLab] the wall at x={columnX} has {openings} openings, not 1 — " +
+                    "a second opening makes the scenario measure a hole nobody designed " +
+                    "(this is exactly how the detour run walked past its own gap)");
             }
         }
 
@@ -518,9 +698,14 @@ namespace Nova.AiLab
                       .Append(",\"blockedUnits\":").Append(r.BlockedUnits)
                       .Append(",\"blockedTicksTotal\":").Append(r.BlockedTicksTotal)
                       .Append(",\"longestSingleBlockTicks\":").Append(r.LongestSingleBlockTicks)
+                      .Append(",\"wallGapStartCell\":").Append(r.WallGapStartCell)
+                      .Append(",\"wallGapCells\":").Append(r.WallGapCells)
                       .Append(",\"closestApproachCells\":").Append(r.ClosestApproachCells)
                       .Append(",\"attackRangeCells\":").Append(r.AttackRangeCells)
+                      .Append(",\"sightRadiusCells\":").Append(r.SightRadiusCells)
+                      .Append(",\"firstContactDistanceCells\":").Append(r.FirstContactDistanceCells)
                       .Append(",\"overshootCells\":").Append(r.OvershootCells)
+                      .Append(",\"usableRangeOvershootCells\":").Append(r.UsableRangeOvershootCells)
                       .Append(",\"rejectedOrders\":").Append(r.RejectedOrders)
                       .Append(",\"finalTick\":").Append(r.FinalTick)
                       .Append(",\"finalStateHash\":\"0x")

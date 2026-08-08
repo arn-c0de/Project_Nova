@@ -238,14 +238,8 @@ namespace Nova.AiLab
                 // Against a building the attacker still walks all the way in:
                 // the target does not move.
                 int meetX = spec.SiegeEchelon ? xB : (xA + xB) / 2;
-                Order(host, 0, unitsA, meetX, centreY);
-                if (!spec.SiegeEchelon) Order(host, 1, unitsB, meetX, centreY);
-
-                for (int i = 0; i < host.Peers.Length; i++)
-                {
-                    CountingAiPeerTransport counter = host.Peers[i].IntentCounter;
-                    if (counter != null) result.RejectedOrders += counter.Rejected;
-                }
+                result.RejectedOrders += Order(host, 0, unitsA, meetX, centreY);
+                if (!spec.SiegeEchelon) result.RejectedOrders += Order(host, 1, unitsB, meetX, centreY);
             }
 
             CountSide(host, 0, out _, out result.StartHealthA);
@@ -340,14 +334,27 @@ namespace Nova.AiLab
             return placed ? 1 : 0;
         }
 
-        /// <summary>Issues the move order; returns how many intents the executor refused.</summary>
+        /// <summary>
+        /// Issues the move order and returns how many intents the HOST intake
+        /// refused.
+        /// <para>
+        /// The verdict cannot come from <c>TrySubmitIntent</c>: at a peer
+        /// ingress that returns the SUBMISSION result, which is Accepted no
+        /// matter what the host made of the record. Only the transport sees the
+        /// intake verdict, so the count is a delta on the counting transport
+        /// around the submissions. The previous version declared a local
+        /// counter, never incremented it and returned zero — a refusal would
+        /// have left both sides standing still and the row would have read as a
+        /// stalemate finding instead of a broken setup.
+        /// </para>
+        /// </summary>
         private static int Order(MultiSlotAiHost host, byte slot, List<uint> raws, int targetX, int targetY)
         {
             if (raws.Count == 0) return 0;
             SlotPeer peer = host.PeerOf(slot);
             if (peer == null) return 0;
 
-            int rejected = 0;
+            int before = peer.IntentCounter?.Rejected ?? 0;
 
             // Chunked to the command contract's per-payload entity limit; the
             // sorted order keeps the split deterministic.
@@ -357,15 +364,12 @@ namespace Nova.AiLab
                 int length = Math.Min(chunk, raws.Count - start);
                 var ids = new uint[length];
                 raws.CopyTo(start, ids, 0, length);
-                // The verdict is CHECKED, not discarded. A silently refused
-                // order would leave both sides standing still and the row
-                // would read as a stalemate finding instead of a broken setup.
                 peer.Ingress.TrySubmitIntent(
                     CommandIntent.Create(new MovePayload(ids, SimFixed.FromInt(targetX), SimFixed.FromInt(targetY))),
                     out _);
             }
 
-            return rejected;
+            return (peer.IntentCounter?.Rejected ?? 0) - before;
         }
 
         /// <summary>
@@ -376,7 +380,7 @@ namespace Nova.AiLab
         /// </summary>
         public static long DeriveBudget(DuelSpec spec)
         {
-            long costA = UnitCost(spec.FactionA, spec.RoleA, siege: false);
+            long costA = UnitCost(spec.FactionA, spec.RoleA);
             if (spec.SiegeEchelon)
             {
                 // The attacker simply fields UnitsPerSide of its role; the
@@ -384,18 +388,12 @@ namespace Nova.AiLab
                 return costA * Math.Max(1, spec.UnitsPerSide);
             }
 
-            long costB = UnitCost(spec.FactionB, spec.RoleB, siege: false);
+            long costB = UnitCost(spec.FactionB, spec.RoleB);
             return Math.Max(costA, costB) * Math.Max(1, spec.UnitsPerSide);
         }
 
-        private static long UnitCost(FactionId faction, UnitRole role, bool siege)
-        {
-            if (siege)
-            {
-                return SimDefinitions.TryGetBuilding(faction, role, out SimBuildingDefinition b) ? b.CostAE : 0;
-            }
-            return SimDefinitions.TryGetUnit(faction, role, out SimUnitDefinition u) ? u.CostAE : 0;
-        }
+        private static long UnitCost(FactionId faction, UnitRole role) =>
+            SimDefinitions.TryGetUnit(faction, role, out SimUnitDefinition u) ? u.CostAE : 0;
 
         /// <summary>
         /// Runs until one side owns nothing living or the budget runs out.

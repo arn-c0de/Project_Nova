@@ -168,6 +168,17 @@ namespace Nova.AiLab
         /// Pairings whose two directions disagree — the ones so close that
         /// spawn order decides them. Section 3.9 wants these named, not
         /// smoothed over.
+        /// <para>
+        /// A PAIRING IS ONLY MIRRORED IF THE MIRROR IS A DIFFERENT RUN. For
+        /// Alliance.LightTank against Alliance.LightTank the mirror key equals
+        /// the pair key, so the old code compared a result WITH ITSELF and, for
+        /// every decided one, reported "winner 0 one way, 0 the other". That
+        /// was 33 of 38 reported rows — the five real findings were buried
+        /// under a self-comparison that can never be consistent by
+        /// construction. A self-mirrored pairing has nothing to disagree with;
+        /// its spawn-order sensitivity is what the duel asymmetry says it is,
+        /// not a measurement.
+        /// </para>
         /// </summary>
         public static List<string> DirectionDisagreements(DuelResult[] results)
         {
@@ -182,6 +193,8 @@ namespace Nova.AiLab
             foreach (DuelResult r in results)
             {
                 if (r.SiegeEchelon) continue; // buildings never attack back; the mirror is not the same experiment
+                if (r.FactionA == r.FactionB && r.RoleA == r.RoleB) continue; // its own mirror — nothing to compare
+
                 string mirrorKey = Key(r.FactionB, r.RoleB, r.FactionA, r.RoleA, r.Range, false);
                 if (!byKey.TryGetValue(mirrorKey, out DuelResult mirror)) continue;
 

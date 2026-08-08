@@ -615,32 +615,39 @@ document.getElementById('duelnote').innerHTML =
     const y = mt + i*rowH, bh = 15;
     el('text', {class:'rowlab', x:ml-9, y:y+bh/2+4, 'text-anchor':'end'}, s).textContent =
       r.faction + ' ' + r.role;
-    // Reichweitenband (Soll) als heller Track. Er ist absichtlich hoeher als der
-    // Balken: Ueberlauf == Reichweite, sonst waere der Track komplett verdeckt.
+    // Drei Bänder statt zwei, weil zwei die falsche Geschichte erzählen:
+    // nominale Reichweite (hell) > nutzbare Reichweite (Feuereröffnung) >
+    // Überlauf (rot). Der Abstand zwischen Band 1 und Band 2 gehört der Sicht,
+    // nicht der Bewegung — nur Band 3 kann Verhaltensarbeit zurückholen.
     el('rect', {x:ml, y:y-5, width:pw*r.attackRangeCells/max, height:bh+10, rx:5, fill:'var(--div-0)'}, s);
-    // Überlauf (Ist) als kritischer Balken
-    const w = pw*r.overshootCells/max;
+    const usable = r.firstContactDistanceCells >= 0 ? r.firstContactDistanceCells : 0;
+    el('rect', {x:ml, y:y-2, width:Math.max(pw*usable/max,3), height:bh+4, rx:4, fill:'var(--div-1)'}, s);
+    const w = pw*r.usableRangeOvershootCells/max;
     el('rect', {x:ml, y:y, width:Math.max(w,3), height:bh, rx:4, fill:'var(--critical)'}, s);
-    el('rect', {x:ml, y:y, width:4, height:bh, fill:'var(--critical)'}, s);
     el('text', {class:'vallab', x:ml+pw*r.attackRangeCells/max+8, y:y+bh/2+4}, s).textContent =
-      `${r.overshootCells} von ${r.attackRangeCells} Zellen`;
+      `${r.usableRangeOvershootCells} von ${usable} nutzbaren Zellen`;
     el('text', {class:'tick', x:ml, y:y+bh+14}, s).textContent =
-      `angekommen ${r.arrived}/${r.groupSize} · nächster Abstand ${r.closestApproachCells} Zellen`;
+      `Reichweite ${r.attackRangeCells} · Sicht ${r.sightRadiusCells} · Feuer ab ${usable} · ` +
+      `nächster Abstand ${r.closestApproachCells} Zellen`;
   });
   el('line', {class:'axisline', x1:ml, x2:ml, y1:mt-4, y2:mt+so.length*rowH-8}, s);
 
   document.getElementById('standoffnote').innerHTML =
-    `Der helle Track ist die eigene <span class="mono">AttackRange</span>, der rote Balken der Teil
-     davon, den die Einheiten überrennen. Beide Fraktionen laufen bis auf Abstand 0 heran und
-     verschenken ihre gesamte Reichweite — das ist die Zahl, die Issue 03 mit „Abstandhalten bei
-     Fernkämpfern" meint. <span style="color:var(--muted)">Zwei Fraktionen, zwei Balken: die Werte
-     sind absichtlich asymmetrisch (Allianz 20, Legion 18 Tiles).</span>`;
+    `Der helle Track ist die nominale <span class="mono">AttackRange</span>, der mittlere die
+     Entfernung, auf der tatsächlich das erste Mal Schaden fiel, der rote Balken der Teil davon,
+     den die Einheiten überrennen. <b>Nur der rote Balken ist Issue 03.</b> Der Abstand zwischen
+     hellem und mittlerem Band gehört der Aufklärung: Sicht ist 10 Zellen, die Artillerie reicht
+     20, und <span class="mono">CombatSystem</span> verlangt das Ziel als sichtbar. Ein Kontrolllauf,
+     der die Gruppe auf voller Reichweite stoppen liess, richtete über 2.000 Ticks null Schaden an —
+     „auf Reichweite stehenbleiben" wäre also keine Verbesserung, sondern eine wirkungslose Waffe.
+     <span style="color:var(--muted)">Zwei Fraktionen, zwei Balken: die Werte sind absichtlich
+     asymmetrisch (Allianz 20, Legion 18 Tiles).</span>`;
 
   const cols = [
     ['Szenario','scenario'],['Fraktion','faction'],['Rolle','role'],
     ['Gruppe','groupSize'],['angekommen','arrived'],['erster/letzter','_first'],
     ['Streuung','spreadCells'],['Weg','travelledCells'],['Luftlinie','straightLineCells'],
-    ['blockiert','_block'],['Überlauf','overshootCells']
+    ['blockiert','_block'],['Durchlass','_gap'],['Überlauf (nutzbar)','usableRangeOvershootCells']
   ];
   document.getElementById('movetable').innerHTML =
     '<thead><tr>' + cols.map(c => `<th>${c[0]}</th>`).join('') + '</tr></thead><tbody>' +
@@ -649,10 +656,15 @@ document.getElementById('duelnote').innerHTML =
       if (c[1] === '_first') v = r.arrived ? `${r.ticksToFirstArrival}/${r.ticksToLastArrival}` : '—';
       else if (c[1] === '_block') v = r.scenario === 'Blocking'
         ? `${r.blockedUnits} Einh. · ${r.longestSingleBlockTicks} Ticks` : '—';
+      // Der Durchlass wird aus dem CostField zurueckgemessen, nicht angenommen:
+      // eine Mauer mit einem zweiten, unbemerkten Loch macht "niemand blockiert"
+      // zu einer Eigenschaft des Aufbaus statt des Bewegungscodes.
+      else if (c[1] === '_gap') v = r.wallGapCells > 0
+        ? `${r.wallGapCells} Zellen @ y=${r.wallGapStartCell}` : '—';
       else v = r[c[1]];
-      if (v === 0 && ['straightLineCells','overshootCells','travelledCells'].includes(c[1])) v = '—';
-      const flag = (c[1] === 'overshootCells' && r.overshootCells > 0)
-        || (c[1] === 'arrived' && r.arrived === 0);
+      if (v === 0 && ['straightLineCells','usableRangeOvershootCells','travelledCells'].includes(c[1])) v = '—';
+      const flag = (c[1] === 'usableRangeOvershootCells' && r.usableRangeOvershootCells > 0)
+        || (c[1] === 'arrived' && r.arrived === 0 && r.scenario !== 'Standoff');
       return `<td class="${flag?'flag':''}">${v}</td>`;
     }).join('') + '</tr>').join('') + '</tbody>';
 })();
