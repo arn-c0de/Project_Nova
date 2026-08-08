@@ -66,29 +66,76 @@ python3 tools/Nova.AiLab/report/build_dashboard.py out/lab
 
 ## Was hier liegt
 
+Ein Ordner je Laufart — man findet alles über das Kommando, das man gerade fährt.
+Alle Dateien liegen im selben Namespace `Nova.AiLab`; die Ordner gliedern, sie
+trennen nicht. (Ein `Nova.AiLab.Movement` neben dem benutzten
+`Nova.Simulation.Movement` wäre eine Namenskollision, die man sich einhandelt,
+ohne etwas dafür zu bekommen.)
+
+### `Match/` — eine Partie fahren
+
 | Datei | Inhalt |
 |---|---|
-| `MultiSlotAiHost.cs` | der Match-Host: `MatchRunner.InitializeMatch` von einem KI-Slot auf N verallgemeinert, sonst nichts |
-| `CanonicalOpening.cs` | die D-077-Startaufstellung aus `MatchBootstrap`, Spawnreihenfolge inbegriffen |
 | `MatchSpec.cs` / `SpecFile.cs` | Eingabevertrag (§3.2) und sein JSON-Leser — unbekannte Schlüssel sind Fehler, keine Vorgabewerte |
-| `MatchRun.cs` | fährt eine Partie, liefert Outcome, Entscheidungstick, Hash-Kette, Trace |
-| `SlotMetrics.cs` / `TraceCollector.cs` | der Metrikkatalog aus §3.3, reiner Beobachter, nur Ganzzahlen |
+| `CanonicalOpening.cs` | die D-077-Startaufstellung aus `MatchBootstrap`, Spawnreihenfolge inbegriffen |
+| `MultiSlotAiHost.cs` | der Match-Host: `MatchRunner.InitializeMatch` von einem KI-Slot auf N verallgemeinert, sonst nichts |
 | `CountingAiPeerTransport.cs` | zählt Intent-Verdikte — die einzige Stelle, an der `intentsRejected` ehrlich entsteht |
+| `MatchRun.cs` | fährt eine Partie, liefert Outcome, Entscheidungstick, Hash-Kette, Trace |
+| `RunArtifacts.cs` | `result.json`, `trace.ndjson`, `hashchain.json`, `view.ndjson`, `player.html` |
+
+### `Metrics/` — messen, ohne einzugreifen
+
+| Datei | Inhalt |
+|---|---|
+| `SlotMetrics.cs` / `TraceCollector.cs` | der Metrikkatalog aus §3.3, reiner Beobachter, nur Ganzzahlen |
+
+### `View/` — hinsehen
+
+| Datei | Inhalt |
+|---|---|
 | `ViewFrame.cs` / `ViewRecorder.cs` | die Sichtframes aus §3.4 — Tätigkeit, nicht nur Position; reiner Beobachter |
 | `TerminalView.cs` | ANSI-Liveansicht, beantwortet „läuft gerade etwas schief?" |
 | `HtmlPlayer.cs` | eine selbstständige Seite mit canvas: Scrubber, Einzeltick, Ebenen. Kein Build, kein Server |
-| `RunArtifacts.cs` | `result.json`, `trace.ndjson`, `hashchain.json`, `view.ndjson`, `player.html` |
-| `SweepRunner.cs` / `SeedSeries.cs` | Parallellauf mit Determinismus-Stichprobe (jeder 20. Lauf doppelt) |
-| `DuelArena.cs` / `DuelTable.cs` | die Gegentabelle: AE-Parität, drei Abstände, beide Richtungen, Belagerung |
+
+### `Sweep/` — dieselbe Spec über viele Seeds
+
+| Datei | Inhalt |
+|---|---|
+| `SeedSeries.cs` / `SweepRunner.cs` | Parallellauf mit Determinismus-Stichprobe (jeder 20. Lauf doppelt) |
+
+### `Duel/` — die Gegentabelle
+
+| Datei | Inhalt |
+|---|---|
+| `DuelArena.cs` / `DuelTable.cs` | AE-Parität, drei Abstände, beide Richtungen, Belagerung |
+
+### `Movement/` — die vier Bewegungsszenarien
+
+| Datei | Inhalt |
+|---|---|
 | `MovementScenarios.cs` | `arrival`, `blocking`, `standoff`, `detour` — Hindernisse sind Daten, nicht Code |
+
+### `Compare/` — Kandidat gegen Referenz
+
+| Datei | Inhalt |
+|---|---|
 | `LabProfiles.cs` | die Kandidatenprofile — heute die einzige Achse mit echter Varianz |
 | `TournamentRunner.cs` | jeder Kandidat gegen die Referenz, in **beiden** Fraktionsrollen |
 | `ResultSet.cs` / `ResultSetFile.cs` | Ergebnismenge mit Herkunft; verweigert den Vergleich, statt Unvergleichbares zu mischen |
 | `ComparisonReport.cs` | der Bericht — Kennzahlen nebeneinander, **keine Rangliste** |
 | `PrDraft.cs` | PR-Entwurf mit ausschliesslich Gemessenem; Beobachtungsabschnitt bleibt leer |
+
+### Wurzel und `report/`
+
+| Datei | Inhalt |
+|---|---|
 | `Program.cs` | Kommandozeile |
 | `report/build_dashboard.py` | fasst die Artefakte **aller vier Laufarten** zu `out/lab/dashboard.html` zusammen — Kurven, Gegentabelle als Heatmap, Belagerung, Bewegung. Verdichtet nur, rechnet nichts dazu und vergibt keine Note |
 | `report/dashboard.tpl.html` | die Seite dazu: eine Datei, kein Build, kein Server, kein Netzzugriff |
+
+Das Testprojekt `../Nova.AiLab.Tests/` zieht diese Ordner mit **einem** Glob ein;
+eine neue Datei steht damit automatisch unter Test. Ausgenommen sind nur
+`Program.cs` (Einstiegspunkt) und `bin/`, `obj/` (generierter Code).
 
 ## Zwei Dinge, die man wissen muss, bevor man Zahlen liest
 

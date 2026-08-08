@@ -14,31 +14,14 @@
     <Compile Include="..\..\Assets\_Project\Scripts\Simulation\**\*.cs" Link="Simulation\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\..\Assets\_Project\Scripts\AI\**\*.cs" Link="AI\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\..\Assets\_Project\Scripts\AI.Data\**\*.cs" Link="AI.Data\%(RecursiveDir)%(Filename)%(Extension)" />
-    <!-- The lab under test (Program.cs entry point excluded). -->
-    <Compile Include="..\Nova.AiLab\MatchSpec.cs" Link="AiLab\MatchSpec.cs" />
-    <Compile Include="..\Nova.AiLab\CanonicalOpening.cs" Link="AiLab\CanonicalOpening.cs" />
-    <Compile Include="..\Nova.AiLab\MultiSlotAiHost.cs" Link="AiLab\MultiSlotAiHost.cs" />
-    <Compile Include="..\Nova.AiLab\MatchRun.cs" Link="AiLab\MatchRun.cs" />
-    <Compile Include="..\Nova.AiLab\SlotMetrics.cs" Link="AiLab\SlotMetrics.cs" />
-    <Compile Include="..\Nova.AiLab\TraceCollector.cs" Link="AiLab\TraceCollector.cs" />
-    <Compile Include="..\Nova.AiLab\CountingAiPeerTransport.cs" Link="AiLab\CountingAiPeerTransport.cs" />
-    <Compile Include="..\Nova.AiLab\SpecFile.cs" Link="AiLab\SpecFile.cs" />
-    <Compile Include="..\Nova.AiLab\RunArtifacts.cs" Link="AiLab\RunArtifacts.cs" />
-    <Compile Include="..\Nova.AiLab\SweepRunner.cs" Link="AiLab\SweepRunner.cs" />
-    <Compile Include="..\Nova.AiLab\SeedSeries.cs" Link="AiLab\SeedSeries.cs" />
-    <Compile Include="..\Nova.AiLab\ViewFrame.cs" Link="AiLab\ViewFrame.cs" />
-    <Compile Include="..\Nova.AiLab\ViewRecorder.cs" Link="AiLab\ViewRecorder.cs" />
-    <Compile Include="..\Nova.AiLab\TerminalView.cs" Link="AiLab\TerminalView.cs" />
-    <Compile Include="..\Nova.AiLab\HtmlPlayer.cs" Link="AiLab\HtmlPlayer.cs" />
-    <Compile Include="..\Nova.AiLab\DuelArena.cs" Link="AiLab\DuelArena.cs" />
-    <Compile Include="..\Nova.AiLab\DuelTable.cs" Link="AiLab\DuelTable.cs" />
-    <Compile Include="..\Nova.AiLab\MovementScenarios.cs" Link="AiLab\MovementScenarios.cs" />
-    <Compile Include="..\Nova.AiLab\LabProfiles.cs" Link="AiLab\LabProfiles.cs" />
-    <Compile Include="..\Nova.AiLab\ResultSet.cs" Link="AiLab\ResultSet.cs" />
-    <Compile Include="..\Nova.AiLab\ResultSetFile.cs" Link="AiLab\ResultSetFile.cs" />
-    <Compile Include="..\Nova.AiLab\TournamentRunner.cs" Link="AiLab\TournamentRunner.cs" />
-    <Compile Include="..\Nova.AiLab\ComparisonReport.cs" Link="AiLab\ComparisonReport.cs" />
-    <Compile Include="..\Nova.AiLab\PrDraft.cs" Link="AiLab\PrDraft.cs" />
+    <!-- The lab under test, folder by folder (Match/, Metrics/, View/, Sweep/,
+         Duel/, Movement/, Compare/). Two exclusions, both load-bearing:
+         Program.cs is the entry point and would collide with the test host,
+         and obj/ holds generated AssemblyInfo.cs — pulling it in fails the
+         build with duplicate assembly attributes (CS0579). -->
+    <Compile Include="..\Nova.AiLab\**\*.cs"
+             Exclude="..\Nova.AiLab\bin\**\*.cs;..\Nova.AiLab\obj\**\*.cs;..\Nova.AiLab\Program.cs"
+             Link="AiLab\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
