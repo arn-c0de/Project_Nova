@@ -137,8 +137,9 @@ und kein In-Memory-Objekt.
 | **R6** | Verhalten A–Z: Aufbau, Ernten, Wegbringen, Bauen, Rekrutieren, Angriff, Verteidigung | ⚠️ 5 von 13 Befehlsarten genutzt (§7) |
 | **R7** | Goal-System, das dauerhaft reagiert | ❌ KI ist bewusst zustandslos |
 | **R8** | Eine Stelle zum Ändern | ❌ Werte stecken im Code |
+| **R9** | 2D-Sichtfenster: sehen, was Einheiten *gerade tun* | ❌ nichts vorhanden (§4.4) |
 
-R6, R7 und R8 sind die Arbeit. R1–R3 sind fast geschenkt. R4/R5 siehe §8.
+R6, R7, R8 und R9 sind die Arbeit. R1–R3 sind fast geschenkt. R4/R5 siehe §8.
 
 ---
 
@@ -148,17 +149,24 @@ R6, R7 und R8 sind die Arbeit. R1–R3 sind fast geschenkt. R4/R5 siehe §8.
 ┌─────────────────────────────────────────────────────────────┐
 │ LabRunner (Konsole, net8.0)                                 │
 │   liest MatchSpec-Liste │ Parallel.For über Kerne           │
-│   schreibt je Lauf: result.json, trace.ndjson, hashchain    │
+│   schreibt je Lauf: result.json, trace.ndjson, hashchain,   │
+│                     view.ndjson, match.replay               │
 ├─────────────────────────────────────────────────────────────┤
 │ MatchLab (Bibliothek)                                       │
 │   MultiSlotAiHost   2..8 Slots, je KI-Slot eigene Session   │
 │   MatchSpec/Result  Ein- und Ausgabevertrag                 │
 │   TraceCollector    Integer-Metriken je n Ticks             │
+│   ViewRecorder      Sichtframes — reiner Beobachter (§4.4)  │
 │   SweepPlanner      Matrix aus Seeds × Profilen aufspannen  │
 ├─────────────────────────────────────────────────────────────┤
 │ dieselben .cs-Quellen wie Unity   ← die 1:1-Eigenschaft     │
 │   Core/ · Simulation/ · AI/                                 │
 └─────────────────────────────────────────────────────────────┘
+        │                                    │
+        ▼ live                               ▼ nach dem Lauf
+  Terminalansicht (ANSI)            HTML-Abspieler (canvas, eine Datei)
+  „läuft gerade etwas schief?"      zurückspulen · Ebenen · zwei Läufe
+                                    nebeneinander
 ```
 
 ### 4.1 `MultiSlotAiHost` — Verallgemeinerung des vorhandenen `AiHost`
@@ -248,7 +256,74 @@ Je Metriktick und Slot, alles direkt aus dem committed State ableitbar:
 Executor-Regeln anrennt — heute schweigend, weil `Submit()` den Verdikt
 absichtlich nicht auswertet.
 
-### 4.4 Wie „1:1" bewiesen wird
+### 4.4 Das 2D-Sichtfenster
+
+Reine Zahlen sagen *dass* etwas schiefging, nicht *was*. Eine Siegrate von 40 %
+erklärt nicht, dass die halbe Armee an einer Gebäudeecke hängenbleibt. Deshalb
+gehört ein Sichtfenster zum Labor, kein Extra.
+
+**Harte Bedingung: der Betrachter ist ein Beobachter.** Er liest den committed
+State nach `StepTick()` und schreibt nie zurück. Er ist nicht Teil der
+Tickreihenfolge, nicht Teil des Zustands-Hashes, nicht Teil des Snapshots. Ein
+Lauf mit und ohne Sichtfenster muss dieselbe Hash-Kette liefern — das ist ein
+Test, kein Vorsatz.
+
+**Zwei Darstellungen, weil sie Verschiedenes leisten:**
+
+| | **Terminalansicht (live)** | **HTML-Abspieler (Nachschau)** |
+|---|---|---|
+| Wann | während der Partie | nach dem Lauf |
+| Technik | ANSI-Farben, Rasterzeichen | eine einzelne statische HTML-Datei, `<canvas>` |
+| Abhängigkeiten | keine | keine, kein Server, kein Paket |
+| Stärke | „läuft gerade etwas völlig schief?" | zurückspulen, Einzeltick, Verhalten wirklich studieren |
+| Grenze | 128×128 muss aufs Terminal heruntergerechnet werden | nicht live |
+
+Das Schwergewicht — ein echtes Fenster über Avalonia/SDL/Raylib — lohnt nicht:
+Fremdabhängigkeit, Plattformpflege, und es kann nichts, was der HTML-Abspieler
+nicht besser kann.
+
+**Die Kodierung muss Tätigkeit zeigen, nicht nur Position.** Sonst sieht man
+bunte Punkte und weiß immer noch nichts:
+
+| Kanal | Bedeutung |
+|---|---|
+| Grundfarbe | Besitzer-Slot (0..7) |
+| Form | Rolle — Gebäude ▣, Baustelle ▢ (hohl), Builder ✚, Harvester ●, Kampfeinheit ▲ |
+| Helligkeit | `CurrentHealth * 100 / MaxHealth` — angeschlagen wird sichtbar dunkler |
+| Linie zum Ziel | rot = `AttackTarget`, grün = `HarvestFieldId`, blau = `GoalGridPos` bei `IsMoving` |
+| Hohle Füllung | `IsReturningCargo` (Rückweg mit Ladung) |
+| Randmarkierung | Einheit unterhalb der Rückzugsschwelle |
+| Kopfzeile je Slot | aktuelles Ziel, Nutzwert, Credits, Strommarge, Armeegröße |
+
+Damit beantwortet ein Blick die Fragen, die man beim Tunen tatsächlich hat:
+Warum steht der Harvester? Warum schießt die Armee auf das Lagerhaus? Warum
+kommt der Builder nicht an die Baustelle?
+
+**Zwei Überlagerungen, die beim KI-Debuggen den Unterschied machen:**
+
+- **Fog of War je Team** (`FogOfWarSystem.GetTeamView`) — die häufigste
+  Erklärung für „die KI hat nicht reagiert" ist, dass sie nichts sehen konnte.
+  Ohne diese Ansicht sucht man den Fehler im Goal-System, obwohl er in der
+  Sichtweite liegt.
+- **Verworfene Intents** — ein kurzes Aufblinken an der Stelle, an der ein
+  Befehl abgelehnt wurde. Macht die stille `intentsRejected`-Zahl räumlich.
+
+**Datenweg.** Der Lauf schreibt `view.ndjson`: eine Zeile je Sichtframe (Intervall
+konfigurierbar, Vorgabe alle 5 Ticks), darin die Entitäten kompakt als
+Ganzzahl-Tupel. Grobe Größe: ~200 Entitäten × ~30 Byte × 600 Frames ≈ 4 MB je
+Partie — unkritisch für Laborläufe und für lange Läufe über das Intervall
+regelbar. Die Terminalansicht rendert denselben Frame direkt, statt ihn zu
+schreiben.
+
+Der HTML-Abspieler ist eine Datei, die die `view.ndjson` daneben lädt: Zeitleiste
+mit Scrubber, Einzelschritt, Ebenen zum Zu- und Abschalten. Kein Build, kein
+Server, per Doppelklick auf.
+
+**Nebeneffekt, der mehr wert ist als er klingt:** Derselbe Frame-Strom lässt
+zwei Läufe nebeneinander abspielen — altes Profil gegen neues, gleicher Seed.
+Verhaltensunterschiede sieht man dann, statt sie aus Kennzahlen zu erschließen.
+
+### 4.5 Wie „1:1" bewiesen wird
 
 Vier Ebenen, aufsteigend in Beweiskraft:
 
@@ -609,15 +684,19 @@ Tick** zwei Stände auseinanderlaufen — statt nur, *dass* eine Baseline rot is
 
 Jede Etappe ist für sich abschließbar. Kein Enddatum.
 
-### E0 — Voraussetzung: .NET-SDK
+### E0 — Voraussetzung: .NET-SDK ✅ **erledigt (2026-08-08)**
 
-**Auf diesem Rechner ist kein .NET-SDK installiert.** `dotnet` ist nicht im
-PATH, `Project_Nova/.dotnet/` existiert nicht (CLAUDE.md §5 nennt es als
-Fallback). `global.json` pinnt `8.0.318` mit `rollForward: disable` — exakt
+SDK 8.0.318 liegt unter `Project_Nova/.dotnet/` (der Ort, den CLAUDE.md §5 als
+Fallback nennt). `global.json` pinnt hart mit `rollForward: disable`, also exakt
 diese Version.
 
-*Fertig, wenn:* `dotnet test tools/Nova.SimRunner.Tests/Nova.SimRunner.Tests.csproj -c Release`
-grün durchläuft.
+*Nachweis:* `dotnet test tools/Nova.SimRunner.Tests/Nova.SimRunner.Tests.csproj -c Release`
+→ **549 Tests, 0 Fehler, 10 s** (Gesamtlauf inkl. Restore und Build: 16 s).
+
+Das ist zugleich der erste echte Durchsatzhinweis: Die komplette Suite —
+Determinismus-Baselines, 10.000-Tick-Läufe und die End-to-End-KI-Partie
+inbegriffen — braucht zehn Sekunden. Die Erwartung aus E2 („einige hundert
+Matches pro Minute") ist damit eher konservativ.
 
 ### E1 — Harness, KI gegen KI headless *(lokal)*
 
@@ -640,7 +719,20 @@ E0 fehlt. Grobe Erwartung aus dem 2242-Tick-Referenzmatch und 24 Kernen: einige
 hundert Matches pro Minute. Das ist eine Schätzung, keine Messung, und wird als
 solche gekennzeichnet, bis sie eine ist.
 
-### E3 — Sweep und Auswertung *(lokal)*
+### E3 — 2D-Sichtfenster *(lokal)*
+
+Beobachter nach §4.4: `view.ndjson` je Lauf, Terminalansicht live,
+HTML-Abspieler zur Nachschau mit Scrubber und zuschaltbaren Ebenen (Fog of War
+je Team, verworfene Intents).
+
+Bewusst **vor** dem Sweep eingeordnet: Tausend Läufe auszuwerten hilft wenig,
+solange man an einem einzelnen nicht erkennen kann, was schiefging.
+
+*Fertig, wenn:* Eine laufende KI-gegen-KI-Partie ist im Terminal verfolgbar, ein
+abgeschlossener Lauf im Browser zurückspulbar — **und ein Test belegt, dass ein
+Lauf mit und ohne Sichtfenster dieselbe Hash-Kette liefert.**
+
+### E4 — Sweep und Auswertung *(lokal)*
 
 Matrix aus Seeds × Profilen × Fraktionen; Aggregation über Läufe (Siegrate,
 Median-Entscheidungstick, Wirtschaftskurven, `intentsRejected`); Vergleich gegen
@@ -649,7 +741,7 @@ eine eingefrorene Referenzmenge.
 *Fertig, wenn:* „Fahre 200 Seeds × 5 Profile" ist ein Befehl, und danach steht
 eine auswertbare Tabelle da.
 
-### E4 — Profile zu Daten *(PR, verhaltensneutral)*
+### E5 — Profile zu Daten *(PR, verhaltensneutral)*
 
 `AI.Data/`-Profilformat aus §5.5, `AiFactionProfile` liest daraus, `const`-Werte
 wandern hinüber. **Ausgelieferte Werte numerisch identisch** → Baselines bleiben
@@ -658,7 +750,7 @@ grün, und genau das ist die Prüfung, dass der Umbau sauber war.
 *Fertig, wenn:* Baselines grün, Profile in Daten, ein Test hält die
 Standardwerte gegen die alten Konstanten.
 
-### E5 — Reaktive KI, Stufe 1 *(PR, verhaltensändernd)*
+### E6 — Reaktive KI, Stufe 1 *(PR, verhaltensändernd)*
 
 Lagebewertung, Utility-Zielauswahl, `DefendBase`, `DefendField`, `Retreat`,
 Score-Targeting, `Farm`. Neue Tests in `SkirmishAiTests`. Vorher: Doku-Fix zu
@@ -673,24 +765,24 @@ gefährlichste erreichbare Ziel — **plus Spielbericht aus einer echten Partie*
 inklusive eines Falls, in dem die Reaktion falsch war, mit Einschätzung warum
 das akzeptabel ist.
 
-### E6 — Fehlende Befehlsarten *(PR, je Verhalten einer)*
+### E7 — Fehlende Befehlsarten *(PR, je Verhalten einer)*
 
 `Repair`, `ReturnCargo`, `SetRallyPoint`, `InstallDefenseModule`, `Stop`,
 `CancelConstruction`, `Sell`, `CancelProduction` — nach Nutzen sortiert, jeweils
 klein und einzeln. Das Labor liefert je Verhalten den Vorher/Nachher-Vergleich.
 
-### E7 — Sidecar-Vorschlag *(kein Code)*
+### E8 — Sidecar-Vorschlag *(kein Code)*
 
-Aus den E3-Auswertungen belegen, wo Zustandslosigkeit konkret schadet, und
+Aus den E4-Auswertungen belegen, wo Zustandslosigkeit konkret schadet, und
 daraus die D-ID-Anfrage nach §6 bauen. Vorschlag mit Belegen, keine Umsetzung.
 
-### E8 — Goal-System mit Zustand *(nur nach D-ID)*
+### E9 — Goal-System mit Zustand *(nur nach D-ID)*
 
 `SkirmishAiSystem` wird `IStatefulSimSystem` mit eigenem Block. Echte Hysterese
 in Ticks, Squads, Aufklärungsgedächtnis. Metamorphic-Tests nach
 `AIArchitecture.md` §6.
 
-### E9 — Mehr Slots, Teams *(Vorschlag, blockiert)*
+### E10 — Mehr Slots, Teams *(Vorschlag, blockiert)*
 
 4-Slot-Freiforall im Labor sofort; echte Teams als ausgearbeiteter Vorschlag.
 Umsetzung nur nach ausdrücklicher Zuweisung.
@@ -735,11 +827,13 @@ ist durch das Betriebsmodell aus §0 und die Entscheidungen aus §12 erledigt.
 | Risiko | Wirkung | Gegenmaßnahme |
 |---|---|---|
 | Laborcode rutscht in einen PR | Fremder Scope, PR wird zurückgegeben | Getrennte Branches, PR-Tests ohne Laborabhängigkeit (§0) |
-| Labor findet Verbesserung, Spiel widerlegt sie | Verlorene Arbeit, falsches Vertrauen | Replay-Gegenprobe in Unity (§4.4) vor jedem Verhaltens-PR |
+| Labor findet Verbesserung, Spiel widerlegt sie | Verlorene Arbeit, falsches Vertrauen | Replay-Gegenprobe in Unity (§4.5) vor jedem Verhaltens-PR |
 | Überanpassung an Laborseeds | KI gewinnt Benchmarks, verliert Partien | Feste Referenzmenge getrennt von der Tuningmenge halten |
 | Baseline-Rot wird zur Gewohnheit | Der eine Fehler, gegen den die Regel gebaut ist | Verhaltens-PR und Baseline-PR strikt getrennt, immer (§10) |
 | Sidecar-Bedarf wird unterschätzt | Stufe 1 zappelt, wirkt schlechter als vorher | `goalSwitches` als Metrik von Anfang an mitschreiben (§4.3) |
 | Tick-Reihenfolge im Harness driftet | Labor misst etwas anderes als das Spiel | Reihenfolge-Test gegen `MatchRunner` in E1 |
+| Sichtfenster wird Teil der Simulation | Determinismus kaputt, Labor wertlos | Beobachter liest nur nach `StepTick()`; Hash-Ketten-Test mit/ohne View in E3 |
+| Sichtframes fressen die Platte | lange Läufe brechen ab | Frame-Intervall konfigurierbar, Vorgabe alle 5 Ticks (~4 MB/Partie) |
 
 ---
 
