@@ -97,7 +97,7 @@ namespace Nova.AiLab
                 SlotSpec slot = spec.Slots[i];
                 json.Append("    { \"slot\": ").Append(slot.Slot)
                     .Append(", \"faction\": \"").Append(slot.Faction.ToString().ToLowerInvariant())
-                    .Append("\", \"controller\": \"").Append(slot.IsAi ? "ai" : "passive")
+                    .Append("\", \"controller\": \"").Append(slot.Controller.ToString().ToLowerInvariant())
                     .Append("\", \"profile\": \"canonical\" }");
                 if (i < spec.Slots.Length - 1) json.Append(',');
                 json.Append('\n');

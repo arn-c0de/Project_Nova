@@ -16,12 +16,18 @@ using Nova.Simulation.Vision;
 
 namespace Nova.AiLab
 {
-    /// <summary>One AI slot's session sidecar: its own seat in the command path.</summary>
-    public sealed class AiSlotPeer
+    /// <summary>
+    /// One commanding slot's session sidecar: its own seat in the command
+    /// path. An AI slot carries a <see cref="System"/>; a scripted slot has
+    /// the identical seat with none, so a scenario submits through it.
+    /// </summary>
+    public sealed class SlotPeer
     {
         public byte Slot;
         public MatchSession Session;
         public CommandIngress Ingress;
+
+        /// <summary>Null on a scripted slot — nothing decides on its own there.</summary>
         public SkirmishAiSystem System;
 
         /// <summary>The canonical transport — set unless the run counts intents.</summary>
@@ -106,8 +112,32 @@ namespace Nova.AiLab
         public MatchSession Session;
         public CommandIngress Ingress;
 
-        /// <summary>AI peers in ascending slot order (the order they tick in).</summary>
-        public AiSlotPeer[] AiPeers = Array.Empty<AiSlotPeer>();
+        /// <summary>Commanding slots in ascending slot order (the order they tick in).</summary>
+        public SlotPeer[] Peers = Array.Empty<SlotPeer>();
+
+        /// <summary>How many of <see cref="Peers"/> are played by a skirmish AI.</summary>
+        public int AiSlotCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < Peers.Length; i++)
+                {
+                    if (Peers[i].System != null) count++;
+                }
+                return count;
+            }
+        }
+
+        /// <summary>The command seat of a slot, or null when the slot is passive.</summary>
+        public SlotPeer PeerOf(byte slot)
+        {
+            for (int i = 0; i < Peers.Length; i++)
+            {
+                if (Peers[i].Slot == slot) return Peers[i];
+            }
+            return null;
+        }
 
         public int SlotCount { get; private set; }
 
@@ -154,11 +184,11 @@ namespace Nova.AiLab
             var ingress = new CommandIngress(session);
             _ = new LocalLoopbackTransport(ingress);
 
-            var peers = new List<AiSlotPeer>(slotCount);
+            var peers = new List<SlotPeer>(slotCount);
             for (int i = 0; i < slotCount; i++)
             {
                 SlotSpec slotSpec = spec.Slots[i];
-                if (!slotSpec.IsAi) continue;
+                if (!slotSpec.HasCommandSeat) continue;
 
                 var peerSession = new MatchSession(slotSpec.Slot, activeSlots, inputDelayTicks: 1);
                 var peerIngress = new CommandIngress(peerSession);
@@ -167,7 +197,7 @@ namespace Nova.AiLab
                 // one is the default; the counting stand-in replaces it only
                 // when a run needs the intent verdicts, and a test pins that
                 // both produce the identical hash chain.
-                var peer = new AiSlotPeer { Slot = slotSpec.Slot, Session = peerSession, Ingress = peerIngress };
+                var peer = new SlotPeer { Slot = slotSpec.Slot, Session = peerSession, Ingress = peerIngress };
                 if (spec.NeedsIntentCounting)
                 {
                     peer.IntentCounter = new CountingAiPeerTransport(peerIngress, ingress);
@@ -177,10 +207,17 @@ namespace Nova.AiLab
                     peer.Transport = new AiPeerCommandTransport(peerIngress, ingress);
                 }
 
-                peer.System = new SkirmishAiSystem(
-                    slotSpec.Slot,
-                    slotSpec.Profile,
-                    peerIngress, entities, economy, construction, production, fogOfWar, victory);
+                // A scripted slot gets the identical seat and NO system: the
+                // scenario decides, nothing decides on its own. That keeps the
+                // duel arena and the movement scenarios on the canonical
+                // command path instead of poking entity state directly.
+                if (slotSpec.Controller == SlotController.Ai)
+                {
+                    peer.System = new SkirmishAiSystem(
+                        slotSpec.Slot,
+                        slotSpec.Profile,
+                        peerIngress, entities, economy, construction, production, fogOfWar, victory);
+                }
 
                 peers.Add(peer);
             }
@@ -196,7 +233,7 @@ namespace Nova.AiLab
             kernel.RegisterSystem(combat);
             for (int i = 0; i < peers.Count; i++)
             {
-                kernel.RegisterSystem(peers[i].System);
+                if (peers[i].System != null) kernel.RegisterSystem(peers[i].System);
             }
             kernel.RegisterSystem(victory);
 
@@ -226,7 +263,7 @@ namespace Nova.AiLab
                 Victory = victory,
                 Session = session,
                 Ingress = ingress,
-                AiPeers = peers.ToArray(),
+                Peers = peers.ToArray(),
                 SlotCount = slotCount,
             };
         }
@@ -261,9 +298,9 @@ namespace Nova.AiLab
                     $"[AiLab] kernel refused the sealed batch of tick {nextTick}");
             }
 
-            for (int i = 0; i < AiPeers.Length; i++)
+            for (int i = 0; i < Peers.Length; i++)
             {
-                AiPeers[i].Session.AdvanceTick();
+                Peers[i].Session.AdvanceTick();
             }
 
             Kernel.StepTick();

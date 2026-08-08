@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using Nova.Simulation.State;
 
 namespace Nova.AiLab
 {
@@ -18,6 +19,9 @@ namespace Nova.AiLab
             "\n" +
             "  match [options]        run one AI-vs-AI match\n" +
             "  sweep [options]        run a seed matrix across all cores\n" +
+            "  duel [options]         measure the counter-table: every role pairing, three distances,\n" +
+            "                         both directions, plus the siege echelon\n" +
+            "  movement [options]     the four movement scenarios: arrival, blocking, standoff, detour\n" +
             "\n" +
             "Spec:\n" +
             "  --spec <file>          JSON MatchSpec (plan section 3.2); flags below override it\n" +
@@ -37,7 +41,18 @@ namespace Nova.AiLab
             "sweep:\n" +
             "  --seeds <n>            number of seeds, derived from --seed (default 8)\n" +
             "  --out <dir>            one subdirectory per seed\n" +
-            "  --parallel <n>         max concurrent matches (default: processor count)\n";
+            "  --parallel <n>         max concurrent matches (default: processor count)\n" +
+            "\n" +
+            "duel:\n" +
+            "  --units <n>            units the expensive side fields; the AE budget follows (default 6)\n" +
+            "  --ticks <n>            tick budget per duel (default 3000)\n" +
+            "  --out <dir>            write duels.ndjson\n" +
+            "  --parallel <n>         max concurrent duels (default: processor count)\n" +
+            "\n" +
+            "movement:\n" +
+            "  --group <n>            units per group (default 8)\n" +
+            "  --ticks <n>            tick budget per scenario (default 3000)\n" +
+            "  --out <dir>            write movement.ndjson\n";
 
         public static int Main(string[] args)
         {
@@ -50,7 +65,7 @@ namespace Nova.AiLab
             Options options;
             try
             {
-                options = Options.Parse(args);
+                options = Options.Parse(args, args[0]);
             }
             catch (Exception ex)
             {
@@ -62,6 +77,8 @@ namespace Nova.AiLab
             {
                 "match" => RunMatch(options),
                 "sweep" => RunSweep(options),
+                "duel" => RunDuels(options),
+                "movement" => RunMovement(options),
                 _ => Fail($"unknown mode '{args[0]}'"),
             };
         }
@@ -204,6 +221,127 @@ namespace Nova.AiLab
         }
 
         // ----------------------------------------------------------------
+        // duel
+        // ----------------------------------------------------------------
+
+        private static int RunDuels(Options options)
+        {
+            List<DuelSpec> plan = DuelTable.Plan(options.UnitsPerSide, options.Spec.TickBudget);
+            Console.WriteLine($"duel: {plan.Count} duels, {options.UnitsPerSide} units on the expensive side, " +
+                              $"budget {options.Spec.TickBudget} ticks each");
+
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            DuelResult[] results = DuelTable.Run(plan, options.Parallelism);
+            watch.Stop();
+
+            int decided = 0, wobbling = 0, undecided = 0, noContact = 0;
+            foreach (DuelResult r in results)
+            {
+                if (r.Decided) decided++; else undecided++;
+                if (r.ParityWobbles) wobbling++;
+                if (r.NoContact) noContact++;
+            }
+
+            Console.WriteLine($"{results.Length} duels in {watch.ElapsedMilliseconds} ms — " +
+                              $"{decided} decided, {undecided} ran out the tick budget");
+            if (noContact > 0)
+            {
+                // Its own outcome, not a stalemate: at the weapon-range echelon
+                // this is the documented finding that a gun out-ranging its own
+                // sight cannot use that range without scouting.
+                Console.WriteLine($"no contact at all in {noContact} duels — nobody took a scratch " +
+                                  "(at weapon range this is the sight-vs-range finding, not a stalemate)");
+            }
+            if (wobbling > 0)
+            {
+                // Not a footnote: where a side cannot spend its budget evenly,
+                // the parity the whole comparison rests on is off.
+                Console.WriteLine($"WARNING: {wobbling} pairings left over 10% of a side's budget unspent — " +
+                                  "their parity wobbles and their outcome is weak evidence");
+            }
+
+            List<string> disagreements = DuelTable.DirectionDisagreements(results);
+            Console.WriteLine($"direction disagreements: {disagreements.Count} " +
+                              "(pairings so close that spawn order decides them)");
+            for (int i = 0; i < Math.Min(10, disagreements.Count); i++)
+            {
+                Console.WriteLine($"  {disagreements[i]}");
+            }
+            if (disagreements.Count > 10) Console.WriteLine($"  … and {disagreements.Count - 10} more");
+
+            if (options.OutputDirectory != null)
+            {
+                Directory.CreateDirectory(options.OutputDirectory);
+                string path = Path.Combine(options.OutputDirectory, "duels.ndjson");
+                File.WriteAllText(path, DuelTable.ToNdjson(results));
+                Console.WriteLine($"table written to {path}");
+            }
+
+            return 0;
+        }
+
+        // ----------------------------------------------------------------
+        // movement
+        // ----------------------------------------------------------------
+
+        private static int RunMovement(Options options)
+        {
+            var results = new List<MovementResult>();
+            foreach (MovementScenario scenario in new[]
+                     {
+                         MovementScenario.Arrival, MovementScenario.Blocking,
+                         MovementScenario.Standoff, MovementScenario.Detour,
+                     })
+            foreach (FactionId faction in DuelTable.Factions)
+            {
+                // Standoff only makes sense for a unit that HAS a range worth
+                // keeping; running it on melee-range infantry would measure
+                // nothing and read like a result.
+                UnitRole role = scenario == MovementScenario.Standoff ? UnitRole.Artillery : UnitRole.BasicInfantry;
+                results.Add(MovementScenarios.Run(new MovementSpec
+                {
+                    Scenario = scenario,
+                    Faction = faction,
+                    Role = role,
+                    GroupSize = options.GroupSize,
+                    TickBudget = options.Spec.TickBudget,
+                }));
+            }
+
+            foreach (MovementResult r in results)
+            {
+                Console.WriteLine($"{r.Scenario,-9} {r.Faction,-8} {r.Role,-14} " +
+                                  $"arrived {r.Arrived}/{r.GroupSize}  spread {r.SpreadCells,3}  " +
+                                  $"first/last {r.TicksToFirstArrival,5}/{r.TicksToLastArrival,5}  " +
+                                  Detail(r));
+                if (r.RejectedOrders > 0)
+                {
+                    Console.Error.WriteLine($"  {r.RejectedOrders} orders refused — this row is not a measurement");
+                }
+            }
+
+            if (options.OutputDirectory != null)
+            {
+                Directory.CreateDirectory(options.OutputDirectory);
+                string path = Path.Combine(options.OutputDirectory, "movement.ndjson");
+                File.WriteAllText(path, MovementScenarios.ToNdjson(results));
+                Console.WriteLine($"results written to {path}");
+            }
+            return 0;
+        }
+
+        private static string Detail(MovementResult r) => r.Scenario switch
+        {
+            MovementScenario.Blocking =>
+                $"blocked {r.BlockedUnits} units, {r.BlockedTicksTotal} tick-units, longest {r.LongestSingleBlockTicks}",
+            MovementScenario.Standoff =>
+                $"from {r.StartDistanceCells} in to {r.ClosestApproachCells}, range {r.AttackRangeCells} — overshoot {r.OvershootCells}",
+            MovementScenario.Detour =>
+                $"straight {r.StraightLineCells}, travelled {r.TravelledCells}",
+            _ => $"travelled {r.TravelledCells}",
+        };
+
+        // ----------------------------------------------------------------
         // Argument parsing
         // ----------------------------------------------------------------
 
@@ -215,8 +353,10 @@ namespace Nova.AiLab
             public int Parallelism;
             public string OutputDirectory;
             public bool Watch;
+            public int UnitsPerSide = DuelTable.DefaultUnitsPerSide;
+            public int GroupSize = 8;
 
-            public static Options Parse(string[] args)
+            public static Options Parse(string[] args, string mode)
             {
                 var options = new Options();
                 var flags = new Dictionary<string, string>();
@@ -258,6 +398,8 @@ namespace Nova.AiLab
                         case "--repeat": options.Repeat = ParseInt(flag.Value, flag.Key); break;
                         case "--seeds": options.SeedCount = ParseInt(flag.Value, flag.Key); break;
                         case "--parallel": options.Parallelism = ParseInt(flag.Value, flag.Key); break;
+                        case "--units": options.UnitsPerSide = ParseInt(flag.Value, flag.Key); break;
+                        case "--group": options.GroupSize = ParseInt(flag.Value, flag.Key); break;
                         case "--out": options.OutputDirectory = flag.Value; break;
                         default: throw new ArgumentException($"unknown option '{flag.Key}'");
                     }
@@ -268,6 +410,11 @@ namespace Nova.AiLab
                 // Watching needs frames; 20 ticks = 2 s of simulated time, the
                 // AI's own decision cadence, so every frame can differ.
                 if (options.Watch && options.Spec.ViewIntervalTicks <= 0) options.Spec.ViewIntervalTicks = 20;
+
+                // A duel is seconds, not a match: the 27.000-tick match default
+                // would just idle after the last unit died. An explicit --ticks
+                // still wins.
+                if ((mode == "duel" || mode == "movement") && !flags.ContainsKey("--ticks")) options.Spec.TickBudget = 3000;
 
                 if (options.Spec.Slots.Length > CanonicalOpening.MaxSeatedSlots)
                 {

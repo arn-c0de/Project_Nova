@@ -218,7 +218,7 @@ namespace Nova.AiLab.Tests
         {
             MatchSpec spec = new MatchSpec { Seed = seed };
             spec.Slots = MatchSpec.DefaultSlots(2);
-            spec.Slots[PassiveSlot].IsAi = false;
+            spec.Slots[PassiveSlot].Controller = SlotController.Passive;
             return spec;
         }
 
@@ -261,9 +261,9 @@ namespace Nova.AiLab.Tests
             Assert.That(SystemTypeNames(host.Kernel), Is.EqualTo(expected.ToArray()),
                 "N AI slots must occupy the single AI position of the canonical order, not scatter through it");
 
-            for (int i = 0; i < host.AiPeers.Length; i++)
+            for (int i = 0; i < host.Peers.Length; i++)
             {
-                Assert.That(host.AiPeers[i].Slot, Is.EqualTo((byte)i),
+                Assert.That(host.Peers[i].Slot, Is.EqualTo((byte)i),
                     "AI peers must tick in ascending slot order: the order fixes which intents reach a tick first");
             }
         }

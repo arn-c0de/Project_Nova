@@ -28,6 +28,12 @@ dotnet run --project tools/Nova.AiLab -c Release -- match --view-every 25 --fog 
 # Seed-Matrix über alle Kerne, jeder 20. Lauf doppelt zur Selbstkontrolle
 dotnet run --project tools/Nova.AiLab -c Release -- sweep --seeds 24 --out out/sweep
 
+# die Gegentabelle: 576 Duelle in Sekunden (Issues 01/02)
+dotnet run --project tools/Nova.AiLab -c Release -- duel --out out/duel
+
+# die vier Bewegungsszenarien (Issue 03)
+dotnet run --project tools/Nova.AiLab -c Release -- movement --out out/movement
+
 # vier Slots (die Karte hat vier Eckplätze)
 dotnet run --project tools/Nova.AiLab -c Release -- match --slots 4
 
@@ -49,6 +55,8 @@ dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
 | `HtmlPlayer.cs` | eine selbstständige Seite mit canvas: Scrubber, Einzeltick, Ebenen. Kein Build, kein Server |
 | `RunArtifacts.cs` | `result.json`, `trace.ndjson`, `hashchain.json`, `view.ndjson`, `player.html` |
 | `SweepRunner.cs` / `SeedSeries.cs` | Parallellauf mit Determinismus-Stichprobe (jeder 20. Lauf doppelt) |
+| `DuelArena.cs` / `DuelTable.cs` | die Gegentabelle: AE-Parität, drei Abstände, beide Richtungen, Belagerung |
+| `MovementScenarios.cs` | `arrival`, `blocking`, `standoff`, `detour` — Hindernisse sind Daten, nicht Code |
 | `Program.cs` | Kommandozeile |
 
 ## Zwei Dinge, die man wissen muss, bevor man Zahlen liest

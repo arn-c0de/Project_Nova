@@ -114,7 +114,7 @@ namespace Nova.AiLab
             int index = 0;
             foreach (JsonElement entry in element.EnumerateArray())
             {
-                var slot = new SlotSpec { Slot = (byte)index, Faction = FactionId.Alliance, IsAi = true };
+                var slot = new SlotSpec { Slot = (byte)index, Faction = FactionId.Alliance, Controller = SlotController.Ai };
                 bool factionGiven = false;
 
                 foreach (JsonProperty property in entry.EnumerateObject())
@@ -138,12 +138,13 @@ namespace Nova.AiLab
 
                         case "controller":
                             string controller = property.Value.GetString();
-                            slot.IsAi = controller switch
+                            slot.Controller = controller switch
                             {
-                                "ai" => true,
-                                "passive" => false,
+                                "ai" => SlotController.Ai,
+                                "passive" => SlotController.Passive,
+                                "scripted" => SlotController.Scripted,
                                 _ => throw new FormatException(
-                                    $"{origin}: controller '{controller}' is unknown — 'ai' or 'passive'"),
+                                    $"{origin}: controller '{controller}' is unknown — 'ai', 'passive' or 'scripted'"),
                             };
                             break;
 

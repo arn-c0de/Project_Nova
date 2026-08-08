@@ -30,6 +30,9 @@
     <Compile Include="..\Nova.AiLab\ViewRecorder.cs" Link="AiLab\ViewRecorder.cs" />
     <Compile Include="..\Nova.AiLab\TerminalView.cs" Link="AiLab\TerminalView.cs" />
     <Compile Include="..\Nova.AiLab\HtmlPlayer.cs" Link="AiLab\HtmlPlayer.cs" />
+    <Compile Include="..\Nova.AiLab\DuelArena.cs" Link="AiLab\DuelArena.cs" />
+    <Compile Include="..\Nova.AiLab\DuelTable.cs" Link="AiLab\DuelTable.cs" />
+    <Compile Include="..\Nova.AiLab\MovementScenarios.cs" Link="AiLab\MovementScenarios.cs" />
   </ItemGroup>
 
   <ItemGroup>

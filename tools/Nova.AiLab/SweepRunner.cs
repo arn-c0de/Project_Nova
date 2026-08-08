@@ -125,7 +125,7 @@ namespace Nova.AiLab
                 {
                     Slot = source.Slot,
                     Faction = source.Faction,
-                    IsAi = source.IsAi,
+                    Controller = source.Controller,
                     Profile = source.Profile,
                 };
             }

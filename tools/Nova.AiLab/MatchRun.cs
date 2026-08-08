@@ -84,7 +84,7 @@ namespace Nova.AiLab
             {
                 Seed = spec.Seed,
                 SlotCount = host.SlotCount,
-                AiSlotCount = host.AiPeers.Length,
+                AiSlotCount = host.AiSlotCount,
                 TickBudget = spec.TickBudget,
                 DefinitionsHash64 = SimDefinitions.ComputeDefinitionsHash64(),
             };

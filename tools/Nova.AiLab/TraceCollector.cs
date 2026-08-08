@@ -271,9 +271,9 @@ namespace Nova.AiLab
         /// </summary>
         private void ReadIntents(SlotMetrics[] slots)
         {
-            for (int i = 0; i < _host.AiPeers.Length; i++)
+            for (int i = 0; i < _host.Peers.Length; i++)
             {
-                AiSlotPeer peer = _host.AiPeers[i];
+                SlotPeer peer = _host.Peers[i];
                 if (peer.IntentCounter == null) continue;
 
                 SlotMetrics m = slots[peer.Slot];

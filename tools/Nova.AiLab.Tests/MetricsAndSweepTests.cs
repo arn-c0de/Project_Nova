@@ -84,12 +84,12 @@ namespace Nova.AiLab.Tests
             canonical.CountIntents = false;
             MultiSlotAiHost plain = MultiSlotAiHost.Build(canonical);
 
-            foreach (AiSlotPeer peer in counted.AiPeers)
+            foreach (SlotPeer peer in counted.Peers)
             {
                 Assert.That(peer.IntentCounter, Is.Not.Null);
                 Assert.That(peer.Transport, Is.Null, "exactly one transport binds to a peer ingress");
             }
-            foreach (AiSlotPeer peer in plain.AiPeers)
+            foreach (SlotPeer peer in plain.Peers)
             {
                 Assert.That(peer.Transport, Is.Not.Null);
                 Assert.That(peer.IntentCounter, Is.Null);

@@ -7,17 +7,41 @@ using Nova.Simulation.Victory;
 
 namespace Nova.AiLab
 {
-    /// <summary>
-    /// What one slot is: its faction, and whether a skirmish AI plays it.
-    /// A slot with <see cref="IsAi"/> = false is the passive fixture of
-    /// SkirmishAiTests — it exists, it owns the canonical opening position,
-    /// and nobody ever issues a command for it.
-    /// </summary>
+    /// <summary>Who issues this slot's commands.</summary>
+    public enum SlotController
+    {
+        /// <summary>The MS-1 skirmish AI plays the slot.</summary>
+        Ai = 0,
+
+        /// <summary>
+        /// Nobody. The slot exists and owns its opening position, and no
+        /// command is ever issued for it — the passive fixture of
+        /// SkirmishAiTests.
+        /// </summary>
+        Passive = 1,
+
+        /// <summary>
+        /// A scenario issues the commands. The slot gets its own session,
+        /// ingress and transport — the same seat an AI peer holds — but no
+        /// SkirmishAiSystem, so nothing decides on its own. This is what the
+        /// duel arena and the movement scenarios use: their orders travel the
+        /// canonical sealed command path exactly like a human's, instead of
+        /// poking entity state directly.
+        /// </summary>
+        Scripted = 2,
+    }
+
+    /// <summary>What one slot is: its faction and who commands it.</summary>
     public sealed class SlotSpec
     {
         public byte Slot;
         public FactionId Faction;
-        public bool IsAi = true;
+        public SlotController Controller = SlotController.Ai;
+
+        public bool IsAi => Controller == SlotController.Ai;
+
+        /// <summary>True when the slot owns a session it can submit through.</summary>
+        public bool HasCommandSeat => Controller != SlotController.Passive;
 
         /// <summary>
         /// The AI profile of this slot. The canonical default mirrors
@@ -114,7 +138,7 @@ namespace Nova.AiLab
                 {
                     Slot = (byte)i,
                     Faction = faction,
-                    IsAi = true,
+                    Controller = SlotController.Ai,
                     Profile = SlotSpec.CanonicalProfile(faction),
                 };
             }
