@@ -59,17 +59,21 @@ namespace Nova.AI
     /// harvester receives a Harvest intent on the own field, and harvesters
     /// held out of reach are WALKED into the economy's reach rule with
     /// explicit Move intents (gather leg toward a field-and-footprint
-    /// dual-reach cell, return leg toward the footprint — the SetRallyPoint
-    /// validator rejects the Refinery in this slice, so the AI micro-manages
-    /// like a human); (4) once the
+    /// dual-reach cell, return leg toward the footprint — this slice does not
+    /// use the Refinery's rally point at all, it micro-manages like a human;
+    /// a rally point WOULD be accepted, see the note at the economy step);
+    /// (4) once the
     /// Barracks stands, infantry is queued up to
     /// <see cref="AiFactionProfile.TargetArmySize"/> as funds allow;
     /// (5) at <see cref="AiFactionProfile.AttackSquadThreshold"/> living
     /// combat units the army is sent toward the enemy start area, and every
     /// enemy visible in the committed team view receives an EXPLICIT
-    /// AttackTarget intent — GB-002: there is no attack-move or auto-acquire,
-    /// so orders are mandatory; the enemy HQ is preferred once visible
-    /// (D-077: its loss defeats the slot).
+    /// AttackTarget intent. There is no attack-move (GB-002), but D-087 DID
+    /// add auto-acquisition to <see cref="CombatSystem"/>: an idle armed unit
+    /// picks the nearest visible hostile in range by itself. Explicit orders
+    /// are never retargeted, so an AI order always wins over the automatic
+    /// pick — and therefore has to be at least as good as it. The enemy HQ is
+    /// preferred once visible (D-077: its loss defeats the slot).
     /// </para>
     /// <para>
     /// Rejection tolerance: affordability, the power rule and placement
@@ -351,13 +355,15 @@ namespace Nova.AI
             // ---- (4) Economy: keep harvesters queued at the Refinery (the
             // D-077 producer), send every idle own harvester to the own field
             // and WALK harvesters into reach with explicit Move intents.
-            // The AI cannot rely on the Refinery's rally point: the
-            // SetRallyPoint validator's producer list (ProductionSystem's
-            // IsProducerRole) predates the D-077 producer move and still
-            // rejects the Refinery — a documented sim-side gap outside this
-            // slice (the determinism harness records exactly that rejection
-            // and must stay unaffected). So the AI does what a human player
-            // does: micro the harvesters into the economy's reach rule. ----
+            // This slice never submits SetRallyPoint; it does what a human
+            // player does and micros the harvesters into the economy's reach
+            // rule. That is a behavior choice, NOT a validator limit: the
+            // rally point would be accepted. ProductionSystem.IsProducerRole
+            // reads UnitRole.Refinery out of SimDefinitions.AllUnits (both
+            // factions' Harvester carries producerRole: Refinery since D-077)
+            // instead of a hardcoded list, precisely so the producer move
+            // could not strand it. Using the rally point here would change
+            // behavior and belongs in its own PR. ----
             if (refineryRaw != 0
                 && TryGetOwnFieldCell(hqCellX, hqCellY, out ushort ownFieldId, out int fieldX, out int fieldY))
             {
@@ -453,9 +459,11 @@ namespace Nova.AI
             }
 
             // ---- (6) Attack: at the squad threshold, march on the enemy
-            // start area; visible enemies get explicit AttackTarget intents
-            // (GB-002 — no attack-move/auto-acquire exists). Committed-view
-            // targets only: fog-hidden entities are never addressed. ----
+            // start area; visible enemies get explicit AttackTarget intents.
+            // No attack-move exists (GB-002), but auto-acquisition does since
+            // D-087 — an explicit order simply outranks it and is never
+            // retargeted. Committed-view targets only: fog-hidden entities
+            // are never addressed. ----
             if (combatCount >= _profile.AttackSquadThreshold && _aiPlayerId < _fogOfWar.TeamCount)
             {
                 uint targetRaw = FindPreferredVisibleEnemy(out int targetCellX, out int targetCellY);

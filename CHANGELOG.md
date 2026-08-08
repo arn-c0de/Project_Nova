@@ -189,6 +189,25 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   ungewollte lokale Änderung. Das Define `SENTIS_ANALYTICS_ENABLED` kommt vom
   Paket `com.unity.ai.inference` und wird vom Editor gesetzt, nicht von Hand.
 
+### Behoben
+- **Zwei veraltete Doku-Behauptungen in `SkirmishAiSystem` (Einheitenstrang):**
+  Die Klassendoku berief sich an zwei Stellen auf GB-002 („es gibt kein
+  Auto-Acquire") — `CombatSystem` hat es aber seit **D-087**: eine untätige
+  bewaffnete Einheit sucht sich selbst das nächste sichtbare feindliche Ziel
+  in Reichweite. Der Code gilt, und die Folge ist für kommende KI-Arbeit
+  wesentlich: Explizite Befehle werden nie umgelenkt, ein KI-Ziel schlägt die
+  Automatik also immer — und muss deshalb mindestens so gut zielen wie sie.
+  Zweitens stand dort, der `SetRallyPoint`-Validator lehne das Refinery ab und
+  die KI müsse deshalb Harvester von Hand laufen lassen. Auch das stimmt
+  nicht: `ProductionSystem.IsProducerRole` liest `UnitRole.Refinery` aus
+  `SimDefinitions.AllUnits` statt aus einer harten Liste (beide Fraktionen
+  tragen am Harvester `producerRole: Refinery` seit D-077), genau damit der
+  Produzentenumzug die Rally-Point-Prüfung nicht stranden lässt. Das
+  Micromanagement der Harvester bleibt, es ist eine Verhaltensentscheidung
+  dieses Slices — keine Grenze des Validators. **Reine Kommentaränderung:
+  keine ausführbare Zeile angefasst, Verhalten und die vier
+  Determinismus-Baselines unverändert.**
+
 ### Verifikation (D-088)
 - `dotnet test tools/Nova.SimRunner.Tests`: **438/438 grün** (neun neue
   Truppenführung-Tests je Lane; die Epoch-/Cache-Vertragstests sind auf die
