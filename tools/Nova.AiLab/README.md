@@ -125,17 +125,26 @@ ohne etwas dafür zu bekommen.)
 | `ComparisonReport.cs` | der Bericht — Kennzahlen nebeneinander, **keine Rangliste** |
 | `PrDraft.cs` | PR-Entwurf mit ausschliesslich Gemessenem; Beobachtungsabschnitt bleibt leer |
 
+### `Cli/` — die Kommandozeile
+
+| Datei | Inhalt |
+|---|---|
+| `Usage.cs` | der Hilfetext — die einzige Stelle, an der ein Modus in Worten steht |
+| `Options.cs` | alle Flags; Spec-Datei als Basis, explizite Flags überschreiben sie |
+| `MatchCommand.cs` … `CompareCommand.cs` | je ein Modus, je eine Datei: `match`, `sweep`, `duel`, `movement`, `compare` |
+
 ### Wurzel und `report/`
 
 | Datei | Inhalt |
 |---|---|
-| `Program.cs` | Kommandozeile |
+| `Program.cs` | nur `Main` und die Modus-Weiche — rund 50 Zeilen, sonst nichts |
 | `report/build_dashboard.py` | fasst die Artefakte **aller vier Laufarten** zu `out/lab/dashboard.html` zusammen — Kurven, Gegentabelle als Heatmap, Belagerung, Bewegung. Verdichtet nur, rechnet nichts dazu und vergibt keine Note |
 | `report/dashboard.tpl.html` | die Seite dazu: eine Datei, kein Build, kein Server, kein Netzzugriff |
 
 Das Testprojekt `../Nova.AiLab.Tests/` zieht diese Ordner mit **einem** Glob ein;
 eine neue Datei steht damit automatisch unter Test. Ausgenommen sind nur
-`Program.cs` (Einstiegspunkt) und `bin/`, `obj/` (generierter Code).
+`Program.cs` und `Cli/` (Einstiegspunkt und sein Drumherum) sowie `bin/`, `obj/`
+(generierter Code).
 
 ## Zwei Dinge, die man wissen muss, bevor man Zahlen liest
 
