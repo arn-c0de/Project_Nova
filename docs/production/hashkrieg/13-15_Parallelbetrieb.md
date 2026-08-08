@@ -1,6 +1,6 @@
 # Parallelbetrieb Sprint 13–15 — zwei Stränge, eine Simulation
 
-**Status:** verbindlich | **Gilt für:** [13](13_Sprint_Netzpartie.md), [13B](13B_Sprint_Einheitenverhalten.md), [14](14_Sprint_Lobby.md), [15](15_Sprint_Netzstabilitaet.md) | **Leitsatz:** getrennte Ordner sind billig, getrennte Determinismus-Zustände nicht
+**Version:** 1.2.1 | **Status:** verbindlich ab Merge des Sprint-13.0-PR | **Verantwortungsbereich:** Maintainers und Strangverantwortliche | **Sprint:** 13–15 | **Gilt für:** [13](13_Sprint_Netzpartie.md), [13B](13B_Sprint_Einheitenverhalten.md), [14](14_Sprint_Lobby.md), [15](15_Sprint_Netzstabilitaet.md) | **Leitsatz:** getrennte Ordner sind billig, getrennte Determinismus-Zustände nicht
 
 ## Warum es dieses Dokument gibt
 
@@ -36,23 +36,69 @@ würde die Trennung sofort aufheben. Er wird als Sprint 16 geführt.
 
 ## Schreibhoheit
 
+Die Tabelle ist **vollständig**: jeder Pfad unter `Assets/_Project/Scripts/` hat
+einen Eigentümer. Ein unzugeordneter Pfad ist ein Fehler in diesem Dokument, kein
+Freiraum.
+
 | Pfad | Eigentümer | Anmerkung |
 |---|---|---|
-| `Scripts/AI/`, `Scripts/AI.Data/` | **Einheitenstrang** | `AiPeerCommandTransport.cs` darf die Transport-Verträge nicht ändern (siehe unten) |
+| `Scripts/AI/`, `Scripts/AI.Data/` | **Einheitenstrang** | `AiPeerCommandTransport.cs` darf die Transport-Verträge nicht ändern (siehe unten). `AI.Data/` enthält heute nur das asmdef — die Datenschicht baut der Einheitenstrang auf |
 | `Scripts/Simulation/Movement/` | **Einheitenstrang** | |
 | `Scripts/Simulation/Combat/` | **Einheitenstrang** | inkl. `WeaponProfiles`, `DamageMatrix`, `ArmorClass` |
 | `Scripts/Simulation/Factions/` | **Einheitenstrang** | Legion-Waffenidentität |
+| `Scripts/Simulation/Pathfinding/` | **Einheitenstrang (13–15)** | `MovementSystem` hängt im Konstruktor daran; ohne Flow-Field-Zugriff ist B3 nicht lösbar. **`CostField` ist Vertragsfläche** — siehe unten |
 | `Scripts/Networking/` | **Netzstrang** | |
-| `Scripts/Gameplay/Match/` | **Netzstrang** | `MatchConfig`, `MatchBootstrap`, `MatchRunner` |
+| `Scripts/Gameplay/Match/` | **Netzstrang** | `MatchConfig`, `MatchBootstrap`, `MatchRunner` — inkl. der Systemregistrierung |
 | `Scripts/Gameplay/UI/`, `Scripts/Gameplay/Input/` | **Netzstrang** | Verbindungs- und Lobbyoberfläche, Fraktionsauswahl |
-| `tools/Nova.RelayServer/` | **Netzstrang** | |
-| `Scripts/Simulation/Construction/`, `Economy/` | **Netzstrang (ab Sprint 16)** | in 13–15 fasst sie niemand an |
+| `Scripts/Gameplay/Audio/`, `Gameplay/CombatFeedback/` | **Netzstrang** | Präsentationsnah; wandert an den Art-Strang, sobald der besetzt ist |
+| `Scripts/Presentation/` | **Netzstrang** | dito |
+| `Scripts/Core/` | **Netzstrang** | Logging und Infrastruktur; Änderungen nur additiv, beide Stränge hängen daran |
+| `Scripts/Data/` | **Netzstrang** | Registries und Karten, überwiegend Unity-Assets — mergen schlecht, ein Schreiber |
+| `Scripts/Simulation/Vision/` | **Netzstrang** | `FogOfWarSystem`. **Vertragsfläche:** `CombatSystem` konsumiert `GetTeamView` |
+| `Scripts/Simulation/Commanders/`, `Victory/` | **Netzstrang** | |
+| `Scripts/Simulation/Construction/`, `Economy/`, `Production/` | **Netzstrang (ab Sprint 16)** | in 13–15 fasst sie niemand an |
+| `tools/Nova.RelayServer/`, `tools/packaging/` | **Netzstrang** | |
 | `Scripts/Simulation/Definitions/` | **geteilt — Absprache nötig** | Vertragsfläche: `WeaponDefinition`/`UnitDefinition` braucht der Einheitenstrang, `BuildingDefinition`/`SimDefinitions` der Wirtschaftsstrang |
+| `Scripts/Simulation/SimulationKernel.cs` | **niemand ohne D-ID** | Tick-Reihenfolge, siehe „Neue Systeme" |
+| `Scripts/Simulation/Systems/` | **niemand ohne D-ID** | `ISimSystem` ist der Systemvertrag selbst |
+| `Scripts/Simulation/CommandsV1/` | **niemand ohne D-ID** | Command- und Payload-Schema |
 | `Scripts/Simulation/Replays/`, `Snapshots/`, `State/` | **niemand ohne D-ID** | Speicherformat und Fingerprint — Änderung ist eine Inhaberentscheidung |
 | `CHANGELOG.md` | **serialisiert** | ein Eintrag pro PR, Konflikte löst der Mergende |
+| `docs/production/hashkrieg/` | **Maintainer** | Planungsstand; Befunde kommen per Mail oder Issue, nicht per PR |
 
 Berührt ein PR fremdes Terrain, wird er nicht gemergt, sondern zurückgegeben.
 Das gilt in beide Richtungen.
+
+### Vertragsflächen in fremdem Besitz
+
+Zwei Ordner gehören einem Strang, werden aber vom anderen konsumiert. Dort gilt
+zusätzlich: **Verhalten ändern ja, Vertrag ändern nur nach Absprache.**
+
+| Fläche | Eigentümer | Konsument | Was ohne Absprache nicht geht |
+|---|---|---|---|
+| `Pathfinding.CostField` | Einheitenstrang | `ConstructionSystem` (Platzierungsprüfung, Sprint 16) | Signatur oder Begehbarkeits-Semantik von `IsWalkable` ändern. Flow-Field-Erzeugung und Pathfinding-Interna sind frei |
+| `FogOfWarSystem.GetTeamView` | Netzstrang | `CombatSystem` (Zielerlaubnis) | Rückgabeform oder Sichtbarkeitsregel ändern, ohne den Einheitenstrang zu informieren |
+
+## Neue Systeme — wer die Tick-Reihenfolge setzt
+
+Die Tick-Reihenfolge ist die Registrierungsreihenfolge in
+`Gameplay/Match/MatchRunner.cs`. Diese Datei gehört dem Netzstrang. Die Regel
+„neue Systeme werden eingeordnet, nicht angehängt" wäre für den Einheitenstrang
+sonst nicht erfüllbar — er käme an die Registrierung gar nicht heran.
+
+Auflösung, in dieser Reihenfolge:
+
+1. **Bevorzugt:** Neues Verhalten geht in ein bereits registriertes System des
+   eigenen Strangs. `SkirmishAiSystem` ist zwischen `Combat` und `Victory`
+   registriert und deckt den Reaktionsraum von B4 ab. Dann wird `MatchRunner`
+   nicht angefasst.
+2. **Wenn ein eigenes System wirklich nötig ist:** Der PR des Einheitenstrangs
+   bringt das System mit, **ohne** die Registrierung. Er nennt im Text die
+   gewünschte Position und die Begründung. Ein Maintainer setzt die
+   Registrierungszeile in einem eigenen, minimalen PR nach.
+
+Damit bleibt die Tick-Reihenfolge eine Inhaberentscheidung, ohne den
+Einheitenstrang zu blockieren. Das Einordnen ist der Punkt, nicht der Besitz.
 
 ## Was der Einheitenstrang nicht anfassen darf
 
@@ -101,13 +147,28 @@ altern damit bei jedem simulationsverändernden Merge.
 |---|---|
 | **Merge-Fenster** | Simulationsändernde PRs werden gesammelt und in Fenstern gemergt, nicht einzeln durchgereicht |
 | **Kein Fenster während eines Netznachweises** | Läuft gerade A8 Stufe 2–4 oder eine Abnahmerunde, ist das Fenster zu |
-| **Nach jedem Fenster** | `tools/packaging/build-mac.sh`, neues DMG an alle Testenden, alter Build ist ungültig |
+| **Nach jedem Fenster** | Build für **jede** Plattform, an der jemand testet, neuer Build an alle Testenden, alter Build ist ungültig |
 | **Der Netzstrang testet gegen einen festen Stand** | Abnahmeläufe nennen den Commit, gegen den sie liefen — sonst ist das Ergebnis nicht zuordenbar |
+
+### Plattformen
+
+`tools/packaging/` enthält heute nur den macOS-Weg. Solange das so ist, kann am
+Netznachweis (A8 Stufen 2–4) nur teilnehmen, wer einen Mac hat — der
+Einheitenstrang wäre damit von genau der Runde ausgeschlossen, deren Verhalten er
+baut.
+
+**Der Linux-Build ist deshalb eine Bringschuld des Netzstrangs** und liegt als
+Paket 13.7 in [Sprint 13](13_Sprint_Netzpartie.md). Die .NET-Toolchain für die
+SimRunner-Tests richtet sich jeder Strang selbst ein; das ist keine Bringschuld.
 
 Wer den Commit seines Builds prüfen will:
 
 ```bash
+# macOS
 defaults read /Applications/ProjectNova.app/Contents/Info.plist NovaBuildCommit
+
+# Linux (nach 13.7)
+cat ProjectNova_Data/NovaBuildCommit.txt
 ```
 
 ## Der externe Beitragende — Zugangsmodell
@@ -119,21 +180,20 @@ in Ordnung und ausdrücklich gewollt — es verlangt nur ein sauberes Modell.
 |---|---|
 | **Zugang** | **Fork.** Kein Collaborator-Eintrag, kein Push auf dieses Repository, keine Mitgliedschaft in `trusted-coders` |
 | **Beitrag** | ausschliesslich Pull Request vom Fork nach `main` |
-| **Merge** | nur Maintainer. Die Push-Restriktion auf `main` erzwingt das strukturell, unabhängig von Reviewregeln |
-| **Review** | jeder fremde PR wird von einem Maintainer gelesen, bevor er gemergt wird — das ist Tier 2 |
-| **CI** | alle Workflows laufen auf `pull_request`, nicht `pull_request_target`. Ein Fork-PR bekommt damit einen schreibgeschützten Token und keine Secrets |
+| **Merge** | nur `@cubetribe` (Dennis Westermann) und `@travelhawk` (Michael Falk). Die Push-Restriktion auf `main` erzwingt das strukturell |
+| **Review** | jeder PR braucht eine `APPROVED`-Review des jeweils anderen Maintainers auf dem aktuellen Head-Commit; bei Fremd-PRs prüft `external-contributor-review` zusätzlich CLA und explizite Maintainer-Freigabe und wird nach seinem ersten erfolgreichen Folge-PR-Lauf als Required Check geschaltet |
+| **CI** | Code ausführende Workflows laufen auf `pull_request`. Die beiden reinen Metadatenprüfungen laufen aus dem geschützten Zielbranch auf `pull_request_target`, erhalten nur Leserechte und checken niemals PR-Code aus |
 
-**Das löst einen Tier-Wechsel aus.** [GOVERNANCE.md](../../../GOVERNANCE.md)
-nennt als Auslöser für Tier 2 wörtlich den „erster PR von außerhalb des
-Maintainer-Kreises". Der Wechsel ist eine Inhaberentscheidung und gehört als
-D-ID in den [DecisionLog](../DecisionLog.md), bevor der erste fremde PR
-aufschlägt — sonst rutschen wir stillschweigend in ein Tier, dessen Regeln
-niemand angeschaltet hat.
+**Der Tier-Wechsel ist entschieden.** D-091 aktiviert Tier 2 mit dem Merge des
+Freigabe-PR, also vor dem ersten fremden PR. Die noch ausstehende Negativkontrolle
+des Baseline-Wächters ist keine Lizenz, einen PR vorher zu mergen.
 
 Was Tier 2 gegenüber heute konkret ändert:
 
-- fremde PRs brauchen Maintainer-Review (Selbst-Merge bleibt für Maintainer)
-- DecisionLog-D-IDs werden Pflicht, nicht nur bei „echten" Entscheidungen
+- jeder PR braucht eine Maintainer-Peer-Review; Fremd-PRs zusätzlich CLA und
+  den gezielten `external-contributor-review`-Check
+- echte Architektur-, Design- und Prozessentscheidungen erhalten eine D-ID; ab
+  Tier 2 dokumentiert jede neue D-ID mindestens drei bewertete Alternativen
 - Verträge und öffentliche Doku brauchen Pflichtaufbau und Versionsbump
 - der `integrity`-Job läuft auf jedem PR statt nur bei `quality/**`
 
@@ -153,4 +213,7 @@ zusammen gespielt wurden, sind zwei Behauptungen.
 
 | Version | Datum | Änderung | Autor |
 |---|---|---|---|
+| 1.1.0 | 2026-08-08 | Nach Prüfbefund des Einheitenstrangs: Schreibhoheitstabelle auf **vollständig** gezogen (zwölf bis dahin unzugeordnete Pfade ergänzt), `Simulation/Pathfinding/` dem Einheitenstrang zugewiesen, Abschnitt „Vertragsflächen in fremdem Besitz" (`CostField`, `GetTeamView`) und Abschnitt „Neue Systeme" ergänzt, der den Widerspruch zwischen Einordnungsregel und Schreibhoheit an `MatchRunner` auflöst; Linux-Build als Bringschuld des Netzstrangs festgehalten | Producer / Agent (Umsetzung) |
+| 1.2.0 | 2026-08-08 | D-091: konkrete Merge-Accounts, Maintainer-Peer-Review, CLA-/Review-Prüfung und vorbereiteter Tier-2-Rollout ergänzt | Producer / Agent (Umsetzung) |
+| 1.2.1 | 2026-08-08 | Metadata-only Checks auf vertrauenswürdigen Zielbranch-Kontext gehärtet und D-ID-Pflicht auf echte Entscheidungen vereinheitlicht | Producer / Agent (Umsetzung) |
 | 1.0.0 | 2026-08-08 | Erstfassung: Schreibhoheit, Baseline-Regel, Merge-Fenster und Zugangsmodell für den Parallelbetrieb 13–15 | Producer / Agent (Umsetzung) |
