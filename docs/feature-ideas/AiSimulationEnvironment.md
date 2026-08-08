@@ -85,7 +85,7 @@ xxHash64, byte-genaue Serialisierung, bis hin zur Duell-Asymmetrie im Combat).
 | **R3** | Bit-identisch zum Spiel | ✅ strukturell garantiert |
 | **R4** | KI gegen KI | ⚠️ im Labor baubar, im Spiel gesperrt |
 | **R5** | 2 gegen 2 | ❌ kein Team-Begriff |
-| **R6** | Verhalten A–Z | ⚠️ 5 von 13 Befehlsarten genutzt (§6) |
+| **R6** | Verhalten A–Z | ⚠️ 5 von 13 Befehlsarten genutzt (§6) — offen bis E8 |
 | **R7** | Reagierendes Goal-System | ❌ KI ist bewusst zustandslos |
 | **R8** | Eine Stelle zum Ändern | ✅ seit E6 — `AiProfile` in `Nova.AI.Data` |
 | **R9** | 2D-Sichtfenster | ✅ seit E3 — Terminal live, HTML-Abspieler zur Nachschau |
@@ -971,7 +971,7 @@ Befund fest.
 Das ist auch das Argument aus §3.4 in einem Satz: *Zahlen sagen, dass etwas
 schiefging, nicht was* — und manchmal sagen sie nicht einmal das.
 
-### E4 — Vergleichsbericht und Gegnerarchiv *(lokal)*
+### E4 — Vergleichsbericht und Gegnerarchiv ✅ **erledigt (2026-08-08)**
 
 Matrix aus Seeds × Profilen × Fraktionen. Ergebnis ist der Vergleichsbericht aus
 §3.6 — **Kennzahlen nebeneinander, keine Rangliste**: eine Zeile je Kandidat,
@@ -990,6 +990,58 @@ verglichen — 5 % Rechenzeit gegen geteilten Zustand zwischen parallelen Matche
 
 *Fertig, wenn:* Zwei Kandidaten sind in Minuten gegeneinander beurteilbar —
 Bericht lesen, auffälligen Lauf im Sichtfenster nachschauen, entscheiden.
+
+**Nachweis.** `compare` fährt sechs Kandidatenprofile gegen die eingefrorene
+Referenz in **3,3 s** und schreibt `report.html`, `resultset.json`, je Kandidat
+einen PR-Entwurf und je Kandidat einen vollständig aufgezeichneten Lauf, in den
+der Bericht verlinkt. Der erste echte Durchlauf:
+
+| Kandidat | geändert | Siegrate | S/N/U | Entsch.-Tick | Armee | Verluste |
+|---|---|---:|---|---:|---:|---:|
+| `ms1-canonical` | Referenz | 50 % | 1/1/0 | 12.975 | 7 | 124 |
+| `late-push` | Armee 12→20, Schwelle 6→12 | **100 %** | 2/0/0 | 12.598 | 15 | 126 |
+| `greedy-economy` | Harvester 2→4, Armee 12→16 | 50 % | 1/1/0 | **8.635** | 6 | 86 |
+| `early-push` | Schwelle 6→3, Armee 12→10 | 50 % | 1/1/0 | 16.299 | 4 | 156 |
+| `fast-cadence` | Kadenz 20→10 | 50 % | 1/1/0 | 11.454 | 8 | 110 |
+| `power-buffer` | Strommarge 0→30 | **0 %** | 0/2/0 | 7.025 | 2 | 60 |
+
+**Warum die Zwei-Rollen-Messung nötig war.** Die Referenz gegen sich selbst
+steht bei 1/1/0 — die Fraktion entscheidet, nicht das Profil. Erst dadurch ist
+`late-push` mit 2/0/0 ein Signal (gewinnt als Allianz *und* als Legion) und
+`power-buffer` mit 0/2/0 ebenso. Eine einzelne Partie hätte in beiden Fällen
+Fraktionsglück gemessen. `fast-cadence` ist der Kandidat, den es **vor E6 nicht
+geben konnte**: `DecisionTickInterval` war eine `const`.
+
+**Der Bericht rankt nicht** (Entscheidung 11). Es gibt keine Score-Spalte, keine
+Sortierung nach Güte, und die Farbe markiert **Abweichung, nicht Qualität** —
+mehr Credits ist nicht besser als weniger. Ein Test prüft, dass in der
+Kopfzeile weder „score" noch „rank" steht und die Zeilenreihenfolge der
+Kandidatenliste folgt statt einer Wertung.
+
+**Die Verweigerung ist das Produkt, kein Fehlerpfad.** Jede Ergebnismenge trägt
+Spec-Version, Profil-Schema, Seedliste, `ComputeDefinitionsHash64()` und den
+Commit. Passt eines nicht, zeigt der Bericht **den Grund statt einer Tabelle** —
+im echten Lauf gegen ein Archiv mit fremdem Commit geprüft:
+
+> `COMPARISON REFUSED: measured at different commits (04174489 vs 00000000) — a
+> merge window shifts behaviour, so frozen sets retire with their commit;
+> re-measure the archive instead of comparing across it`
+
+Das ist der Unterschied, an dem man sich sonst verrechnet: Ein falscher
+Vergleich sieht genauso aus wie ein richtiger.
+
+**Der PR-Entwurf enthält ausschließlich Gemessenes.** Der Abschnitt „Im
+laufenden Spiel gesehen" bleibt leer und ist als leer erkennbar; er sagt sogar,
+was hineingehört, wenn nicht gespielt wurde („Nicht im laufenden Spiel
+geprüft"). Ein Test entfernt die Kommentarblöcke und prüft, dass der *sichtbare*
+Text keine Beobachtung behauptet. Dazu nennt jeder Entwurf die vier
+Baseline-Dateien und die Regel, dass die neue Baseline in einen eigenen PR
+gehört.
+
+**Was der Sweep über Seeds angeht:** `compare` fährt standardmäßig **einen**
+Seed statt acht — die Achse ist leer, und acht Zeilen, die dieselbe Partie
+zeigen, sähen aus wie acht Beobachtungen. Wer mehr Seeds anfordert, bekommt sie
+und im Bericht den Hinweis dazu.
 
 ### E5 — Duell-Arena und Bewegungsszenario ✅ **erledigt (2026-08-08)**
 
