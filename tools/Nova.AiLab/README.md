@@ -1,9 +1,24 @@
 # Nova.AiLab — KI-Simulationslabor
 
-**Werkzeug, kein Beitrag.** Dieses Verzeichnis ist nicht Teil des Repositories:
-`.git/info/exclude` hält es aus jedem `git add -A` heraus, es wird nie
-gecherry-pickt und es gehört in keinen `feat/`-Branch. Plan und Begründung:
+**Werkzeug, kein Beitrag.** Das Labor lebt ausschliesslich im Branch
+`lab/ai-simulation` — dort ist es versioniert, damit die Arbeit daran nicht
+verloren geht. In `main` und in jedem `feat/`-Branch existiert es nicht, es wird
+nie dorthin gecherry-pickt und es gehört in keinen PR. Plan und Begründung:
 [`docs/feature-ideas/AiSimulationEnvironment.md`](../../docs/feature-ideas/AiSimulationEnvironment.md).
+
+`.git/info/exclude` ist die zweite Sicherung, keine erste: es wirkt nur auf
+*untracked* Pfade und hält deshalb genau dort, wo es darauf ankommt — auf einem
+`feat/`-Branch, wo `tools/Nova.AiLab*` nicht getrackt ist, fängt es ein
+versehentliches `git add -A` ab. Auf `lab/ai-simulation` ist das Verzeichnis
+getrackt und die Regel folgenlos. Dieselbe Datei schliesst auch `out/` (die
+Laborartefakte) und `run.sh` aus. Sie ist lokal und wird nicht mitgeklont:
+nach einem frischen Clone gehören die Einträge von Hand nachgetragen.
+
+Für `out/` gilt dieselbe Zweiteilung: der Ausschluss schützt die `feat/`-Branches,
+auf `lab/ai-simulation` liegt der **jeweils letzte vollständige Lauf** unter
+`out/lab/` versioniert — bewusst per `git add -f`, damit Messwerte und der Commit,
+zu dem sie gehören, zusammenbleiben. Nach einem Merge-Fenster des Maintainers ist
+diese Menge nicht mehr vergleichbar und wird durch einen neuen Lauf ersetzt.
 
 **Ein grüner Laborlauf ist Diagnose, kein Nachweis.** Was nicht im laufenden
 Spiel gesehen wurde, steht als ungesehen im PR-Text.
@@ -44,6 +59,9 @@ dotnet run --project tools/Nova.AiLab -c Release -- compare --against out/alt/re
 dotnet run --project tools/Nova.AiLab -c Release -- match --slots 4
 
 dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
+
+# alle vier Laufarten in eine Seite: out/lab/dashboard.html
+python3 tools/Nova.AiLab/report/build_dashboard.py out/lab
 ```
 
 ## Was hier liegt
@@ -69,6 +87,8 @@ dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
 | `ComparisonReport.cs` | der Bericht — Kennzahlen nebeneinander, **keine Rangliste** |
 | `PrDraft.cs` | PR-Entwurf mit ausschliesslich Gemessenem; Beobachtungsabschnitt bleibt leer |
 | `Program.cs` | Kommandozeile |
+| `report/build_dashboard.py` | fasst die Artefakte **aller vier Laufarten** zu `out/lab/dashboard.html` zusammen — Kurven, Gegentabelle als Heatmap, Belagerung, Bewegung. Verdichtet nur, rechnet nichts dazu und vergibt keine Note |
+| `report/dashboard.tpl.html` | die Seite dazu: eine Datei, kein Build, kein Server, kein Netzzugriff |
 
 ## Zwei Dinge, die man wissen muss, bevor man Zahlen liest
 
