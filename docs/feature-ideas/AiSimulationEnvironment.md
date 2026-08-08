@@ -87,7 +87,7 @@ xxHash64, byte-genaue Serialisierung, bis hin zur Duell-Asymmetrie im Combat).
 | **R5** | 2 gegen 2 | ❌ kein Team-Begriff |
 | **R6** | Verhalten A–Z | ⚠️ 5 von 13 Befehlsarten genutzt (§6) |
 | **R7** | Reagierendes Goal-System | ❌ KI ist bewusst zustandslos |
-| **R8** | Eine Stelle zum Ändern | ❌ Werte stecken im Code |
+| **R8** | Eine Stelle zum Ändern | ✅ seit E6 — `AiProfile` in `Nova.AI.Data` |
 | **R9** | 2D-Sichtfenster | ✅ seit E3 — Terminal live, HTML-Abspieler zur Nachschau |
 | **R10** | Waffen-, Rüstungs- und Bewegungsarbeit messbar (Issues 01–03) | ✅ seit E5 — `duel` und `movement`, Sekunden statt Partieauswertung |
 
@@ -1056,10 +1056,44 @@ Bericht, kein Unentschieden: Eine Waffe, die weiter reicht als ihre Sicht
 (Artillerie 20/18 Tiles gegen 10 Tiles Standardsicht), kann ihre Reichweite ohne
 Aufklärung nicht nutzen — der Befund, den Entscheidung 21 vorhergesagt hat.
 
-### E6 — Profile zu Daten *(PR, verhaltensneutral)*
+### E6 — Profile zu Daten ✅ **erledigt (2026-08-08)**
 
 `AI.Data/`-Format aus §4.6, `const` wandert hinüber, ausgelieferte Werte
 numerisch identisch → Baselines bleiben grün.
+
+**Nachweis.** Branch `feat/ai-profiles-as-data`, frisch von `upstream/main`
+abgezweigt, damit kein Laborcode hineingerät (§0 Regel 1) — **im Fork
+gesichert, kein PR.** Alle acht Stellschrauben liegen in `AiProfile`
+(`Nova.AI.Data`), das ausgelieferte Profil `ms1-canonical` trägt sie wertgleich:
+Strommarge 0, Armee 12, Angriffsschwelle 6, Harvester 2 aus dem `MatchRunner`
+und Kadenz 20, Suchradius 8, beide Batches 2 aus den `const`-Feldern des
+Systems. **557/557 Tests grün, die vier Baselines unberührt** — das ist der
+Beweis, nicht ein Nebeneffekt.
+
+Drei Entscheidungen, die die Umsetzung vom Planentwurf unterscheiden:
+
+- **Codetabelle statt JSON-Datei.** `SimDefinitions` ist im Repo genau so
+  gebaut, und aus denselben Gründen: `static readonly` ist thread-sicher (N
+  Matches auf N Kernen ohne Sperren), kann mitten in der Partie nicht am
+  Parsen scheitern, und wirft keine Frage auf, was eine fehlende Datei für den
+  Match-Fingerprint bedeutet. Die JSON-Form aus §4.6 bleibt richtig für
+  *Laborprofile* — die liest das Labor und reicht sie als Werte hinein.
+- **Signaturen unverändert.** `MatchRunner` konstruiert `AiFactionProfile` und
+  `SkirmishAiSystem` und gehört dem Netzstrang. Eine Datenschicht-Migration
+  fasst fremde Dateien nicht an, also bleibt der historische
+  Vier-Zahlen-Konstruktor bestehen und holt sich die Kadenz aus dem
+  ausgelieferten Profil.
+- **Keine Ziel- und Rückzugsgewichte.** Der Planentwurf listet `goalWeights`,
+  `targetWeights` und `retreat`. Das Goal-System entsteht erst in E7; Felder,
+  die nichts steuern, sähen im Profil wie Messwerte aus, ohne welche zu sein.
+  Sie kommen mit dem Verhalten, das sie braucht.
+
+Beide Vorarbeiten aus §4.6 sind mit erledigt: `AiFactionProfile` verglich
+bisher **nur den Fraktionsnamen** — zwei Profile mit gleichem Namen und
+verschiedenen Zahlen galten als gleich, was harmlos ist, solange ein Profil
+existiert, und falsch in dem Moment, in dem getunt wird (ein Tuninglauf *ist*
+zwei Profile, die sich nur in Zahlen unterscheiden). Und das
+`Nova.AI.Data`-asmdef steht jetzt auf `noEngineReferences: true`.
 
 ### E7 — Reaktive KI, Stufe 1 *(PR, verhaltensändernd)*
 
