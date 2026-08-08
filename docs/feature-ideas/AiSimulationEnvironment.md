@@ -76,8 +76,9 @@ xxHash64, byte-genaue Serialisierung, bis hin zur Duell-Asymmetrie im Combat).
 | **R7** | Reagierendes Goal-System | ❌ KI ist bewusst zustandslos |
 | **R8** | Eine Stelle zum Ändern | ❌ Werte stecken im Code |
 | **R9** | 2D-Sichtfenster | ❌ nichts vorhanden (§3.4) |
+| **R10** | Waffen-, Rüstungs- und Bewegungsarbeit messbar (Issues 01–03) | ❌ in einer Partie nicht sauber messbar (§3.9) |
 
-R6–R9 sind die Arbeit.
+R6–R10 sind die Arbeit.
 
 ---
 
@@ -119,7 +120,7 @@ Kernen, ohne Sperren.
 ### 3.2 Ein- und Ausgabe
 
 ```json
-{ "specVersion": 1, "seed": "0xA17E57DE57", "tickBudget": 27000,
+{ "specVersion": 1, "mode": "match", "seed": "0xA17E57DE57", "tickBudget": 27000,
   "mapWidth": 128, "mapHeight": 128, "entityCapacity": 1024,
   "slots": [
     { "slot": 0, "faction": "legion",   "controller": "ai", "profile": "legion-aggressive" },
@@ -138,6 +139,12 @@ Kernen, ohne Sperren.
 **Harte Regel:** Kein Float verlässt die Simulation. Positionen als
 Q16.16-Rohwerte, alles andere ganzzahlig — sonst ist der Vergleich zweier Läufe
 Glückssache statt Rechnung.
+
+`tickBudget` steht standardmäßig auf **27.000 wie im Spiel**
+(`VictorySystem.TimeLimitTick`, 45 Min Simzeit), ist aber je Spec überschreibbar.
+Der Standard bleibt der Spielwert, damit ein Laborergebnis ohne Fußnote gilt; wer
+kürzt, verzerrt zugunsten schneller Strategien und muss das wissen. `mode` wählt
+die Laufart (§3.9).
 
 ### 3.3 Metriken
 
@@ -249,8 +256,8 @@ Dabei gibt es einen Unterschied, an dem man sich sonst verrechnet:
 
 | Was eingefroren wird | Mechanik | Vergleich |
 |---|---|---|
-| **Profil** (ab E5 nur Daten) | alte Profildatei läuft im aktuellen Binary | echtes Kopf-an-Kopf im selben Lauf |
-| **Codestand** (Goal-System, E6+) | läuft *nicht* im selben Binary | nur über **eingefrorene Ergebnismengen**: gleiche Seeds, gleiche Spec, gespeicherte Kennzahlen |
+| **Profil** (ab E6 nur Daten) | alte Profildatei läuft im aktuellen Binary | echtes Kopf-an-Kopf im selben Lauf |
+| **Codestand** (Goal-System, E7+) | läuft *nicht* im selben Binary | nur über **eingefrorene Ergebnismengen**: gleiche Seeds, gleiche Spec, gespeicherte Kennzahlen |
 
 Der zweite Fall ist der Normalfall bei Verhaltensarbeit — und er stellt eine
 Bedingung: Die **Referenz-Seedmenge und die Spec-Version müssen fixiert sein**.
@@ -261,6 +268,12 @@ mit; passt eines nicht, verweigert der Bericht den Vergleich.
 
 **Tuningmenge und Referenzmenge bleiben getrennt.** Sonst gewinnt die KI
 Benchmarks und verliert Partien.
+
+**Selbstkontrolle im Sweep:** Jeder zwanzigste Lauf wird doppelt gefahren und
+die Hash-Kette verglichen. Kostet 5 % Rechenzeit und fängt genau den Fehler, der
+sonst unentdeckt bliebe — geteilter Zustand zwischen parallel laufenden Matches,
+der erst bei voller Kernauslastung auftritt und sich als „unerklärliche Streuung"
+tarnt. Ein einzelner Determinismus-Test in der Suite würde ihn nie sehen.
 
 ### 3.8 Befundliste für fremdes Terrain
 
@@ -281,6 +294,52 @@ Meldung, nicht selbst der Beitrag.
 
 Ein bereits bekannter Kandidat steht in §5: `SetRallyPoint` lehnt das Refinery
 ab, weil die Producer-Liste älter ist als der D-077-Umzug.
+
+
+### 3.9 Drei Laufarten
+
+Eine 20-Minuten-Partie ist ein schlechtes Messgerät für eine Waffenzahl: zu viel
+Rauschen, zu wenig Wiederholung. Deshalb kennt das Labor neben der Partie zwei
+schmale Laufarten. Sie kosten wenig, weil sie denselben Host benutzen.
+
+**Bedingung, die alle drei teilen: identische Systemregistrierung.** Auch die
+Arena registriert Economy, Construction und Production — sie ticken nur über
+leere Tabellen. Ein weggelassenes System wäre eine andere Tick-Reihenfolge und
+damit ein anderes Spiel; dann misst man etwas, das es nicht gibt.
+
+| Laufart | Aufbau | Dauer | Für |
+|---|---|---|---|
+| `match` | kanonische Aufstellung, KI je Slot | Minuten | Goal-System, R6–R9 |
+| `duel` | N gegen M Einheiten auf leerem Feld, keine Wirtschaft | Sekunden | **Issues 01/02** — Legion-Waffen, Rüstungsklassen |
+| `movement` | eine Gruppe, ein Zielbefehl, Hindernisse gesetzt | Sekunden | **Issue 03** — Bewegung am Ziel |
+
+**`duel` — die Gegentabelle empirisch.** Spawnt N Einheiten der Rolle X
+(Fraktion A) gegen M der Rolle Y (Fraktion B), gibt beiden Seiten den
+Angriffsbefehl und misst: Überlebende, Ticks bis zur Entscheidung, ausgeteilter
+und erlittener Schaden, abgegebene Schüsse. Über alle Rollenpaare beider
+Fraktionen gefahren, fällt genau die Tabelle heraus, die Issue 02 verlangt —
+*welche Waffe schlägt welche Rüstung wie deutlich*, gemessen statt aus
+`DamageMatrix` abgelesen. Der Unterschied ist wesentlich: Der Matrixwert sagt
+den Multiplikator, der Duellausgang sagt, was Reichweite, Nachladezeit und
+Lebenspunkte daraus machen.
+
+Zwei Dinge, die dabei sichtbar werden und in der Tabelle nicht stehen: die
+dokumentierte **Duell-Asymmetrie** (bei gegenseitigem Kill im selben Tick
+gewinnt der niedrigere Entity-Index — spawnreihenfolgeabhängig und
+balancerelevant), und ob eine Reichweitendifferenz wie Artillerie 20 m gegen
+Infanterie 7 m im Gefecht überhaupt zum Tragen kommt.
+
+**`movement` — Ankunft statt Wegfindung.** Spawnt eine Gruppe, setzt Gebäude als
+Hindernisse (`PlaceCompletedBuilding`, Fußabdrücke sind seit dem
+Truppenführungs-Sprint unpassierbar) und gibt einen Zielbefehl. Gemessen wird,
+was Issue 03 fordert: Ankunftszeit, wie viele überhaupt ankommen, Streuung am
+Ziel, Einheiten mit `IsMoving` ohne Positionsänderung (Blockade), und bei
+Fernkämpfern der gehaltene Abstand.
+
+Seit v1.1.0 gehört auch `Simulation/Pathfinding/` uns — Flow-Field und
+`CostField` inbegriffen, unter der `IsWalkable`-Auflage. Der ganze Weg vom
+Befehl bis zur Ankunft liegt damit im eigenen Scope, und diese Laufart deckt
+ihn ab.
 
 ---
 
@@ -484,7 +543,7 @@ teilten keine Sicht.
 | Niederlage je Seite | `Simulation/Victory/` | Netzstrang ❌ |
 | Slot-/Modusvertrag | `MatchConfig`, `mvp-v1.json` | Netzstrang / Governance ❌ |
 
-Seit v1.1.0 hat jeder dieser Pfade einen Eigentümer — der Vorschlag aus E10 hat
+Seit v1.1.0 hat jeder dieser Pfade einen Eigentümer — der Vorschlag aus E11 hat
 damit einen Adressaten statt eines offenen Endes.
 
 Im Labor ist eine 4-Slot-Partie *ohne* Bündnisse sofort machbar und liefert
@@ -557,6 +616,11 @@ auseinanderlaufen, statt nur *dass* eine Baseline rot ist.
 
 ## 9. Etappen
 
+**E1–E5 bauen das Labor fertig, bevor die erste Verhaltenszeile geschrieben
+wird.** Das kostet Vorlauf, hat aber den Zweck, dass jede spätere Änderung von
+Anfang an vergleichbar und archiviert ist — nachträglich lässt sich ein
+Vergleich gegen einen Stand, der nie vermessen wurde, nicht herstellen.
+
 ### E0 — .NET-SDK ✅ **erledigt (2026-08-08)**
 
 SDK 8.0.318 unter `Project_Nova/.dotnet/` (`global.json` pinnt hart mit
@@ -573,7 +637,7 @@ Konfigurationszeile. Reihenfolge-Test gegen `MatchRunner`.
 **Startaufstellung exakt kanonisch** (`MatchBootstrap`): je Slot ein
 Aetherium-Feld, fertiges HQ, ein Builder, 3.000 AE — und dieselbe Spawn-
 Reihenfolge, Slot 0 vor Slot 1, weil sie Entity-Ids und Snapshots bestimmt.
-Kartenvarianz kommt erst nach E6: Die KI setzt heute voraus, dass das
+Kartenvarianz kommt erst nach E7: Die KI setzt heute voraus, dass das
 entfernteste Feld die Feindbasis markiert (`GetEnemyStartAreaCell`) — bei freier
 Aufstellung bricht diese Annahme, und man tunt gegen einen Fehler statt gegen
 das Verhalten.
@@ -612,15 +676,33 @@ eigener Fassungen als Verlaufsvergleich. Ergebnismengen tragen Spec-Version,
 Seedliste und `ComputeDefinitionsHash64()`; passt eines nicht, verweigert der
 Bericht den Vergleich statt still Unvergleichbares zu mischen.
 
+Dazu die Selbstkontrolle: jeder zwanzigste Lauf doppelt, Hash-Ketten
+verglichen — 5 % Rechenzeit gegen geteilten Zustand zwischen parallelen Matches.
+
 *Fertig, wenn:* Zwei Kandidaten sind in Minuten gegeneinander beurteilbar —
 Bericht lesen, auffälligen Lauf im Sichtfenster nachschauen, entscheiden.
 
-### E5 — Profile zu Daten *(PR, verhaltensneutral)*
+### E5 — Duell-Arena und Bewegungsszenario *(lokal)*
+
+Die zwei schmalen Laufarten aus §3.9, gleicher Host, identische
+Systemregistrierung. `duel` über alle Rollenpaare beider Fraktionen ergibt die
+gemessene Gegentabelle für Issues 01/02; `movement` liefert Ankunftszeit,
+Streuung und Blockaden für Issue 03.
+
+Beide laufen in Sekunden — damit werden Waffen- und Bewegungsfragen zur
+Sekundenschleife statt zur Partieauswertung. Bewusst am Ende des Laborteils:
+Sie erben Lauftreiber, Sichtfenster und Vergleichsbericht, statt sie zu
+duplizieren.
+
+*Fertig, wenn:* Die Gegentabelle fällt aus einem Kommando, und ein
+Bewegungsszenario zeigt im Sichtfenster, wo eine Gruppe hängenbleibt.
+
+### E6 — Profile zu Daten *(PR, verhaltensneutral)*
 
 `AI.Data/`-Format aus §4.6, `const` wandert hinüber, ausgelieferte Werte
 numerisch identisch → Baselines bleiben grün.
 
-### E6 — Reaktive KI, Stufe 1 *(PR, verhaltensändernd)*
+### E7 — Reaktive KI, Stufe 1 *(PR, verhaltensändernd)*
 
 `DefendBase`, `DefendField`, `Retreat`, Score-Targeting, `Farm`. Vorher der
 Doku-Fix zu GB-002/D-087. Baselines werden rot → getrennte PRs.
@@ -631,22 +713,22 @@ gefährlichste erreichbare Ziel — **plus Spielbericht aus einer echten Partie*
 inklusive eines Falls, in dem die Reaktion falsch war, mit Einschätzung warum
 das akzeptabel ist.
 
-### E7 — Fehlende Befehlsarten *(PR, je Verhalten einer)*
+### E8 — Fehlende Befehlsarten *(PR, je Verhalten einer)*
 
 Nach Nutzen sortiert aus §5, jeweils klein und einzeln. Das Labor liefert je
 Verhalten den Vorher/Nachher-Vergleich.
 
-### E8 — Sidecar-Vorschlag *(kein Code)*
+### E9 — Sidecar-Vorschlag *(kein Code)*
 
 Aus den E4-Auswertungen belegen, wo Zustandslosigkeit schadet; daraus die
 D-ID-Anfrage nach §4.7 bauen. Vorschlag mit Belegen, keine Umsetzung.
 
-### E9 — Goal-System mit Zustand *(nur nach D-ID)*
+### E10 — Goal-System mit Zustand *(nur nach D-ID)*
 
 `IStatefulSimSystem` mit eigenem Block, echte Hysterese in Ticks, Squads,
 Aufklärungsgedächtnis. Metamorphic-Tests nach `AIArchitecture.md` §6.
 
-### E10 — Mehr Slots, Teams *(Vorschlag, blockiert)*
+### E11 — Mehr Slots, Teams *(Vorschlag, blockiert)*
 
 4-Slot-Freiforall im Labor sofort; echte Teams als ausgearbeiteter Vorschlag.
 
@@ -668,17 +750,21 @@ Aufklärungsgedächtnis. Metamorphic-Tests nach `AIArchitecture.md` §6.
 | 10 | Beide Sichtdarstellungen in einem Zug | Gemeinsamer Frame-Strom, Mehraufwand gering (§3.4) |
 | 11 | **Keine skalare Gütefunktion, kein Auto-Optimierer** | Eine Zahl belohnt das Falsche; für „sieht im Spiel richtig aus" gibt es keine Kennzahl (§3.6) |
 | 12 | Referenz: eingefrorene heutige KI + eigene Momentaufnahmen | Fester Maßstab plus Verlaufsvergleich; Rückschritt fällt auf (§3.7) |
-| 13 | Kanonische Startaufstellung, Kartenvarianz erst nach E6 | Sonst tunt man gegen die gebrochene `GetEnemyStartAreaCell`-Annahme (E1) |
+| 13 | Kanonische Startaufstellung, Kartenvarianz erst nach E7 | Sonst tunt man gegen die gebrochene `GetEnemyStartAreaCell`-Annahme (E1) |
 | 14 | Fremde Befunde sammeln und melden, nicht reparieren | Arbeitsvertrag §6; per Mail oder Issue, nicht per PR (§3.8) |
 | 15 | Goal-System wächst in `SkirmishAiSystem`, wird kein eigenes System | `MatchRunner` gehört dem Netzstrang; v1.1.0 nennt genau diesen Weg als bevorzugt (§7) |
+| 16 | Labor erst fertig (E1–E5), dann Verhalten | Ein Vergleich gegen einen nie vermessenen Stand lässt sich nachträglich nicht herstellen (§9) |
+| 17 | Drei Laufarten: `match`, `duel`, `movement` | Eine Partie ist ein schlechtes Messgerät für eine Waffenzahl; alle drei teilen die Systemregistrierung (§3.9) |
+| 18 | `tickBudget` 27.000 wie im Spiel, je Spec überschreibbar | Standard = Spielwert, damit ein Ergebnis ohne Fußnote gilt; Kürzen verzerrt zugunsten schneller Strategien (§3.2) |
+| 19 | Determinismus-Stichprobe: jeder 20. Lauf doppelt | 5 % Rechenzeit gegen geteilten Zustand, den ein einzelner Suite-Test nie sähe (§3.7) |
 
 ## 11. Was Inhaberentscheidung bleibt
 
 Genau zwei — beide als vorbereiteter Vorschlag statt als Vorbedingung, beide
 blockieren zwischenzeitlich nichts:
 
-1. **`AiSidecar` / KI-Snapshot-Block** — braucht eine D-ID. Vorschlag in E8 mit
+1. **`AiSidecar` / KI-Snapshot-Block** — braucht eine D-ID. Vorschlag in E9 mit
    Messmaterial aus dem Labor.
 2. **Teams und mehr als zwei Slots im Spiel** — berührt Vision, Victory,
-   MatchConfig und `mvp-v1.json`. Vorschlag in E10; das Labor kommt bis dahin
+   MatchConfig und `mvp-v1.json`. Vorschlag in E11; das Labor kommt bis dahin
    mit Freiforall aus.
