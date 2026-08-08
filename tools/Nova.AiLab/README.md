@@ -65,9 +65,39 @@ dotnet run --project tools/Nova.AiLab -c Release -- match --slots 4
 
 dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
 
-# alle vier Laufarten in eine Seite: tools/Nova.AiLab/out/dashboard.html
+# alle vier Laufarten messen und alle Berichte schreiben — ein Kommando
+./tools/Nova.AiLab/lab.sh
+
+# nur die Berichte aus dem vorhandenen Lauf: dashboard.html + reports/
+python3 tools/Nova.AiLab/report/build_reports.py tools/Nova.AiLab/out
+
+# nur die Markdown-Berichte neu rendern, ohne zu messen (nach Formatänderung)
+python3 tools/Nova.AiLab/report/build_reports.py --regenerate
+
+# nur die eine Seite: tools/Nova.AiLab/out/dashboard.html
 python3 tools/Nova.AiLab/report/build_dashboard.py tools/Nova.AiLab/out
 ```
+
+## Zwei Fassungen desselben Laufs
+
+| Fassung | Wo | Wofür |
+|---|---|---|
+| interaktiv | `out/dashboard.html` | Kurven mit Fadenkreuz, Heatmap mit Abstandsdetail, Scrubber — braucht einen Browser |
+| lesbar | `reports/README.md`, `reports/latest.md`, `reports/runs/<id>.md` | dieselben Zahlen als Markdown: auf GitHub direkt lesbar, ohne Download, ohne Server |
+
+`reports/data/<id>.json` ist die **Quelle**, die Markdown-Dateien sind Ableitung:
+ein Lauf wird an seinem Fingerabdruck erkannt (zweimal derselbe Lauf ergibt keinen
+zweiten Eintrag), und nach einer Formatänderung entsteht die ganze Historie mit
+`--regenerate` neu, ohne dass etwas nachgemessen werden muss. `latest.md` ist immer
+der zuletzt vermessene Lauf, `README.md` die Gesamtübersicht über alle.
+
+Wechselt die Definitionstabelle, teilt sich die Historie: die Übersicht sagt das
+selbst hin und zeichnet den Verlauf **nur** innerhalb der aktuellen Tabelle. Über
+ein Merge-Fenster hinweg wird nicht verglichen, auch nicht als Kurve.
+
+Neue Dateien unter `tools/Nova.AiLab/` hält `.git/info/exclude` aus `git status`
+heraus — ein neuer Bericht braucht deshalb `git add -f`, sonst fällt er still
+unter den Tisch.
 
 ## Was hier liegt
 
@@ -143,8 +173,13 @@ ohne etwas dafür zu bekommen.)
 | Datei | Inhalt |
 |---|---|
 | `Program.cs` | nur `Main` und die Modus-Weiche — rund 50 Zeilen, sonst nichts |
-| `report/build_dashboard.py` | fasst die Artefakte **aller vier Laufarten** zu `tools/Nova.AiLab/out/dashboard.html` zusammen — Kurven, Gegentabelle als Heatmap, Belagerung, Bewegung. Verdichtet nur, rechnet nichts dazu und vergibt keine Note |
+| `lab.sh` | messen und berichten in einem Kommando; `--reports-only`, `--regenerate` |
+| `report/lab_data.py` | liest die Artefakte aller vier Laufarten und verdichtet sie zu **einem** Datenblock — die gemeinsame Quelle beider Berichtsformen, dazu Herkunft und Fingerabdruck eines Laufs |
+| `report/build_dashboard.py` | bettet diesen Block in die Seite `tools/Nova.AiLab/out/dashboard.html` — Kurven, Gegentabelle als Heatmap, Belagerung, Bewegung. Verdichtet nur, rechnet nichts dazu und vergibt keine Note |
 | `report/dashboard.tpl.html` | die Seite dazu: eine Datei, kein Build, kein Server, kein Netzzugriff |
+| `report/markdown_report.py` | derselbe Block als Markdown: ein Bericht je Lauf, eine Gesamtübersicht, Kurven als Mermaid. `assert_no_ranking()` hält maschinell fest, dass keine Tabellenzeile eine Note trägt |
+| `report/build_reports.py` | der Einstieg: archiviert den Lauf unter `reports/data/`, schreibt Seite und Markdown-Satz, entfernt Berichte ohne Messblock. `--regenerate` rendert die Historie neu, ohne zu messen |
+| `reports/` | das Ergebnis: `README.md` (Gesamtübersicht), `latest.md`, `runs/<id>.md`, `data/<id>.json` |
 
 Das Testprojekt `../Nova.AiLab.Tests/` zieht diese Ordner mit **einem** Glob ein;
 eine neue Datei steht damit automatisch unter Test. Ausgenommen sind nur

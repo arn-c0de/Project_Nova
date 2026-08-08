@@ -2,11 +2,14 @@
 """Baut die Gesamtauswertung eines Laborlaufs: tools/Nova.AiLab/out/dashboard.html.
 
 Liest die Artefakte, die `match`, `duel`, `movement` und `compare` geschrieben
-haben, verdichtet sie zu einem kompakten JSON-Block und bettet den in
-`dashboard.tpl.html` ein. Ergebnis ist eine selbststaendige Seite ohne Build,
-ohne Server und ohne Netzzugriff.
+haben, verdichtet sie zu einem kompakten JSON-Block (`lab_data.collect`) und
+bettet den in `dashboard.tpl.html` ein. Ergebnis ist eine selbststaendige Seite
+ohne Build, ohne Server und ohne Netzzugriff.
 
     python3 tools/Nova.AiLab/report/build_dashboard.py tools/Nova.AiLab/out
+
+Die Markdown-Fassung, die Historie und die Gesamtuebersicht schreibt
+`build_reports.py` — es baut diese Seite mit und ist der uebliche Einstieg.
 
 WERKZEUG, KEIN BEITRAG. Die Seite ist Diagnose; was nicht im laufenden Spiel
 gesehen wurde, steht als ungesehen im PR-Text. Der Leser wird oben auf der
@@ -21,100 +24,21 @@ import json
 import os
 import sys
 
-# Metriken je Slot, die das Dashboard als Kurve zeichnet. Alles Ganzzahlen —
-# aus der Simulation kommt kein Float, und hier entsteht auch keiner.
-TRACE_KEYS = [
-    'credits', 'powerProvided', 'powerRequired', 'harvesters', 'armySize',
-    'armyHealthSum', 'unitsLost', 'visibleEnemyUnits', 'visibleEnemyBuildings',
-    'intentsSubmitted', 'intentsRejected', 'queuedUnits', 'sitesOpen',
-]
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import lab_data  # noqa: E402
 
-def read_ndjson(path):
-    with open(path, encoding='utf-8') as handle:
-        return [json.loads(line) for line in handle if line.strip()]
-
-
-def short(faction, role):
-    """Fraktion + Rolle als ein Bezeichner. Jede Einheiten-Zahl ist
-    fraktionsgebunden (Plan 3.9) — eine Zeile ohne Fraktion mittelt zwei
-    verschiedene Waffen."""
-    return faction[:3] + '.' + role
-
-
-def collect_match(root):
-    result = json.load(open(os.path.join(root, 'match', 'result.json'), encoding='utf-8'))
-    samples = read_ndjson(os.path.join(root, 'match', 'trace.ndjson'))
-    slots = []
-    for index in range(result['slotCount']):
-        series = {key: [s['slots'][index][key] for s in samples] for key in TRACE_KEYS}
-        series['buildings'] = [sum(s['slots'][index]['buildingsByRole']) for s in samples]
-        slots.append(series)
-    return {'result': result, 'trace': {'ticks': [s['tick'] for s in samples], 'slots': slots}}
-
-
-def collect_duels(root):
-    duels = read_ndjson(os.path.join(root, 'duel', 'duels.ndjson'))
-
-    units, cells = [], {}
-    for duel in duels:
-        if duel['siege']:
-            continue
-        attacker = short(duel['factionA'], duel['roleA'])
-        defender = short(duel['factionB'], duel['roleB'])
-        for name in (attacker, defender):
-            if name not in units:
-                units.append(name)
-        cell = cells.setdefault((attacker, defender),
-                                {'n': 0, 'w': 0, 'l': 0, 'u': 0, 'nc': 0, 'wob': 0, 'ranges': {}})
-        cell['n'] += 1
-        cell['w'] += duel['winner'] == 0
-        cell['l'] += duel['winner'] == 1
-        cell['u'] += duel['winner'] < 0
-        cell['nc'] += duel['noContact']
-        cell['wob'] += duel['parityWobbles']
-        cell['ranges'][duel['range']] = {
-            'winner': duel['winner'], 'tick': duel['decidedTick'],
-            'survA': duel['survivorsA'], 'survB': duel['survivorsB'],
-            'noContact': duel['noContact'],
-        }
-    units.sort()
-
-    siege = [{
-        'a': short(d['factionA'], d['roleA']), 'b': short(d['factionB'], d['roleB']),
-        'range': d['range'], 'decided': d['decided'],
-        'tick': d['decidedTick'] if d['decided'] else None,
-        'countA': d['countA'], 'spentA': d['spentA'], 'survA': d['survivorsA'],
-        'winner': d['winner'],
-    } for d in duels if d['siege']]
-
-    table = {
-        'units': units,
-        'cells': [dict(a=a, b=b, **v) for (a, b), v in cells.items()],
-        'budget': duels[0]['budgetAE'],
-        'counts': {
-            'total': len(duels),
-            'decided': sum(1 for d in duels if d['decided']),
-            'timeout': sum(1 for d in duels if not d['decided']),
-            'noContact': sum(1 for d in duels if d['noContact']),
-            # Wackelnde Paritaet wird je Paarung gezaehlt, nicht je Duell:
-            # sonst zaehlt dieselbe schiefe Paarung dreimal (ein Abstand je Lauf).
-            'wobble': len({(d['factionA'], d['roleA'], d['factionB'], d['roleB'])
-                           for d in duels if d['parityWobbles']}),
-        },
-    }
-    return table, siege
+# Das Sammeln liegt in `lab_data`, damit HTML- und Markdown-Bericht dieselben
+# Zahlen sehen. Die Namen bleiben hier stehen: sie sind der bekannte Einstieg.
+TRACE_KEYS = lab_data.TRACE_KEYS
+read_ndjson = lab_data.read_ndjson
+short = lab_data.short
+collect_match = lab_data.collect_match
+collect_duels = lab_data.collect_duels
 
 
 def build(root, out_path=None):
-    duel, siege = collect_duels(root)
-    data = {
-        'match': collect_match(root),
-        'compare': json.load(open(os.path.join(root, 'compare', 'resultset.json'), encoding='utf-8')),
-        'movement': read_ndjson(os.path.join(root, 'movement', 'movement.ndjson')),
-        'duel': duel,
-        'siege': siege,
-    }
+    data = lab_data.collect(root)
 
     template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dashboard.tpl.html')
     with open(template_path, encoding='utf-8') as handle:

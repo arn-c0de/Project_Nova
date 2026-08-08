@@ -81,7 +81,17 @@ vergleichbar statt schätzungsweise.
 | `duels.ndjson` | Duell (576) | `winner`, `decidedTick`, `noContact`, `parityWobbles`, `survivors*` |
 | `movement.ndjson` | Szenario × Fraktion (8) | `usableRangeOvershootCells` (nicht `overshootCells` — siehe unten), `blockedUnits`, `arrived`, `travelledCells`, `wallGapCells` |
 | `resultset.json` | Vergleichslauf | je Kandidat Siegquote, Mittelwerte, `changes`, plus Herkunft (Commit, Seeds, Hashes) |
-| `dashboard.html` | — | alle vier Laufarten in einer Seite: `python3 tools/Nova.AiLab/report/build_dashboard.py tools/Nova.AiLab/out` |
+| `dashboard.html` | — | alle vier Laufarten in einer Seite, interaktiv — für Menschen mit Browser |
+| `reports/latest.md` | Lauf | **dieselben Zahlen als Markdown**, auf GitHub direkt lesbar: Kennzahlen, Gegentabelle, Belagerung, Bewegung, Kurven als Mermaid |
+| `reports/README.md` | — | Gesamtübersicht: jeder archivierte Lauf eine Zeile, dazu der Verlauf innerhalb der aktuellen Definitionstabelle |
+| `reports/data/<id>.json` | Lauf | der verdichtete Messblock mit Herkunft und Fingerabdruck — **die Quelle**, aus der die Berichte jederzeit neu entstehen |
+
+Beides schreibt ein Kommando: `python3 tools/Nova.AiLab/report/build_reports.py
+tools/Nova.AiLab/out` (oder `./tools/Nova.AiLab/lab.sh`, das vorher misst).
+`--regenerate` rendert die ganze Historie neu, ohne etwas nachzumessen. Ein Lauf
+wird an seinem Fingerabdruck erkannt: zweimal berichten ergibt keinen zweiten
+Eintrag. Ein **Agent liest `reports/latest.md`**, wenn er wissen will, wo die
+Zahlen heute stehen — dort steht der letzte Lauf vollständig und ohne Browser.
 
 **Zwei Felder, bei denen der naheliegende Name der falsche ist.** `overshootCells`
 misst gegen die *nominale* Waffenreichweite — die Einheit kann sie ohne Aufklärung
