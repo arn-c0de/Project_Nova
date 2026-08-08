@@ -1,7 +1,7 @@
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Globalization;
-using Nova.Simulation.State;
+using System.IO;
 
 namespace Nova.AiLab
 {
@@ -10,25 +10,31 @@ namespace Nova.AiLab
     /// LOCAL TOOL, NOT A CONTRIBUTION: it never enters a PR branch, and a green
     /// lab run is DIAGNOSIS, never proof — what was not seen in the running
     /// game is reported as not seen.
-    /// <para>
-    /// E1 knows one run mode, <c>match</c>. E2 replaces these flags with the
-    /// JSON MatchSpec and adds the parallel sweep; the types behind them
-    /// already have the spec's shape.
-    /// </para>
     /// </summary>
     public static class Program
     {
         private const string Usage =
             "Nova.AiLab — local AI simulation lab (diagnosis only, never proof)\n" +
             "\n" +
-            "  match [options]     run one AI-vs-AI match and report outcome and state hash\n" +
+            "  match [options]        run one AI-vs-AI match\n" +
+            "  sweep [options]        run a seed matrix across all cores\n" +
             "\n" +
-            "Options:\n" +
-            "  --seed <ulong>      match seed, decimal or 0x-hex (default 0xA17E57DE57)\n" +
-            "  --slots <n>         number of slots, 2..4 seats on the canonical map (default 2)\n" +
-            "  --ticks <n>         tick budget (default 27000 = VictorySystem.TimeLimitTick)\n" +
-            "  --hash-every <n>    state hash every n ticks (default 0 = end state only)\n" +
-            "  --repeat <n>        run the same spec n times and compare the hash chains\n";
+            "Spec:\n" +
+            "  --spec <file>          JSON MatchSpec (plan section 3.2); flags below override it\n" +
+            "  --seed <ulong>         match seed, decimal or 0x-hex (default 0xA17E57DE57)\n" +
+            "  --slots <n>            slot count, 2..4 seats on the canonical map (default 2)\n" +
+            "  --ticks <n>            tick budget (default 27000 = VictorySystem.TimeLimitTick)\n" +
+            "  --trace-every <n>      metric sample every n ticks (default 0 = off)\n" +
+            "  --hash-every <n>       state hash every n ticks (default 0 = end state only)\n" +
+            "\n" +
+            "match:\n" +
+            "  --repeat <n>           run the same spec n times and compare the hash chains\n" +
+            "  --out <dir>            write result.json, trace.ndjson, hashchain.json\n" +
+            "\n" +
+            "sweep:\n" +
+            "  --seeds <n>            number of seeds, derived from --seed (default 8)\n" +
+            "  --out <dir>            one subdirectory per seed\n" +
+            "  --parallel <n>         max concurrent matches (default: processor count)\n";
 
         public static int Main(string[] args)
         {
@@ -38,17 +44,10 @@ namespace Nova.AiLab
                 return args.Length == 0 ? 1 : 0;
             }
 
-            if (args[0] != "match")
-            {
-                Console.Error.WriteLine($"unknown mode '{args[0]}'\n\n{Usage}");
-                return 1;
-            }
-
-            MatchSpec spec;
-            int repeat;
+            Options options;
             try
             {
-                spec = ParseSpec(args, out repeat);
+                options = Options.Parse(args);
             }
             catch (Exception ex)
             {
@@ -56,19 +55,37 @@ namespace Nova.AiLab
                 return 1;
             }
 
-            return RunMatch(spec, repeat);
+            return args[0] switch
+            {
+                "match" => RunMatch(options),
+                "sweep" => RunSweep(options),
+                _ => Fail($"unknown mode '{args[0]}'"),
+            };
         }
 
-        private static int RunMatch(MatchSpec spec, int repeat)
+        private static int Fail(string message)
+        {
+            Console.Error.WriteLine($"{message}\n\n{Usage}");
+            return 1;
+        }
+
+        // ----------------------------------------------------------------
+        // match
+        // ----------------------------------------------------------------
+
+        private static int RunMatch(Options options)
         {
             MatchRunResult first = null;
-            for (int run = 0; run < repeat; run++)
+            for (int run = 0; run < options.Repeat; run++)
             {
-                var watch = Stopwatch.StartNew();
-                MatchRunResult result = MatchRun.Execute(spec);
-                watch.Stop();
+                MatchRunResult result = MatchRun.Execute(options.Spec);
+                Report(result, run);
 
-                Report(result, run, watch.ElapsedMilliseconds);
+                if (options.OutputDirectory != null && run == 0)
+                {
+                    RunArtifacts.Write(options.OutputDirectory, options.Spec, result);
+                    Console.WriteLine($"[run {run}] artifacts written to {options.OutputDirectory}");
+                }
 
                 if (first == null)
                 {
@@ -76,116 +93,168 @@ namespace Nova.AiLab
                     continue;
                 }
 
-                if (!SameRun(first, result, out string difference))
+                string difference = SweepRunner.Compare(first, result);
+                if (difference != null)
                 {
                     Console.Error.WriteLine($"NON-DETERMINISTIC: run {run} differs from run 0 — {difference}");
                     return 2;
                 }
             }
 
-            if (repeat > 1)
+            if (options.Repeat > 1)
             {
-                Console.WriteLine($"determinism: {repeat} runs of seed 0x{spec.Seed:X} agree on every hash");
+                Console.WriteLine($"determinism: {options.Repeat} runs of seed 0x{options.Spec.Seed:X} agree on every hash");
             }
             return 0;
         }
 
-        private static void Report(MatchRunResult r, int run, long elapsedMs)
+        private static void Report(MatchRunResult r, int run)
         {
             Console.WriteLine(
                 $"[run {run}] seed 0x{r.Seed:X}  slots {r.SlotCount} ({r.AiSlotCount} AI)  " +
                 $"outcome {r.Outcome}  winner slot {r.WinnerSlot}  " +
                 $"decided tick {r.DecidedTick}  final tick {r.FinalTick}  " +
-                $"state hash 0x{r.FinalStateHash:X16}  definitions 0x{r.DefinitionsHash64:X16}  " +
-                $"{elapsedMs} ms");
+                $"state hash 0x{r.FinalStateHash:X16}  {r.ElapsedMilliseconds} ms");
 
             if (!r.IsDecided)
             {
                 Console.WriteLine($"[run {run}] undecided within the budget of {r.TickBudget} ticks");
             }
-            if (r.HashChain.Count > 0)
+            if (r.Trace.Count > 0 || r.HashChain.Count > 0)
             {
-                Console.WriteLine($"[run {run}] hash chain: {r.HashChain.Count} entries");
+                Console.WriteLine($"[run {run}] {r.Trace.Count} metric samples, {r.HashChain.Count} hash chain entries");
             }
         }
 
-        /// <summary>
-        /// Two runs of one spec must agree on everything, not just the end
-        /// state: a chain that diverges and reconverges is exactly the kind of
-        /// shared-state bug the sampling double-runs of plan section 3.7 hunt.
-        /// </summary>
-        private static bool SameRun(MatchRunResult a, MatchRunResult b, out string difference)
+        // ----------------------------------------------------------------
+        // sweep
+        // ----------------------------------------------------------------
+
+        private static int RunSweep(Options options)
         {
-            if (a.FinalStateHash != b.FinalStateHash)
+            ulong[] seeds = SeedSeries.Derive(options.Spec.Seed, options.SeedCount);
+            Console.WriteLine(
+                $"sweep: {seeds.Length} seeds, {options.Spec.Slots.Length} slots, budget {options.Spec.TickBudget}, " +
+                $"parallelism {(options.Parallelism > 0 ? options.Parallelism : Environment.ProcessorCount)}");
+
+            SweepResult sweep = SweepRunner.Run(
+                options.Spec, seeds, options.OutputDirectory, options.Parallelism);
+
+            for (int i = 0; i < sweep.Runs.Length; i++)
             {
-                difference = $"end state 0x{a.FinalStateHash:X16} vs 0x{b.FinalStateHash:X16}";
-                return false;
-            }
-            if (a.DecidedTick != b.DecidedTick || a.Outcome != b.Outcome || a.WinnerSlot != b.WinnerSlot)
-            {
-                difference = $"decision {a.Outcome}@{a.DecidedTick}/slot {a.WinnerSlot} vs " +
-                             $"{b.Outcome}@{b.DecidedTick}/slot {b.WinnerSlot}";
-                return false;
-            }
-            if (a.HashChain.Count != b.HashChain.Count)
-            {
-                difference = $"chain length {a.HashChain.Count} vs {b.HashChain.Count}";
-                return false;
-            }
-            for (int i = 0; i < a.HashChain.Count; i++)
-            {
-                if (a.HashChain[i].StateHash == b.HashChain[i].StateHash) continue;
-                difference = $"chain diverges at tick {a.HashChain[i].Tick}: " +
-                             $"0x{a.HashChain[i].StateHash:X16} vs 0x{b.HashChain[i].StateHash:X16}";
-                return false;
+                MatchRunResult r = sweep.Runs[i];
+                Console.WriteLine(
+                    $"  seed 0x{r.Seed:X}  {r.Outcome}  winner slot {r.WinnerSlot}  " +
+                    $"tick {r.FinalTick}  state hash 0x{r.FinalStateHash:X16}");
             }
 
-            difference = null;
-            return true;
+            Console.WriteLine(
+                $"throughput: {sweep.TotalTicks} ticks in {sweep.WallClockMilliseconds} ms " +
+                $"= {sweep.TicksPerSecond} ticks/s across all cores");
+            Console.WriteLine(
+                $"self-check: {sweep.DoubleCheckedRuns} of {seeds.Length} runs played twice " +
+                $"(every {SweepRunner.DoubleCheckEveryNthRun}th), {sweep.Mismatches.Count} mismatches");
+
+            if (sweep.DistinctDecisions == 1 && seeds.Length > 1)
+            {
+                // Said plainly, because the table above looks like evidence and
+                // is not: no simulation system draws from the kernel PRNG, so
+                // the seed moves the state hash and nothing else.
+                Console.WriteLine(
+                    $"NOTE: all {seeds.Length} seeds produced the SAME decision — the seed axis is empty. " +
+                    "No simulation system draws from the kernel PRNG today, so a seed changes the state " +
+                    "hash but not the match. Variance has to come from profiles (E6) or starting " +
+                    "positions, not from seeds.");
+            }
+            else
+            {
+                Console.WriteLine($"variance: {sweep.DistinctDecisions} distinct decisions across {seeds.Length} seeds");
+            }
+
+            if (sweep.Mismatches.Count > 0)
+            {
+                // Not a warning. A sweep with a mismatch measured nothing:
+                // shared state between parallel matches disguises itself as
+                // spread in the numbers, and every result here is suspect.
+                Console.Error.WriteLine("SWEEP INVALID — parallel runs disagreed with themselves:");
+                foreach (string mismatch in sweep.Mismatches) Console.Error.WriteLine($"  {mismatch}");
+                return 2;
+            }
+
+            if (options.OutputDirectory != null)
+            {
+                Console.WriteLine($"artifacts written to {options.OutputDirectory}");
+            }
+            return 0;
         }
 
         // ----------------------------------------------------------------
         // Argument parsing
         // ----------------------------------------------------------------
 
-        private static MatchSpec ParseSpec(string[] args, out int repeat)
+        private sealed class Options
         {
-            var spec = new MatchSpec();
-            int slots = 2;
-            repeat = 1;
+            public MatchSpec Spec;
+            public int Repeat = 1;
+            public int SeedCount = 8;
+            public int Parallelism;
+            public string OutputDirectory;
 
-            for (int i = 1; i < args.Length; i++)
+            public static Options Parse(string[] args)
             {
-                string flag = args[i];
-                string value = i + 1 < args.Length ? args[i + 1] : null;
-                if (value == null) throw new ArgumentException($"option '{flag}' needs a value");
-                i++;
+                var options = new Options();
+                var flags = new Dictionary<string, string>();
 
-                switch (flag)
+                for (int i = 1; i < args.Length; i++)
                 {
-                    case "--seed": spec.Seed = ParseUInt64(value); break;
-                    case "--slots": slots = ParseInt32(value, flag); break;
-                    case "--ticks": spec.TickBudget = ParseInt32(value, flag); break;
-                    case "--hash-every": spec.HashIntervalTicks = ParseInt32(value, flag); break;
-                    case "--repeat": repeat = ParseInt32(value, flag); break;
-                    default: throw new ArgumentException($"unknown option '{flag}'");
+                    string flag = args[i];
+                    if (i + 1 >= args.Length) throw new ArgumentException($"option '{flag}' needs a value");
+                    flags[flag] = args[++i];
                 }
-            }
 
-            if (slots > CanonicalOpening.MaxSeatedSlots)
-            {
-                throw new ArgumentException(
-                    $"--slots {slots}: the canonical map seats {CanonicalOpening.MaxSeatedSlots} bases " +
-                    "(more seats are map work, plan E11)");
-            }
-            if (spec.TickBudget < 1) throw new ArgumentException("--ticks must be positive");
-            if (repeat < 1) throw new ArgumentException("--repeat must be positive");
+                // The spec file is the base; explicit flags override it, so a
+                // saved spec can be re-run with one number changed without
+                // editing the file.
+                options.Spec = flags.TryGetValue("--spec", out string specPath)
+                    ? SpecFile.Load(specPath)
+                    : new MatchSpec();
 
-            spec.Slots = MatchSpec.DefaultSlots(slots);
-            return spec;
+                int? slots = null;
+                foreach (KeyValuePair<string, string> flag in flags)
+                {
+                    switch (flag.Key)
+                    {
+                        case "--spec": break;
+                        case "--seed": options.Spec.Seed = ParseSeed(flag.Value); break;
+                        case "--slots": slots = ParseInt(flag.Value, flag.Key); break;
+                        case "--ticks": options.Spec.TickBudget = ParseInt(flag.Value, flag.Key); break;
+                        case "--trace-every": options.Spec.TraceIntervalTicks = ParseInt(flag.Value, flag.Key); break;
+                        case "--hash-every": options.Spec.HashIntervalTicks = ParseInt(flag.Value, flag.Key); break;
+                        case "--repeat": options.Repeat = ParseInt(flag.Value, flag.Key); break;
+                        case "--seeds": options.SeedCount = ParseInt(flag.Value, flag.Key); break;
+                        case "--parallel": options.Parallelism = ParseInt(flag.Value, flag.Key); break;
+                        case "--out": options.OutputDirectory = flag.Value; break;
+                        default: throw new ArgumentException($"unknown option '{flag.Key}'");
+                    }
+                }
+
+                if (slots.HasValue) options.Spec.Slots = MatchSpec.DefaultSlots(slots.Value);
+
+                if (options.Spec.Slots.Length > CanonicalOpening.MaxSeatedSlots)
+                {
+                    throw new ArgumentException(
+                        $"{options.Spec.Slots.Length} slots: the canonical map seats " +
+                        $"{CanonicalOpening.MaxSeatedSlots} bases (more seats are map work, plan E11)");
+                }
+                if (options.Spec.TickBudget < 1) throw new ArgumentException("--ticks must be positive");
+                if (options.Repeat < 1) throw new ArgumentException("--repeat must be positive");
+                if (options.SeedCount < 1) throw new ArgumentException("--seeds must be positive");
+
+                return options;
+            }
         }
 
-        private static ulong ParseUInt64(string value)
+        private static ulong ParseSeed(string value)
         {
             bool hex = value.StartsWith("0x", StringComparison.OrdinalIgnoreCase);
             string digits = hex ? value.Substring(2) : value;
@@ -197,7 +266,7 @@ namespace Nova.AiLab
             return parsed;
         }
 
-        private static int ParseInt32(string value, string flag)
+        private static int ParseInt(string value, string flag)
         {
             if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed))
             {

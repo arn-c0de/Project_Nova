@@ -62,6 +62,24 @@ namespace Nova.AiLab
         /// <summary>State hash every n ticks (0 = only the end state).</summary>
         public int HashIntervalTicks;
 
+        /// <summary>Metric sample every n ticks (0 = no trace).</summary>
+        public int TraceIntervalTicks;
+
+        /// <summary>
+        /// Bind the counting transport instead of the canonical one, so intent
+        /// verdicts become countable. Unset follows the trace: a run that
+        /// collects metrics needs the verdicts, a run that does not keeps the
+        /// literal MatchRunner wiring. Set explicitly only to force one of the
+        /// two — the equivalence test does exactly that.
+        /// <para>
+        /// Turning it on is proven free: with and without produces the
+        /// identical hash chain.
+        /// </para>
+        /// </summary>
+        public bool? CountIntents;
+
+        public bool NeedsIntentCounting => CountIntents ?? (TraceIntervalTicks > 0);
+
         public SlotSpec[] Slots = DefaultSlots(2);
 
         /// <summary>

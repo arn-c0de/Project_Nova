@@ -22,8 +22,16 @@ namespace Nova.AiLab
         public byte Slot;
         public MatchSession Session;
         public CommandIngress Ingress;
-        public AiPeerCommandTransport Transport;
         public SkirmishAiSystem System;
+
+        /// <summary>The canonical transport — set unless the run counts intents.</summary>
+        public AiPeerCommandTransport Transport;
+
+        /// <summary>
+        /// The counting stand-in, set only when <see cref="MatchSpec.CountIntents"/>
+        /// is on. Exactly one of the two transports is bound per peer.
+        /// </summary>
+        public CountingAiPeerTransport IntentCounter;
     }
 
     /// <summary>
@@ -154,20 +162,27 @@ namespace Nova.AiLab
 
                 var peerSession = new MatchSession(slotSpec.Slot, activeSlots, inputDelayTicks: 1);
                 var peerIngress = new CommandIngress(peerSession);
-                var transport = new AiPeerCommandTransport(peerIngress, ingress);
-                var ai = new SkirmishAiSystem(
+
+                // Exactly one transport binds to a peer ingress. The canonical
+                // one is the default; the counting stand-in replaces it only
+                // when a run needs the intent verdicts, and a test pins that
+                // both produce the identical hash chain.
+                var peer = new AiSlotPeer { Slot = slotSpec.Slot, Session = peerSession, Ingress = peerIngress };
+                if (spec.NeedsIntentCounting)
+                {
+                    peer.IntentCounter = new CountingAiPeerTransport(peerIngress, ingress);
+                }
+                else
+                {
+                    peer.Transport = new AiPeerCommandTransport(peerIngress, ingress);
+                }
+
+                peer.System = new SkirmishAiSystem(
                     slotSpec.Slot,
                     slotSpec.Profile,
                     peerIngress, entities, economy, construction, production, fogOfWar, victory);
 
-                peers.Add(new AiSlotPeer
-                {
-                    Slot = slotSpec.Slot,
-                    Session = peerSession,
-                    Ingress = peerIngress,
-                    Transport = transport,
-                    System = ai,
-                });
+                peers.Add(peer);
             }
 
             // Canonical tick order — see the class remarks. The AI slots are

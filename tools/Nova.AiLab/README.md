@@ -13,11 +13,14 @@ Spiel gesehen wurde, steht als ungesehen im PR-Text.
 ```bash
 export DOTNET_ROOT="$PWD/.dotnet"; export PATH="$DOTNET_ROOT:$PATH"   # falls dotnet nicht im PATH ist
 
-# eine KI-gegen-KI-Partie
-dotnet run --project tools/Nova.AiLab -c Release -- match
+# eine KI-gegen-KI-Partie, mit Metriken und Artefakten
+dotnet run --project tools/Nova.AiLab -c Release -- match --trace-every 100 --out out/run1
 
 # zwei Läufe desselben Specs, Hash-Ketten verglichen
 dotnet run --project tools/Nova.AiLab -c Release -- match --repeat 2 --hash-every 100
+
+# Seed-Matrix über alle Kerne, jeder 20. Lauf doppelt zur Selbstkontrolle
+dotnet run --project tools/Nova.AiLab -c Release -- sweep --seeds 24 --out out/sweep
 
 # vier Slots (die Karte hat vier Eckplätze)
 dotnet run --project tools/Nova.AiLab -c Release -- match --slots 4
@@ -31,9 +34,25 @@ dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
 |---|---|
 | `MultiSlotAiHost.cs` | der Match-Host: `MatchRunner.InitializeMatch` von einem KI-Slot auf N verallgemeinert, sonst nichts |
 | `CanonicalOpening.cs` | die D-077-Startaufstellung aus `MatchBootstrap`, Spawnreihenfolge inbegriffen |
-| `MatchSpec.cs` | Eingabevertrag (§3.2), heute per CLI gefüllt, ab E2 aus JSON |
-| `MatchRun.cs` | fährt eine Partie, liefert Outcome, Entscheidungstick, Hash-Kette |
+| `MatchSpec.cs` / `SpecFile.cs` | Eingabevertrag (§3.2) und sein JSON-Leser — unbekannte Schlüssel sind Fehler, keine Vorgabewerte |
+| `MatchRun.cs` | fährt eine Partie, liefert Outcome, Entscheidungstick, Hash-Kette, Trace |
+| `SlotMetrics.cs` / `TraceCollector.cs` | der Metrikkatalog aus §3.3, reiner Beobachter, nur Ganzzahlen |
+| `CountingAiPeerTransport.cs` | zählt Intent-Verdikte — die einzige Stelle, an der `intentsRejected` ehrlich entsteht |
+| `RunArtifacts.cs` | `result.json`, `trace.ndjson`, `hashchain.json` |
+| `SweepRunner.cs` / `SeedSeries.cs` | Parallellauf mit Determinismus-Stichprobe (jeder 20. Lauf doppelt) |
 | `Program.cs` | Kommandozeile |
+
+## Zwei Dinge, die man wissen muss, bevor man Zahlen liest
+
+**Der Seed ändert die Partie nicht.** Kein Simulationssystem zieht aus dem
+Kernel-PRNG; der Seed geht in Zustands-Hash und Snapshot, sonst nirgendwohin.
+Ein Sweep über 24 Seeds ist *eine* Beobachtung. Der Sweep sagt das selbst hin,
+wenn alle Läufe gleich ausgehen — nicht überlesen.
+
+**Messen darf nichts kosten.** Trace-Collector und Intent-Zählung sind reine
+Beobachter, und zwei Tests halten fest, dass ein Lauf mit und ohne sie dieselbe
+Hash-Kette liefert. Wenn diese Tests je rot werden, sind alle damit erhobenen
+Zahlen wertlos — nicht nur die neuen.
 
 ## Die eine Regel, die dieses Labor trägt
 

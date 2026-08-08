@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Nova.Simulation.Definitions;
 using Nova.Simulation.Victory;
 
@@ -42,6 +43,12 @@ namespace Nova.AiLab
         /// <summary>Empty unless <see cref="MatchSpec.HashIntervalTicks"/> is set.</summary>
         public List<HashChainEntry> HashChain = new List<HashChainEntry>();
 
+        /// <summary>Empty unless <see cref="MatchSpec.TraceIntervalTicks"/> is set.</summary>
+        public List<MetricSample> Trace = new List<MetricSample>();
+
+        /// <summary>Wall-clock cost of this run — throughput bookkeeping, never an input to a result.</summary>
+        public long ElapsedMilliseconds;
+
         public bool IsDecided => Outcome != MatchOutcome.Undecided;
     }
 
@@ -61,6 +68,8 @@ namespace Nova.AiLab
         {
             if (spec == null) throw new ArgumentNullException(nameof(spec));
 
+            var watch = Stopwatch.StartNew();
+
             MultiSlotAiHost host = MultiSlotAiHost.BuildMatch(spec);
             var result = new MatchRunResult
             {
@@ -72,9 +81,16 @@ namespace Nova.AiLab
             };
 
             bool chained = spec.HashIntervalTicks > 0;
+            bool traced = spec.TraceIntervalTicks > 0;
+            TraceCollector collector = traced ? new TraceCollector(host) : null;
+
             if (chained)
             {
                 result.HashChain.Add(new HashChainEntry(host.Kernel.CurrentTick.Value, host.Kernel.CalculateStateHash()));
+            }
+            if (traced)
+            {
+                result.Trace.Add(collector.Sample(host.Kernel.CurrentTick.Value));
             }
 
             for (int i = 0; i < spec.TickBudget && !host.Victory.IsDecided; i++)
@@ -82,6 +98,11 @@ namespace Nova.AiLab
                 host.Step();
 
                 uint tick = host.Kernel.CurrentTick.Value;
+                if (traced)
+                {
+                    collector.OnTick();
+                    if (tick % (uint)spec.TraceIntervalTicks == 0) result.Trace.Add(collector.Sample(tick));
+                }
                 if (chained && tick % (uint)spec.HashIntervalTicks == 0)
                 {
                     result.HashChain.Add(new HashChainEntry(tick, host.Kernel.CalculateStateHash()));
@@ -93,6 +114,9 @@ namespace Nova.AiLab
             result.DecidedTick = host.Victory.DecidedTick;
             result.FinalTick = host.Kernel.CurrentTick.Value;
             result.FinalStateHash = host.Kernel.CalculateStateHash();
+
+            watch.Stop();
+            result.ElapsedMilliseconds = watch.ElapsedMilliseconds;
             return result;
         }
     }

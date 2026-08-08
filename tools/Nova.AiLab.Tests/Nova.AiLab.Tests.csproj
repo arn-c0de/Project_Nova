@@ -19,6 +19,13 @@
     <Compile Include="..\Nova.AiLab\CanonicalOpening.cs" Link="AiLab\CanonicalOpening.cs" />
     <Compile Include="..\Nova.AiLab\MultiSlotAiHost.cs" Link="AiLab\MultiSlotAiHost.cs" />
     <Compile Include="..\Nova.AiLab\MatchRun.cs" Link="AiLab\MatchRun.cs" />
+    <Compile Include="..\Nova.AiLab\SlotMetrics.cs" Link="AiLab\SlotMetrics.cs" />
+    <Compile Include="..\Nova.AiLab\TraceCollector.cs" Link="AiLab\TraceCollector.cs" />
+    <Compile Include="..\Nova.AiLab\CountingAiPeerTransport.cs" Link="AiLab\CountingAiPeerTransport.cs" />
+    <Compile Include="..\Nova.AiLab\SpecFile.cs" Link="AiLab\SpecFile.cs" />
+    <Compile Include="..\Nova.AiLab\RunArtifacts.cs" Link="AiLab\RunArtifacts.cs" />
+    <Compile Include="..\Nova.AiLab\SweepRunner.cs" Link="AiLab\SweepRunner.cs" />
+    <Compile Include="..\Nova.AiLab\SeedSeries.cs" Link="AiLab\SeedSeries.cs" />
   </ItemGroup>
 
   <ItemGroup>
