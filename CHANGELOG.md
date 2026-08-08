@@ -18,6 +18,26 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
 > erzeugt; MS-0 und MS-1 bleiben offen.
 
 ### Hinzugefügt
+- **KI-Profile als Datenschicht (`Nova.AI.Data`, Einheitenstrang):** Die
+  Stellschrauben der Skirmish-KI liegen nicht mehr verstreut in
+  Konstruktor-Defaults und `const`-Feldern der Verhaltenslogik, sondern
+  vollständig in einem `AiProfile` — inklusive der vier bisher unerreichbaren
+  Kadenzwerte (`DecisionTickInterval`, `PlacementSearchRadius`, beide
+  Queue-Batches). **Verhaltensneutral:** Das ausgelieferte Profil
+  `ms1-canonical` trägt die bisherigen Zahlen wertgleich (Strommarge 0, Armee
+  12, Angriffsschwelle 6, Harvester 2, Kadenz 20, Suchradius 8, Batches 2), die
+  vier Baseline-Dateien bleiben grün, und genau das ist der Nachweis, dass die
+  Umstellung sauber war — 557/557 SimRunner-Tests. Die Signatur von
+  `AiFactionProfile` und `SkirmishAiSystem` ist unverändert, damit der
+  `MatchRunner` des Netzstrangs nicht angefasst werden muss. Zwei Vorarbeiten
+  sind mit erledigt: `AiFactionProfile` verglich bisher **nur den
+  Fraktionsnamen**, sodass zwei Profile mit gleichem Namen und verschiedenen
+  Zahlen als gleich galten — der Vergleich deckt jetzt alle Werte ab, was erst
+  beim Tunen zweier Profile überhaupt zählt; und das `Nova.AI.Data`-asmdef
+  steht auf `noEngineReferences: true`, ist also strukturell enginefrei statt
+  zufällig. Nicht enthalten sind die Ziel- und Rückzugsgewichte aus der
+  Planskizze: Das Goal-System existiert noch nicht, und Felder, die nichts
+  steuern, wären als Messwerte lesbar ohne welche zu sein.
 - **Zwei-Spieler-Lockstep über eigenen TCP-Relay (D-089, Sprint 12 Strang A):**
   Der bisher nur vorbereitete Netzwerkpfad ist als Engine-freie
   Zwei-Slot-Implementierung verdrahtet: TCP-Handshake mit Match-Token,

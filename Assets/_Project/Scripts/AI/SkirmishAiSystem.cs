@@ -90,17 +90,23 @@ namespace Nova.AI
     /// </summary>
     public sealed class SkirmishAiSystem : ISimSystem
     {
+        // THE NUMBERS LIVE IN Nova.AI.Data. What used to be four const fields
+        // here are profile values now — behaviour in C#, numbers in one place
+        // (AIArchitecture.md section 3). The shipped profile carries exactly
+        // the constants that stood here, so this move changes nothing;
+        // that the baselines stay green is the proof it was clean.
+
         /// <summary>Decision cadence in ticks: 20 ticks = 2.0 s on the canonical 10 Hz clock.</summary>
-        public const ushort DecisionTickInterval = 20;
+        public ushort DecisionTickInterval => _profile.Profile.DecisionTickInterval;
 
         /// <summary>Largest Chebyshev ring around the placement anchor the spot search tries (documented AI choice, not a rule).</summary>
-        private const int PlacementSearchRadius = 8;
+        private int PlacementSearchRadius => _profile.Profile.PlacementSearchRadius;
 
         /// <summary>Infantry queued per decision tick while below the army cap (smooths spending over the cadence).</summary>
-        private const int InfantryQueueBatch = 2;
+        private int InfantryQueueBatch => _profile.Profile.InfantryQueueBatch;
 
         /// <summary>Harvesters queued per decision tick while below the harvester target.</summary>
-        private const int HarvesterQueueBatch = 2;
+        private int HarvesterQueueBatch => _profile.Profile.HarvesterQueueBatch;
 
         /// <summary>One own construction site seen in the ascending scan (the site entity sits at the footprint center cell).</summary>
         private struct SiteInfo
