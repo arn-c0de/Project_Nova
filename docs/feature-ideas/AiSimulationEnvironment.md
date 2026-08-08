@@ -88,7 +88,7 @@ xxHash64, byte-genaue Serialisierung, bis hin zur Duell-Asymmetrie im Combat).
 | **R6** | Verhalten A–Z | ⚠️ 5 von 13 Befehlsarten genutzt (§6) |
 | **R7** | Reagierendes Goal-System | ❌ KI ist bewusst zustandslos |
 | **R8** | Eine Stelle zum Ändern | ❌ Werte stecken im Code |
-| **R9** | 2D-Sichtfenster | ❌ nichts vorhanden (§3.4) |
+| **R9** | 2D-Sichtfenster | ✅ seit E3 — Terminal live, HTML-Abspieler zur Nachschau |
 | **R10** | Waffen-, Rüstungs- und Bewegungsarbeit messbar (Issues 01–03) | ❌ in einer Partie nicht sauber messbar (§3.9) |
 
 R6–R10 sind die Arbeit.
@@ -916,7 +916,7 @@ Naheliegend wäre, **E6 (Profile zu Daten) vor E4 zu ziehen** — das ist aber
 eine Planänderung und keine Laborentscheidung, deshalb steht sie hier als
 Vorschlag und nicht als Tatsache.
 
-### E3 — 2D-Sichtfenster, beide Darstellungen *(lokal)*
+### E3 — 2D-Sichtfenster, beide Darstellungen ✅ **erledigt (2026-08-08)**
 
 `ViewRecorder` nach §3.4, Terminalansicht live und HTML-Abspieler zur Nachschau
 in einem Zug — beide lesen denselben Frame-Strom, der Mehraufwand gegenüber
@@ -928,6 +928,48 @@ einem einzelnen nicht erkennt, was schiefging.
 *Fertig, wenn:* Eine laufende Partie ist im Terminal verfolgbar, ein
 abgeschlossener Lauf im Browser zurückspulbar — **und ein Test belegt, dass ein
 Lauf mit und ohne Sichtfenster dieselbe Hash-Kette liefert.**
+
+**Nachweis.** `match --watch` zeichnet die laufende Partie im Terminal
+(ANSI, 64×32 heruntergerechnet, beide Basen und die Armeen auf dem Weg zur
+Mitte sichtbar). `match --view-every 25 --fog --out <dir>` schreibt
+`view.ndjson` und `player.html` daneben; die Seite lädt die Frames, hat
+Scrubber, Einzeltick, Abspielen und drei zuschaltbare Ebenen. 520 Frames einer
+vollen Partie sind 2,1 MB — die Schätzung aus §3.4 hat gestimmt. Der
+Beobachter-Beweis steht als Test, ebenso dass Terminal und Datei **denselben
+Frame-Strom** lesen (Entscheidung 10: kein zweiter Aufzeichnungspfad, der
+auseinanderlaufen könnte).
+
+Zwei Abweichungen von §3.4, beide bewusst:
+
+- **Helligkeit auf einer Baustelle ist der Baufortschritt, nicht die
+  Gesundheit.** Eine Baustelle steht ihr ganzes Leben auf 1 HP; die Gesundheit
+  würde dort nichts kodieren, der Fortschritt beantwortet „kommt das Ding hoch
+  oder hängt es?".
+- **Verworfene Intents als Aufblinken fehlen.** Die Zahl dafür ist heute 0
+  (E2), und der Ort einer Ablehnung stünde nur in der Payload des abgelehnten
+  Records. Eine Ebene zu bauen, die garantiert nie etwas zeigt, wäre Attrappe;
+  sie kommt, wenn E7/E8 Ablehnungen erzeugen.
+
+Der Fog-Layer ist zuschaltbar statt immer an: Er dominiert die Dateigröße
+(RLE über 16.384 Zellen je Slot und Frame). Angeschaltet beantwortet er die
+Frage, die §3.4 zu Recht hervorhebt — *konnte die KI es überhaupt sehen?*
+
+#### Ein Fehler, den E3 in E2 gefunden hat
+
+> **Eine Baustelle trägt `UnitRole.Unit`, nicht ihre Gebäuderolle.** Erst bei
+> Fertigstellung wechselt sie auf `def.Role`
+> (`ConstructionSystem.SpawnBuildingEntity`, `ConstructionSystem.cs:742`).
+
+Der Metrik-Sammler aus E2 fragte `IsBuildingRole` **vor** `TryGetSite` — damit
+war der Baustellen-Zweig unerreichbar und `sitesOpen` eine dauerhafte Null, ohne
+dass irgendetwas das gemeldet hätte. Genau die Sorte Fehler, die ein Labor
+gefährlich macht: eine Kennzahl, die still nichts misst. Gefunden hat ihn nicht
+die Metrik, sondern das Bild — der Sichtfenster-Test verlangte eine Baustelle
+und bekam keine. Beide Stellen sind korrigiert, ein Regressionstest hält den
+Befund fest.
+
+Das ist auch das Argument aus §3.4 in einem Satz: *Zahlen sagen, dass etwas
+schiefging, nicht was* — und manchmal sagen sie nicht einmal das.
 
 ### E4 — Vergleichsbericht und Gegnerarchiv *(lokal)*
 
