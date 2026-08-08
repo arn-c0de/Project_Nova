@@ -245,12 +245,25 @@ die Einheiten tragen, ist reine D-087-Auto-Acquisition, und die nimmt das
 Harvester; in dem Tick, in dem die sechste Einheit fertig wurde, sprangen alle
 fünf auf den Panzer.
 
-**Was zu bauen ist.** Das Score-Targeting aus der Angriffsentscheidung
-herauslösen: Ziele werden bewertet, sobald überhaupt Kampfeinheiten leben. Die
-Schwelle regelt dann nur noch den *Vormarsch*, nicht das *Zielen*. Kleiner
-Eingriff, weil die Bewertung schon existiert.
+**Gebaut, viermal gemessen, zurückgenommen — Journal V003.** „Die Schwelle
+regelt nur noch den Vormarsch" klang nach einem kleinen Eingriff und kostet auf
+jeder Achse: die beste von vier Fassungen liegt 11 % später und bei 10 % mehr
+Verlusten je Slot als gar kein Zielen. Die Ursache ist strukturell und liegt
+nicht in der Zielformel:
 
-**Scope:** `AI/` — uns.
+> **Ein Angriffsbefehl ist unumkehrbar.** `AttackTarget` wird nur vom Befehl,
+> von der Auto-Acquisition **in ein leeres Feld** und vom Tod des Ziels
+> geschrieben — `Stop()` löscht es nicht. Wer einer *stehenden* Einheit ein
+> Ziel gibt, nimmt sie dauerhaft aus der Automatik; läuft das Ziel aus der
+> Reichweite, hält sie den Befehl und feuert nicht mehr. Oberhalb der Schwelle
+> ist derselbe Befehl richtig, weil die Einheit auf ihr Ziel **zuläuft**.
+
+**Was es bräuchte, bevor das hier wieder aufgemacht wird.** Einen Weg, ein Ziel
+freizugeben. Der liegt in `Simulation/State/` und ist Inhaberentscheidung —
+Befund [`findings/F001-stop-loescht-attacktarget-nicht.md`](findings/F001-stop-loescht-attacktarget-nicht.md).
+Ohne den ist jede weitere Fassung dieselbe Sackgasse mit anderen Zahlen.
+
+**Scope:** `AI/` — uns. Der Blocker liegt ausserhalb.
 
 ---
 
@@ -315,6 +328,120 @@ Schuss, weil die Waffenreichweite über der Sichtweite liegt (20 gegen 10).
 
 ---
 
+## 7 · Spielgefühl — und warum es mit dem heutigen Messaufbau durchfällt
+
+> **These:** Die KI ist nicht zu schwach, sie ist **träge**. Sie tut dasselbe,
+> egal was der Spieler tut. Eine KI, die schlechter spielt, aber sichtbar
+> reagiert, fühlt sich besser an als eine, die effizient überrollt.
+
+Das ist keine Geschmacksfrage, sondern hat eine Messfolge — und die erklärt
+womöglich zwei der drei bisherigen Rückweisungen.
+
+### Der strukturelle Fehler im Messaufbau
+
+**Jede Messung bisher lief in einer Partie, in der sich BEIDE Seiten geändert
+haben.** V002 und V003 wurden an `ms1-canonical` gegen sich selbst beurteilt.
+Eine Verhaltensregel steckt im Binary, also bekommen beide KIs sie
+gleichzeitig. Zwei Armeen, die beide besser zielen oder beide heimlaufen,
+liefern eine **längere und blutigere** Partie — und genau das wurde gemessen
+und als „schlechter" gelesen.
+
+`compare` behebt das nicht von allein: Kandidaten unterscheiden sich
+ausschliesslich in **Zahlen**, und eine Coderegel erreicht dort ebenfalls beide
+Seiten.
+
+> **In symmetrischem Selbstspiel sieht eine beidseitige Verbesserung wie ein
+> Rückschritt aus.** „Später entschieden, mehr Verluste" heisst dort nicht
+> „schlechtere KI", sondern kann schlicht „zwei stärkere Armeen" heissen.
+> Welches von beidem zutrifft, kann der heutige Aufbau **nicht unterscheiden**.
+
+### Die Abhilfe, und sie ist billig
+
+**Jedes neue Verhalten bekommt einen Profilwert mit einer Aus-Stellung.** Dann
+spielt dasselbe Binary „mit" gegen „ohne", einseitig, in einem `compare`-Lauf:
+
+| Verhalten | Aus-Stellung |
+|---|---|
+| Wellen | `waveSize: 1` — jede Einheit ist ihre eigene Welle, also heutiges Verhalten |
+| Rückzug | `retreatEnterHealthPercent: 0` — greift nie |
+| Verteidigung | `defenseRadiusCells: 0` |
+| HQ-Gewicht | ein Wert so hoch, dass er jeden Score überstimmt = heutiger Kurzschluss |
+
+Kosten: ein `int` und ein `if`. Gewinn: Die Messung beantwortet die Frage, die
+gestellt wurde.
+
+> **Das ist ein Eigenbefund, kein Ratschlag an andere.** V002 hatte
+> `defenseRadiusCells` bereits als Feld — und verglich trotzdem zwei komplette
+> Messmengen vor/nach dem Codeumbau, statt in einem Lauf `16` gegen `0` spielen
+> zu lassen. Die einseitige Messung war einen Profilwert entfernt und wurde
+> nicht gemacht.
+
+### Kennzahlen, die Spielgefühl abbilden
+
+Die heutigen Spalten — Entscheidungstick, Verluste, Siegquote — messen Stärke
+und Tempo. Keine davon misst, ob eine Partie sich gut anfühlt. Vier, die es
+tun, alle ganzzahlig und alle aus vorhandenen Artefakten ableitbar:
+
+| Kennzahl | Was sie einfängt | Woraus |
+|---|---|---|
+| **Austauschverhältnis** | eigene gegen gegnerische Verluste — erst bei **einseitiger** Messung aussagekräftig | `unitsLost` je Slot |
+| **Gefechtsdichte** | Rhythmus: wenige grosse Zusammenstösse gegen Dauertröpfeln. Zahl der Metrikintervalle mit Verlusten, und der grösste Sprung | `unitsLost`-Differenz je Intervall |
+| **Reaktionslatenz** | Lebendigkeit: Ticks zwischen „eigene Einheit nimmt Schaden" und „ein Befehl ändert sich" | `healthLost` gegen `intentsSubmitted` |
+| **Wiederspielwert** | verschiedene Ausgänge über *n* Seeds — **heute exakt 1** | `sweep` |
+
+Die Gefechtsdichte ist die interessanteste: Punkt 1 (Wellen) wird den
+Entscheidungstick **erhöhen** — die Armee wartet ja — und trotzdem eine
+Verbesserung sein. Ohne diese Spalte fällt der PR durch, aus demselben Grund
+wie V002.
+
+### Fünf Hebel, bewertet
+
+| Hebel | Warum es sich anfühlt | Bewertung |
+|---|---|---|
+| **Rhythmus durch Wellen** | Eine Welle, die sich sammelt, **kündigt sich an**. Aufbau, Angriff, Ruhe. Telegrafieren ist ein Feature, kein Fehler | Grösster Effekt je Aufwand, und die Bauform aus §0 steht bereits |
+| **Sichtbare Ursache und Wirkung** | „Ich schiesse Harvester, vier Einheiten drehen ab" — auch wenn es taktisch falsch ist | Rückzug ist die erste sichtbare Reaktion überhaupt. **Achtung F001:** `Stop()` löscht `AttackTarget` nicht, eine abdrehende Einheit trägt ihr Ziel weiter |
+| **Die richtigen Fehler** | Rückzug etwas zu spät wirkt menschlich; ewig in Artillerie laufen wirkt kaputt | Nicht auf „optimal" tunen, sondern die Spalte „wirkt kaputt" leeren |
+| **Wiederspielwert über den Sim-RNG** | Die zweite Partie ist heute **exakt dieselbe**. Der Seed tut nichts, weil kein System zieht | §4 verbietet `System.Random`, **nicht** den Sim-RNG: er liegt im Kernel, geht in Zustands-Hash und Snapshot, ist lockstep-sicher. Zöge die KI daraus (Angriffszeitpunkt, Gleichstand, Anmarschseite), wäre jede Partie anders und trotzdem bitgenau reproduzierbar — und die Seed-Achse des Labors würde echt. **Vorschlag, keine Umsetzung:** es koppelt KI-Verhalten an jedes künftige System, das ebenfalls zieht |
+| **Sichtbar nicht schummeln** | Die KI liest nur die committed Team-Sicht — der Spieler sieht das nie | Ein einzelner Späher kommuniziert Fairness besser als jede Doku. Billig, und `Scout` steht ohnehin im Plan |
+
+### Gegenprobe: was ausserhalb dieses Projekts als gute Praxis gilt
+
+Die fünf Hebel oben sind aus unseren eigenen Beobachtungen entstanden. Ein
+Abgleich mit der Literatur bestätigt vier davon, benennt einen Fehlermodus, den
+wir schon getroffen haben, und liefert eine Kennzahl, die wir übersehen hatten.
+
+| These aus der Literatur | Was sie für uns heisst |
+|---|---|
+| **Lesbarkeit schlägt Komplexität.** Halos KI gilt nicht als die klügste, sondern als die **lesbarste**: Man lernt ihre Regeln in einer Stunde und findet zehn Jahre lang Randfälle ([GDKeys](https://gdkeys.com/ai-keys-to-believable-enemies/)) | Deckt sich mit der These oben. Es rechtfertigt ausserdem, Wellen bewusst **sichtbar** zu sammeln, statt sie zu verstecken |
+| **Reaktionen müssen kontextangemessen sein** — nicht auf Belangloses überreagieren, nicht auf echte Bedrohung unterreagieren ([Game AI Pro, „You had me at AAAAHHH"](https://www.gameaipro.com/GameAIProOnlineEdition2021/GameAIProOnlineEdition2021_Chapter11_You_had_me_at_AAAAHHH_On_the_importance_of_reactions_in_game_AI.pdf)) | **Das ist V002, benannt.** `DefendBase` holte die Armee heim, sobald *irgendein* bewaffneter Feind den Radius berührte — Überreaktion auf Belangloses. Nicht die Idee war falsch, sondern die Schwelle. Ein zweiter Anlauf braucht ein Mass für „echte Bedrohung", nicht nur Hysterese |
+| **Überzeugende Fehler sind schwerer zu bauen als perfektes Spiel** ([Game Developer](https://www.gamedeveloper.com/game-platforms/bonus-feature-intelligent-mistakes-key-to-believable-ai)) | Stützt „die richtigen Fehler". Beim Tunen nicht auf optimal zielen |
+| **Der Spieler füllt die Lücken selbst** und schreibt der KI Absicht zu, solange die Illusion trägt ([GDKeys](https://gdkeys.com/ai-keys-to-believable-enemies/)) | Deshalb ist der Späher (Hebel 5) mehr wert als seine Kampfkraft: Er *zeigt*, dass die KI sucht |
+| **Übermenschliche APM lesen sich als unfair**; Entwickler deckeln sie deshalb ([arXiv 2503.15514](https://arxiv.org/pdf/2503.15514)) | Gegengerechnet am aktuellen Stand `r2`: 343 und 363 Intents über 8.700 Ticks sind bei 10 Hz **23,7 und 25,0 Aktionen pro Minute** — weit unter menschlichem RTS-Niveau. Unser Problem ist also nicht zu viel Aktion. Die Churn-Zahl aus V002 (dort 26,6 / 30,8 APM) misst **Zappeln**, nicht Überlegenheit, und darf nicht als „die KI handelt zu viel" gelesen werden |
+| **Ressourcenboni sind die übliche Abkürzung** — und Spieler erwarten auf Normal eine KI ohne Boni ([TV Tropes](https://tvtropes.org/pmwiki/pmwiki.php/Main/NotPlayingFairWithResources)) | Unsere KI nimmt diese Abkürzung **nicht**: gleicher Befehlspfad, gleiche Startmittel, nur die committed Team-Sicht. Das ist ein Aktivposten — er muss nur sichtbar werden |
+| **Staging und gruppenweises Vorgehen** sind in der RTS-Bot-Literatur eine anerkannte Technik ([CEUR Vol-1196](https://ceur-ws.org/Vol-1196/cosecivi14_submission_24.pdf)) | Bestätigt Punkt 1, ohne dass wir eine Eigenentwicklung rechtfertigen müssten |
+
+**Eine Kennzahl kommt dazu:** *Aktionen pro Minute* als Lesart der
+Intent-Zahl. `intentsSubmitted / Ticks × 600` — dieselbe Spalte, andere
+Frage: nicht „zappelt die KI", sondern „handelt sie überhaupt in
+menschlichem Rahmen". Heute **23,7 / 25,0**. Ein Umbau, der diese Zahl in
+dreistellige Bereiche treibt, ist unabhängig von jeder anderen Messung ein
+Problem — und umgekehrt ist reichlich Luft nach oben: An zu wenig Handeln
+scheitert die KI heute nicht, an zu wenig *Reaktion*.
+
+Zwei Themen aus der Literatur übernehmen wir **nicht**: adaptives Lernen
+gegen den Spielstil und Gegnermodellierung. Beides braucht Gedächtnis über
+Partien hinweg — das ist jenseits von Stufe 1, jenseits der Zustandslosigkeit
+und läge im Sidecar-Bereich (Inhaberentscheidung).
+
+### Was auch dann unmessbar bleibt
+
+Ob eine Welle sich *angekündigt* anfühlt, ob ein Rückzug *lebendig* wirkt, ob
+der Gegner *fair* erscheint — dafür gibt es keine Kennzahl, und es soll auch
+keine geben (Entscheidung 11). Das entscheidet die gespielte Partie, und die
+drei Fragen dafür stehen unten.
+
+---
+
 ## Reihenfolge der PRs — je einer, je eine Verhaltensänderung
 
 Die Reihenfolge oben sagt, was ein Spieler zuerst merkt. Diese hier sagt, in
@@ -324,14 +451,21 @@ gibt, an den man sich zurückzieht.
 
 | # | Was | Punkt | Ort | Messgrösse, an der es hängt |
 |---:|---|---|---|---|
-| 0 | Form: Absicht je Einheit, **verhaltensneutral** | §0 | `AI/` | Tick 8.715 und `0x5D8FB2D45FFD16B6` **unverändert** |
-| 1 | Zielen unabhängig von der Schwelle, begrenzt auf Waffenreichweite | 4 | `AI/`, `AI.Data/` | Verluste in den ersten 2.000 Ticks, `armyHealthSum` |
+| 0 | Form: Absicht je Einheit, **verhaltensneutral** | §0 | `AI/` | Tick 8.715 und `0x5D8FB2D45FFD16B6` **unverändert** — ✅ gemessen, gebaut |
+| ~~1~~ | ~~Zielen unabhängig von der Schwelle~~ | 4 | — | **gebaut und zurückgenommen**, Journal V003; blockiert von Befund F001 |
 | 2 | Sammelpunkt und Wellengrösse | 1 | `AI/`, `AI.Data/` | Verlustkurve in Sprüngen statt Stufen; Verluste je zerstörtem Gegner |
 | 3 | Rally-Punkt der Kaserne auf den Sammelpunkt | 5 | `AI/` | Intents je 1.000 Ticks (sollen **sinken**), Zeit bis zum Wellenstart |
 | 4 | `Retreat` als Einheitenfilter mit Hysterese | 3 | `AI/`, `AI.Data/` | `unitsLost` gegen `healthLost` |
 | 5 | Zweites lohnendes Ziel (Harvester, Refinery) | 2 | `AI/` | Entscheidungstick, Ziele je Partie; 4-Slot-Lauf endet nicht mehr im Zeitlimit |
 | 6 | Annäherung über eine Route statt der Luftlinie | 2 | `AI/`, `Pathfinding/` | zweimal dieselbe Partie, zwei verschiedene Wege |
 | 7 | Abstandhalten **plus** Aufklärung | 6 | `Movement/`, `AI/` | `usableRangeOvershootCells`, kontaktlose Duelle (heute 100 von 576) |
+
+Was Schritt 0 und der ausgefallene Schritt 1 zusammen gezeigt haben: **die
+Form ist billig, die Regel ist teuer.** Der Umbau war byte-identisch und in
+einem Zug erledigt; die eine Verhaltensregel darauf brauchte vier Messungen und
+endete als Befund. Wer die Liste unten abarbeitet, sollte damit rechnen, dass
+jeder Punkt so ausgeht — und die Form trotzdem bauen, weil ohne sie keiner der
+Punkte formulierbar ist.
 
 Zwei Reihenfolgeregeln, die nicht verhandelbar sind: **3 nach 2**, weil der
 Rally-Punkt derselbe Punkt ist wie der Sammelpunkt, und **7 als Paar**, weil
@@ -344,6 +478,13 @@ wertvollste Zahl), beide Suiten fahren, `AiBehaviorId.Revision` bumpen,
 Journaleintrag mit Abschnitt „Schlechter". Der Abschnitt „Im laufenden Spiel
 gesehen" bleibt leer, solange der Linux-Build aussteht.
 
+**Und ab jetzt eine Regel mehr, aus §7:** Jeder dieser PRs bringt seinen
+Profilwert **mit Aus-Stellung** mit und wird **einseitig** gemessen — ein
+`compare`-Lauf, in dem ein Kandidat mit dem neuen Verhalten gegen die Referenz
+ohne es spielt. Selbstspiel misst bei einer Coderegel beide Seiten zugleich und
+kann „zwei stärkere Armeen" nicht von „schlechtere KI" unterscheiden. V002 und
+V003 wurden so beurteilt; ob ihre Rückweisung trägt, ist damit offen.
+
 ---
 
 ## Nicht anfangen — begründet
@@ -351,6 +492,7 @@ gesehen" bleibt leer, solange der Linux-Build aussteht.
 | Vorhaben | Warum nicht |
 |---|---|
 | **Verteidigungsmodule bauen** (`InstallDefenseModule`) | `ValidateDomain` lehnt diesen Befehl **unbedingt** ab: G2/G4-Inhalt laut `mvp-v1.json`. Eine KI, die ihn benutzt, produziert nur `intentsRejected`. Der Plan führt ihn als Position 1 der fehlenden Befehle — der Code widerspricht. |
+| **Zielen unter der Angriffsschwelle, fünfte Fassung** | Vier gemessen, alle teurer als gar nicht zielen (Journal V003). Nicht die Zielformel ist schuld, sondern die unlösbare Zielsperre — solange Befund F001 offen ist, ist jede weitere Fassung dieselbe Sackgasse. |
 | **`DefendBase` erneut, mit anderem Radius** | Gemessen: 8 → 9.564, 16 → 9.470, 24 → byte-identisch zu 16. Am Radius liegt es nicht (Journal V002). |
 | **Legion-Waffenwerte ändern** (Issue 01) | `Simulation/Definitions/` ist geteilte Vertragsfläche. Das Labor *misst* Issue 01, die Umsetzung braucht Absprache. |
 | **Kartenvarianz** | Erst nach dem Goal-System. Vorher tunt man gegen die gebrochene `GetEnemyStartAreaCell`-Annahme statt gegen Verhalten. |

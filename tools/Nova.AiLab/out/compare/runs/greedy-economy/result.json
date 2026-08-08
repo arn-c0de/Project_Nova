@@ -15,7 +15,7 @@
   "hashIntervalTicks": 500,
   "traceSamples": 81,
   "hashChainEntries": 17,
-  "elapsedMilliseconds": 739,
+  "elapsedMilliseconds": 580,
   "slots": [
     { "slot": 0, "faction": "alliance", "controller": "ai", "profile": "greedy-economy" },
     { "slot": 1, "faction": "legion", "controller": "ai", "profile": "ms1-canonical" }

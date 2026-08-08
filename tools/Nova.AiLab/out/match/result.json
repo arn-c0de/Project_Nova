@@ -15,7 +15,7 @@
   "hashIntervalTicks": 500,
   "traceSamples": 175,
   "hashChainEntries": 18,
-  "elapsedMilliseconds": 835,
+  "elapsedMilliseconds": 779,
   "slots": [
     { "slot": 0, "faction": "alliance", "controller": "ai", "profile": "ms1-canonical" },
     { "slot": 1, "faction": "legion", "controller": "ai", "profile": "ms1-canonical" }

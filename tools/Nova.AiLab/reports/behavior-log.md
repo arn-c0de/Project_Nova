@@ -35,6 +35,42 @@ beginnt.** Der Zweck ist nicht Buchhaltung, sondern zweierlei:
 
 ---
 
+## M001 · 2026-08-09 · **Methodenbefund** — V002 und V003 wurden im Selbstspiel beurteilt
+
+**Status:** kein Lauf, eine Feststellung über den Messaufbau ·
+**Betrifft:** [V002](#v002--2026-08-08--defendbase--gebaut-gemessen-verworfen),
+[V003](#v003--2026-08-08--zielen-unter-der-angriffsschwelle--vier-varianten-verworfen-die-form-bleibt)
+
+Beide Rückweisungen stützen sich auf Messungen an `ms1-canonical` **gegen sich
+selbst**. Eine Verhaltensregel steckt aber im Binary, nicht im Profil — also
+bekommen in dieser Partie **beide** KIs sie gleichzeitig.
+
+> Zwei Armeen, die beide besser zielen oder beide heimlaufen, liefern eine
+> längere und blutigere Partie. Genau das wurde gemessen. **„Später
+> entschieden, mehr Verluste" heisst im Selbstspiel nicht „schlechtere KI" —
+> es kann „zwei stärkere Armeen" heissen, und der heutige Aufbau kann die
+> beiden Fälle nicht unterscheiden.**
+
+`compare` hilft nicht von allein: Kandidaten unterscheiden sich dort
+ausschliesslich in Zahlen, eine Coderegel erreicht ebenfalls beide Seiten.
+
+**Abhilfe, und sie war einen Profilwert entfernt.** Jedes neue Verhalten
+bekommt eine **Aus-Stellung** (`waveSize: 1`, `retreatEnterHealthPercent: 0`,
+`defenseRadiusCells: 0`). Dann spielt dasselbe Binary „mit" gegen „ohne",
+einseitig, in einem `compare`-Lauf. V002 hatte das Feld bereits und hat es
+nicht so benutzt — es verglich zwei komplette Messmengen vor/nach dem Umbau.
+
+**Was das für die beiden Einträge heisst:** Ihre Zahlen stimmen, ihre
+Schlussfolgerung ist **offen**. Weder „DefendBase kostet" noch „Zielen unter
+der Schwelle kostet" ist damit widerlegt — aber auch nicht mehr belegt. Wer
+einen der beiden wieder aufgreift, misst ihn einseitig, und zwar bevor er
+irgendetwas umbaut.
+
+Ausführlich in [`../NEXT-STEPS.md`](../NEXT-STEPS.md) §7, samt der vier
+Kennzahlen, die Spielgefühl überhaupt abbilden können.
+
+---
+
 ## B001 · 2026-08-08 · **Gespielte Beobachtung** — Mensch gegen KI
 
 **Quelle:** Partie am Rechner, kein Laborlauf · **KI-Verhalten:** `r2.A037B84D`
@@ -89,6 +125,116 @@ Zellen gegen erwarteten Schaden — und braucht keinen Zufall und kein Gedächtn
 - Ein Laborszenario für Beobachtung 3 fehlt: eine Gruppe läuft gegen einen
   **stehenden Fernkämpfer** und die Frage ist, wie viel Schaden sie auf dem Weg
   frisst. Das ist ein `movement`-Szenario, kein Duell.
+
+---
+
+## V003 · 2026-08-08 · Zielen unter der Angriffsschwelle — vier Varianten, **verworfen**; die Form bleibt
+
+**Lauf:** [`runs/20260808-2153-206d8bc5.md`](runs/20260808-2153-206d8bc5.md) ·
+**Variantenlauf (a):** [`runs/20260808-2146-206d8bc5.md`](runs/20260808-2146-206d8bc5.md) ·
+**Status:** im Labor gemessen, **Verhaltensteil zurückgenommen**, Formänderung bleibt ·
+**Basis:** V001/V002-Stand (`0x5D8FB2D45FFD16B6`, Tick 8.715)
+
+Dieser Eintrag hat zwei Hälften, die man auseinanderhalten muss: eine
+**Formänderung, die bleibt und nichts am Verhalten ändert**, und eine
+**Verhaltensregel, die gebaut, viermal gemessen und wieder ausgebaut wurde.**
+
+### Was bleibt: Schritt (6) in drei Stufen
+
+`SkirmishAiSystem` erteilt keinen Armeebefehl mehr, sondern löst auf:
+
+```
+ArmyPosture posture = ResolveArmyPosture(...);     // was tut die Armee
+foreach (Einheit)  UnitAssignment a = ResolveUnitAssignment(...);   // was tut diese Einheit
+SubmitAssignments(...);                            // gleiche Befehle → ein Intent
+```
+
+Die Regeln sind dabei **unverändert** geblieben; der Nachweis ist keine
+Testzusage, sondern eine Zahl: Entscheidungstick **8.715**, Endzustand
+**`0x5D8FB2D45FFD16B6`**, Hash-Kette und `result.json` byte-identisch zur
+Referenz bis auf `elapsedMilliseconds`. `AiBehaviorId.Revision` bleibt deshalb
+bei **2** — die Regel dort sagt „bumpen, wenn sich Verhalten ändert", und hier
+ändert sich keins.
+
+Der Zweck: „diese eine Einheit dreht ab", „Nachschub wartet am Sammelpunkt"
+und „zielen, bevor die Schwelle steht" sind in einem Armeebefehl **nicht
+formulierbar**. Alle drei stehen in NEXT-STEPS.
+
+### Was gebaut und wieder ausgebaut wurde
+
+Die Angriffsschwelle sollte nur noch den *Vormarsch* regeln, nicht das
+*Zielen* (NEXT-STEPS §4). Vier Fassungen, alle deterministisch (Exit 0), alle
+auf der Referenzpartie `ms1-canonical` gegen sich selbst, Seed `0xA17E57DE57`:
+
+| Fassung | Entscheidungstick | Verluste 0/1 | Intents 0/1 |
+|---|---:|---:|---:|
+| **r2 — kein Zielen unter der Schwelle** | **8.715** | **70 / 97** | **343 / 363** |
+| (a) je Einheit ihr bestes Ziel in eigener Reichweite | 10.847 | 90 / 122 | 451 / 468 |
+| (a′) wie (a), ohne HQ-Kurzschluss | 10.855 | 90 / 126 | 455 / 474 |
+| (b) **ein gemeinsames** Ziel, nur wer es erreicht | 9.664 | 77 / 107 | 397 / 382 |
+| (c) nur korrigieren: unbewaffnetes Ziel → bewaffnetes | 10.831 | 89 / 124 | 421 / 446 |
+
+### Schlechter
+
+Alle vier kosten auf allen drei gemessenen Achsen. Die beste Fassung (b) liegt
+immer noch 11 % später und bei 10 % mehr Verlusten je Slot als gar kein Zielen.
+
+### Warum — der Befund, der den Aufwand wert war
+
+**Ein expliziter Angriffsbefehl ist eine Einbahnstrasse.** Im Code nachgesehen,
+nicht vermutet: `UnitState.AttackTarget` wird an genau drei Stellen geschrieben
+— vom Befehl `AttackTarget`, von der D-087-Auto-Acquisition **in ein leeres
+Feld**, und beim Tod des Ziels. `UnitState.Stop()` lässt es unangetastet,
+obwohl der Kommentar an der Anwendungsstelle „Stop cancels every standing
+order" behauptet.
+
+Daraus folgt: Wer einer **stehenden** Einheit ein Ziel gibt, nimmt sie
+dauerhaft aus der Automatik. Läuft das Ziel aus der Reichweite, hält die
+Einheit den Befehl (`CombatSystem` Phase 3 hält, statt zu verwerfen) und
+**feuert nicht mehr** — die Automatik kann nicht einspringen, weil das Feld
+belegt ist. Die Automatik ist reaktiv und wird nie schal; ein Befehl wird es
+mit jedem Tick. Solange die Einheit auf ihr Ziel **zuläuft**, ist der Befehl
+besser; sobald sie steht, ist er schlechter.
+
+Genau deshalb bleibt das Zielen oberhalb der Schwelle unverändert richtig: dort
+marschiert die Armee auf ihr Ziel zu.
+
+### Widerlegt
+
+> **Der HQ-Kurzschluss ist nicht die Ursache.** (a) 10.847 gegen (a′) 10.855 —
+> Rauschen. Wer die Regel wieder aufgreift, braucht einen anderen Ansatz.
+
+> **Feuerverteilung erklärt den grössten Teil.** Ein gemeinsames Ziel (b) holt
+> gegenüber „jede Einheit ihr eigenes" (a) 1.183 Ticks und 13 / 15 Verluste
+> zurück. Konzentration bleibt richtig, auch stehend.
+
+> **„Möglichst wenig eingreifen" ist hier falsch.** Fassung (c) greift am
+> seltensten ein und liegt trotzdem schlechter als (b) — weil jedes einzelne
+> Eingreifen eine dauerhafte Sperre erzeugt, unabhängig davon, wie selten es
+> passiert. Die Zahl der Sperren zählt, nicht die Zahl der Befehle.
+
+### Unverändert
+
+- **Determinismus:** jede Fassung zweimal gefahren, Exit 0.
+- `intentsRejected` bleibt **0** in allen Fassungen.
+- Duell-Arena und Bewegungsszenarien byte-identisch (sie fahren kein KI-System).
+- **87/87 Labortests, 559/559 SimRunner-Tests grün** — im Endzustand wie in
+  jeder Zwischenfassung.
+
+### Einschränkung, die zum Befund gehört
+
+Gemessen wurde **symmetrisch KI gegen KI**. Beide Slots zielen schlechter oder
+besser gleichzeitig; was eine bessere Zielwahl gegen einen Menschen wert ist,
+kann dieses Labor nicht zeigen — dieselbe Einschränkung wie bei V002.
+
+### Offen — und es ist eine Anfrage, keine Umsetzung
+
+Damit „zielen, ohne zu marschieren" überhaupt gewinnen kann, braucht es einen
+Weg, ein Ziel wieder **freizugeben**. Der naheliegende Kandidat ist `Stop`,
+das laut eigenem Kommentar bereits jeden stehenden Befehl löscht, `AttackTarget`
+aber auslässt. Das liegt in `Simulation/State/` — **fremdes Terrain, gesperrt.**
+Befund abgelegt unter [`findings/F001-stop-loescht-attacktarget-nicht.md`](../findings/F001-stop-loescht-attacktarget-nicht.md);
+der Weg nach draussen ist Mail oder Issue, kein PR.
 
 ---
 

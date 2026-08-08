@@ -27,7 +27,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 7ac3015a36489410f59889d96561e49c9bfbc38c
+- Commit 206d8bc5eb3d0d03896964c7d778702aa5f1b258
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen
