@@ -26,6 +26,10 @@
     <Compile Include="..\Nova.AiLab\RunArtifacts.cs" Link="AiLab\RunArtifacts.cs" />
     <Compile Include="..\Nova.AiLab\SweepRunner.cs" Link="AiLab\SweepRunner.cs" />
     <Compile Include="..\Nova.AiLab\SeedSeries.cs" Link="AiLab\SeedSeries.cs" />
+    <Compile Include="..\Nova.AiLab\ViewFrame.cs" Link="AiLab\ViewFrame.cs" />
+    <Compile Include="..\Nova.AiLab\ViewRecorder.cs" Link="AiLab\ViewRecorder.cs" />
+    <Compile Include="..\Nova.AiLab\TerminalView.cs" Link="AiLab\TerminalView.cs" />
+    <Compile Include="..\Nova.AiLab\HtmlPlayer.cs" Link="AiLab\HtmlPlayer.cs" />
   </ItemGroup>
 
   <ItemGroup>

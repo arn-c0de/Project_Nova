@@ -46,6 +46,9 @@ namespace Nova.AiLab
         /// <summary>Empty unless <see cref="MatchSpec.TraceIntervalTicks"/> is set.</summary>
         public List<MetricSample> Trace = new List<MetricSample>();
 
+        /// <summary>Empty unless <see cref="MatchSpec.ViewIntervalTicks"/> is set.</summary>
+        public List<ViewFrame> View = new List<ViewFrame>();
+
         /// <summary>Wall-clock cost of this run — throughput bookkeeping, never an input to a result.</summary>
         public long ElapsedMilliseconds;
 
@@ -64,7 +67,13 @@ namespace Nova.AiLab
     /// </summary>
     public static class MatchRun
     {
-        public static MatchRunResult Execute(MatchSpec spec)
+        /// <summary>
+        /// Runs one match to its end.
+        /// <paramref name="onFrame"/> receives every view frame as it is
+        /// captured, which is how the live terminal view watches a running
+        /// match without a second capture path.
+        /// </summary>
+        public static MatchRunResult Execute(MatchSpec spec, Action<ViewFrame> onFrame = null)
         {
             if (spec == null) throw new ArgumentNullException(nameof(spec));
 
@@ -82,7 +91,9 @@ namespace Nova.AiLab
 
             bool chained = spec.HashIntervalTicks > 0;
             bool traced = spec.TraceIntervalTicks > 0;
+            bool viewed = spec.ViewIntervalTicks > 0;
             TraceCollector collector = traced ? new TraceCollector(host) : null;
+            ViewRecorder recorder = viewed ? new ViewRecorder(host, spec.RecordFog) : null;
 
             if (chained)
             {
@@ -91,6 +102,12 @@ namespace Nova.AiLab
             if (traced)
             {
                 result.Trace.Add(collector.Sample(host.Kernel.CurrentTick.Value));
+            }
+            if (viewed)
+            {
+                ViewFrame opening = recorder.Capture(host.Kernel.CurrentTick.Value);
+                result.View.Add(opening);
+                onFrame?.Invoke(opening);
             }
 
             for (int i = 0; i < spec.TickBudget && !host.Victory.IsDecided; i++)
@@ -102,6 +119,15 @@ namespace Nova.AiLab
                 {
                     collector.OnTick();
                     if (tick % (uint)spec.TraceIntervalTicks == 0) result.Trace.Add(collector.Sample(tick));
+                }
+                if (viewed && tick % (uint)spec.ViewIntervalTicks == 0)
+                {
+                    ViewFrame frame = recorder.Capture(tick);
+                    result.View.Add(frame);
+                    // The live terminal view and the recorded file read the
+                    // SAME frame stream (plan decision 10) — one capture, two
+                    // consumers, no second code path that could disagree.
+                    onFrame?.Invoke(frame);
                 }
                 if (chained && tick % (uint)spec.HashIntervalTicks == 0)
                 {

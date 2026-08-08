@@ -19,6 +19,12 @@ dotnet run --project tools/Nova.AiLab -c Release -- match --trace-every 100 --ou
 # zwei Läufe desselben Specs, Hash-Ketten verglichen
 dotnet run --project tools/Nova.AiLab -c Release -- match --repeat 2 --hash-every 100
 
+# die laufende Partie im Terminal mitsehen
+dotnet run --project tools/Nova.AiLab -c Release -- match --watch
+
+# aufzeichnen und danach im Browser zurückspulen: out/run1/player.html öffnen
+dotnet run --project tools/Nova.AiLab -c Release -- match --view-every 25 --fog --out out/run1
+
 # Seed-Matrix über alle Kerne, jeder 20. Lauf doppelt zur Selbstkontrolle
 dotnet run --project tools/Nova.AiLab -c Release -- sweep --seeds 24 --out out/sweep
 
@@ -38,7 +44,10 @@ dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
 | `MatchRun.cs` | fährt eine Partie, liefert Outcome, Entscheidungstick, Hash-Kette, Trace |
 | `SlotMetrics.cs` / `TraceCollector.cs` | der Metrikkatalog aus §3.3, reiner Beobachter, nur Ganzzahlen |
 | `CountingAiPeerTransport.cs` | zählt Intent-Verdikte — die einzige Stelle, an der `intentsRejected` ehrlich entsteht |
-| `RunArtifacts.cs` | `result.json`, `trace.ndjson`, `hashchain.json` |
+| `ViewFrame.cs` / `ViewRecorder.cs` | die Sichtframes aus §3.4 — Tätigkeit, nicht nur Position; reiner Beobachter |
+| `TerminalView.cs` | ANSI-Liveansicht, beantwortet „läuft gerade etwas schief?" |
+| `HtmlPlayer.cs` | eine selbstständige Seite mit canvas: Scrubber, Einzeltick, Ebenen. Kein Build, kein Server |
+| `RunArtifacts.cs` | `result.json`, `trace.ndjson`, `hashchain.json`, `view.ndjson`, `player.html` |
 | `SweepRunner.cs` / `SeedSeries.cs` | Parallellauf mit Determinismus-Stichprobe (jeder 20. Lauf doppelt) |
 | `Program.cs` | Kommandozeile |
 

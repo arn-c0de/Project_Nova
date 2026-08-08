@@ -65,6 +65,16 @@ namespace Nova.AiLab
         /// <summary>Metric sample every n ticks (0 = no trace).</summary>
         public int TraceIntervalTicks;
 
+        /// <summary>View frame every n ticks (0 = no view window).</summary>
+        public int ViewIntervalTicks;
+
+        /// <summary>
+        /// Record the fog layer with each view frame. Off by default because it
+        /// dominates the file size; on when the question is "could the AI see
+        /// it?", which is the most common one.
+        /// </summary>
+        public bool RecordFog;
+
         /// <summary>
         /// Bind the counting transport instead of the canonical one, so intent
         /// verdicts become countable. Unset follows the trace: a run that

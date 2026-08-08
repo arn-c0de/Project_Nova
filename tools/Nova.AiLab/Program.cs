@@ -26,10 +26,13 @@ namespace Nova.AiLab
             "  --ticks <n>            tick budget (default 27000 = VictorySystem.TimeLimitTick)\n" +
             "  --trace-every <n>      metric sample every n ticks (default 0 = off)\n" +
             "  --hash-every <n>       state hash every n ticks (default 0 = end state only)\n" +
+            "  --view-every <n>       view frame every n ticks (default 0 = off)\n" +
+            "  --fog                  record the fog layer with each view frame\n" +
             "\n" +
             "match:\n" +
             "  --repeat <n>           run the same spec n times and compare the hash chains\n" +
-            "  --out <dir>            write result.json, trace.ndjson, hashchain.json\n" +
+            "  --watch                draw the running match in the terminal (implies --view-every 20)\n" +
+            "  --out <dir>            write result.json, trace.ndjson, hashchain.json, view.ndjson, player.html\n" +
             "\n" +
             "sweep:\n" +
             "  --seeds <n>            number of seeds, derived from --seed (default 8)\n" +
@@ -75,10 +78,21 @@ namespace Nova.AiLab
 
         private static int RunMatch(Options options)
         {
+            TerminalView live = null;
+            if (options.Watch)
+            {
+                live = new TerminalView(options.Spec.MapWidth, options.Spec.MapHeight);
+                Console.WriteLine(TerminalView.Legend);
+            }
+
             MatchRunResult first = null;
             for (int run = 0; run < options.Repeat; run++)
             {
-                MatchRunResult result = MatchRun.Execute(options.Spec);
+                // Only the first run is watched: two overlapping live views in
+                // one terminal would be unreadable, and the point of --repeat
+                // is the hash comparison, not the picture.
+                Action<ViewFrame> onFrame = (live != null && run == 0) ? live.Draw : (Action<ViewFrame>)null;
+                MatchRunResult result = MatchRun.Execute(options.Spec, onFrame);
                 Report(result, run);
 
                 if (options.OutputDirectory != null && run == 0)
@@ -120,9 +134,10 @@ namespace Nova.AiLab
             {
                 Console.WriteLine($"[run {run}] undecided within the budget of {r.TickBudget} ticks");
             }
-            if (r.Trace.Count > 0 || r.HashChain.Count > 0)
+            if (r.Trace.Count > 0 || r.HashChain.Count > 0 || r.View.Count > 0)
             {
-                Console.WriteLine($"[run {run}] {r.Trace.Count} metric samples, {r.HashChain.Count} hash chain entries");
+                Console.WriteLine($"[run {run}] {r.Trace.Count} metric samples, " +
+                                  $"{r.HashChain.Count} hash chain entries, {r.View.Count} view frames");
             }
         }
 
@@ -199,15 +214,22 @@ namespace Nova.AiLab
             public int SeedCount = 8;
             public int Parallelism;
             public string OutputDirectory;
+            public bool Watch;
 
             public static Options Parse(string[] args)
             {
                 var options = new Options();
                 var flags = new Dictionary<string, string>();
+                var switches = new HashSet<string> { "--fog", "--watch" };
 
                 for (int i = 1; i < args.Length; i++)
                 {
                     string flag = args[i];
+                    if (switches.Contains(flag))
+                    {
+                        flags[flag] = "true";
+                        continue;
+                    }
                     if (i + 1 >= args.Length) throw new ArgumentException($"option '{flag}' needs a value");
                     flags[flag] = args[++i];
                 }
@@ -230,6 +252,9 @@ namespace Nova.AiLab
                         case "--ticks": options.Spec.TickBudget = ParseInt(flag.Value, flag.Key); break;
                         case "--trace-every": options.Spec.TraceIntervalTicks = ParseInt(flag.Value, flag.Key); break;
                         case "--hash-every": options.Spec.HashIntervalTicks = ParseInt(flag.Value, flag.Key); break;
+                        case "--view-every": options.Spec.ViewIntervalTicks = ParseInt(flag.Value, flag.Key); break;
+                        case "--fog": options.Spec.RecordFog = true; break;
+                        case "--watch": options.Watch = true; break;
                         case "--repeat": options.Repeat = ParseInt(flag.Value, flag.Key); break;
                         case "--seeds": options.SeedCount = ParseInt(flag.Value, flag.Key); break;
                         case "--parallel": options.Parallelism = ParseInt(flag.Value, flag.Key); break;
@@ -239,6 +264,10 @@ namespace Nova.AiLab
                 }
 
                 if (slots.HasValue) options.Spec.Slots = MatchSpec.DefaultSlots(slots.Value);
+
+                // Watching needs frames; 20 ticks = 2 s of simulated time, the
+                // AI's own decision cadence, so every frame can differ.
+                if (options.Watch && options.Spec.ViewIntervalTicks <= 0) options.Spec.ViewIntervalTicks = 20;
 
                 if (options.Spec.Slots.Length > CanonicalOpening.MaxSeatedSlots)
                 {

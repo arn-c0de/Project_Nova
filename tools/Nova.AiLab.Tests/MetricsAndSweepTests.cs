@@ -139,6 +139,30 @@ namespace Nova.AiLab.Tests
         }
 
         [Test]
+        public void Trace_CountsOpenConstructionSites()
+        {
+            // Regression: the first version asked IsBuildingRole before
+            // TryGetSite, which made the site branch unreachable — an
+            // unfinished site carries UnitRole.Unit and only takes its
+            // definition role on completion. sitesOpen was a permanent zero
+            // and nothing said so.
+            MatchSpec spec = ShortSpec();
+            spec.TraceIntervalTicks = 20;
+
+            int maxSitesSeen = 0;
+            foreach (MetricSample sample in MatchRun.Execute(spec).Trace)
+            {
+                foreach (SlotMetrics slot in sample.Slots)
+                {
+                    if (slot.SitesOpen > maxSitesSeen) maxSitesSeen = slot.SitesOpen;
+                }
+            }
+
+            Assert.That(maxSitesSeen, Is.GreaterThan(0),
+                "the AI places buildings, so open sites must appear in the trace at some point");
+        }
+
+        [Test]
         public void TraceJson_ContainsNoFloatingPointNumber()
         {
             MatchSpec spec = ShortSpec();

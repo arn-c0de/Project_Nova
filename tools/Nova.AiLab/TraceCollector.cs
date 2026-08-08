@@ -160,24 +160,29 @@ namespace Nova.AiLab
                 SlotMetrics m = slots[u.PlayerId];
                 uint raw = UnitCommandStateView.ToRawEntityId(u.Id);
 
+                // A SITE MUST BE TESTED BEFORE THE ROLE, not after: an
+                // unfinished site carries UnitRole.Unit and 1 HP and only
+                // takes its definition role on completion
+                // (ConstructionSystem.SpawnBuildingEntity). Asking
+                // IsBuildingRole first makes the site branch unreachable and
+                // sitesOpen a permanent zero.
+                if (_host.Construction.TryGetSite(raw, out _, out _, out _))
+                {
+                    m.SitesOpen++;
+                    continue;
+                }
+
                 if (SimDefinitions.IsBuildingRole(u.Role))
                 {
-                    if (_host.Construction.TryGetSite(raw, out _, out _, out _))
+                    m.BuildingsByRole[(int)u.Role - SlotMetrics.FirstBuildingRole]++;
+                    if (_host.Production.TryGetProducer(raw, out int entryCount, out _, out _))
                     {
-                        m.SitesOpen++;
-                    }
-                    else
-                    {
-                        m.BuildingsByRole[(int)u.Role - SlotMetrics.FirstBuildingRole]++;
-                        if (_host.Production.TryGetProducer(raw, out int entryCount, out _, out _))
+                        m.Producers++;
+                        for (int e = 0; e < entryCount; e++)
                         {
-                            m.Producers++;
-                            for (int e = 0; e < entryCount; e++)
+                            if (_host.Production.TryGetQueueEntry(raw, e, out _, out ushort remaining, out _))
                             {
-                                if (_host.Production.TryGetQueueEntry(raw, e, out _, out ushort remaining, out _))
-                                {
-                                    m.QueuedUnits += remaining;
-                                }
+                                m.QueuedUnits += remaining;
                             }
                         }
                     }

@@ -140,6 +140,8 @@ namespace Nova.AiLab
                 StartingCreditsAE = template.StartingCreditsAE,
                 HashIntervalTicks = template.HashIntervalTicks,
                 TraceIntervalTicks = template.TraceIntervalTicks,
+                ViewIntervalTicks = template.ViewIntervalTicks,
+                RecordFog = template.RecordFog,
                 CountIntents = template.CountIntents,
                 Slots = slots,
             };

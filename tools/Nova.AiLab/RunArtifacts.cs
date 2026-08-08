@@ -25,6 +25,7 @@ namespace Nova.AiLab
         public const string ResultFileName = "result.json";
         public const string TraceFileName = "trace.ndjson";
         public const string HashChainFileName = "hashchain.json";
+        public const string ViewFileName = "view.ndjson";
 
         public static void Write(string directory, MatchSpec spec, MatchRunResult result)
         {
@@ -46,6 +47,22 @@ namespace Nova.AiLab
             if (result.HashChain.Count > 0)
             {
                 File.WriteAllText(Path.Combine(directory, HashChainFileName), BuildHashChainJson(result));
+            }
+
+            if (result.View.Count > 0)
+            {
+                var view = new StringBuilder(result.View.Count * 512);
+                for (int i = 0; i < result.View.Count; i++)
+                {
+                    view.Append(result.View[i].ToJsonLine()).Append('\n');
+                }
+                File.WriteAllText(Path.Combine(directory, ViewFileName), view.ToString());
+
+                // The player travels with the frames: an artifact directory is
+                // copyable as a unit and opens with a double-click.
+                File.WriteAllText(
+                    Path.Combine(directory, HtmlPlayer.FileName),
+                    HtmlPlayer.Build(spec.MapWidth, spec.MapHeight, spec.Slots.Length, result.Seed));
             }
         }
 
