@@ -33,6 +33,12 @@
     <Compile Include="..\Nova.AiLab\DuelArena.cs" Link="AiLab\DuelArena.cs" />
     <Compile Include="..\Nova.AiLab\DuelTable.cs" Link="AiLab\DuelTable.cs" />
     <Compile Include="..\Nova.AiLab\MovementScenarios.cs" Link="AiLab\MovementScenarios.cs" />
+    <Compile Include="..\Nova.AiLab\LabProfiles.cs" Link="AiLab\LabProfiles.cs" />
+    <Compile Include="..\Nova.AiLab\ResultSet.cs" Link="AiLab\ResultSet.cs" />
+    <Compile Include="..\Nova.AiLab\ResultSetFile.cs" Link="AiLab\ResultSetFile.cs" />
+    <Compile Include="..\Nova.AiLab\TournamentRunner.cs" Link="AiLab\TournamentRunner.cs" />
+    <Compile Include="..\Nova.AiLab\ComparisonReport.cs" Link="AiLab\ComparisonReport.cs" />
+    <Compile Include="..\Nova.AiLab\PrDraft.cs" Link="AiLab\PrDraft.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -34,6 +34,12 @@ dotnet run --project tools/Nova.AiLab -c Release -- duel --out out/duel
 # die vier Bewegungsszenarien (Issue 03)
 dotnet run --project tools/Nova.AiLab -c Release -- movement --out out/movement
 
+# alle Kandidatenprofile gegen die eingefrorene Referenz: out/compare/report.html
+dotnet run --project tools/Nova.AiLab -c Release -- compare --out out/compare
+
+# gegen eine archivierte Ergebnismenge — verweigert bei fremdem Commit oder Definitionstabelle
+dotnet run --project tools/Nova.AiLab -c Release -- compare --against out/alt/resultset.json --out out/compare2
+
 # vier Slots (die Karte hat vier Eckplätze)
 dotnet run --project tools/Nova.AiLab -c Release -- match --slots 4
 
@@ -57,6 +63,11 @@ dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
 | `SweepRunner.cs` / `SeedSeries.cs` | Parallellauf mit Determinismus-Stichprobe (jeder 20. Lauf doppelt) |
 | `DuelArena.cs` / `DuelTable.cs` | die Gegentabelle: AE-Parität, drei Abstände, beide Richtungen, Belagerung |
 | `MovementScenarios.cs` | `arrival`, `blocking`, `standoff`, `detour` — Hindernisse sind Daten, nicht Code |
+| `LabProfiles.cs` | die Kandidatenprofile — heute die einzige Achse mit echter Varianz |
+| `TournamentRunner.cs` | jeder Kandidat gegen die Referenz, in **beiden** Fraktionsrollen |
+| `ResultSet.cs` / `ResultSetFile.cs` | Ergebnismenge mit Herkunft; verweigert den Vergleich, statt Unvergleichbares zu mischen |
+| `ComparisonReport.cs` | der Bericht — Kennzahlen nebeneinander, **keine Rangliste** |
+| `PrDraft.cs` | PR-Entwurf mit ausschliesslich Gemessenem; Beobachtungsabschnitt bleibt leer |
 | `Program.cs` | Kommandozeile |
 
 ## Zwei Dinge, die man wissen muss, bevor man Zahlen liest

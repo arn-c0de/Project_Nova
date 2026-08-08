@@ -22,6 +22,8 @@ namespace Nova.AiLab
             "  duel [options]         measure the counter-table: every role pairing, three distances,\n" +
             "                         both directions, plus the siege echelon\n" +
             "  movement [options]     the four movement scenarios: arrival, blocking, standoff, detour\n" +
+            "  compare [options]      run every candidate profile against the frozen reference and\n" +
+            "                         write report.html, resultset.json and a PR draft\n" +
             "\n" +
             "Spec:\n" +
             "  --spec <file>          JSON MatchSpec (plan section 3.2); flags below override it\n" +
@@ -48,6 +50,13 @@ namespace Nova.AiLab
             "  --ticks <n>            tick budget per duel (default 3000)\n" +
             "  --out <dir>            write duels.ndjson\n" +
             "  --parallel <n>         max concurrent duels (default: processor count)\n" +
+            "\n" +
+            "compare:\n" +
+            "  --seeds <n>            seeds per candidate (default 1 — the seed axis is empty today)\n" +
+            "  --ticks <n>            tick budget per match (default 27000)\n" +
+            "  --out <dir>            write report.html, resultset.json, pr-draft.md and one run per candidate\n" +
+            "  --against <file>       compare against an archived resultset.json instead of the built-in reference\n" +
+            "  --parallel <n>         max concurrent candidates (default: processor count)\n" +
             "\n" +
             "movement:\n" +
             "  --group <n>            units per group (default 8)\n" +
@@ -79,6 +88,7 @@ namespace Nova.AiLab
                 "sweep" => RunSweep(options),
                 "duel" => RunDuels(options),
                 "movement" => RunMovement(options),
+                "compare" => RunCompare(options),
                 _ => Fail($"unknown mode '{args[0]}'"),
             };
         }
@@ -342,6 +352,99 @@ namespace Nova.AiLab
         };
 
         // ----------------------------------------------------------------
+        // compare
+        // ----------------------------------------------------------------
+
+        private static int RunCompare(Options options)
+        {
+            ulong[] seeds = SeedSeries.Derive(options.Spec.Seed, options.SeedCount);
+            string commit = CurrentCommit();
+
+            Console.WriteLine($"compare: {LabProfiles.Candidates.Count} candidates x {seeds.Length} seeds " +
+                              $"x 2 faction seatings, budget {options.Spec.TickBudget} ticks, commit {commit}");
+            if (seeds.Length > 1)
+            {
+                Console.WriteLine("NOTE: the seed axis is empty — no simulation system draws from the kernel " +
+                                  "PRNG, so extra seeds cost time and add no observations.");
+            }
+
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            ResultSet set = TournamentRunner.Run(
+                LabProfiles.Candidates, seeds, options.Spec.TickBudget,
+                options.OutputDirectory, commit, options.Parallelism);
+            watch.Stop();
+
+            string referenceId = LabProfiles.Reference.ProfileId;
+            foreach (CandidateResult c in set.Candidates)
+            {
+                Console.WriteLine(
+                    $"  {c.ProfileId,-16} win {c.WinPercent,3}%  {c.Wins}/{c.Losses}/{c.Draws}  " +
+                    $"decided {c.AverageDecidedTick,6}  credits {c.AverageCredits,7}  " +
+                    $"army {c.AverageArmySize,3}  lost {c.AverageUnitsLost,4}  rejected {c.IntentsRejectedSum}");
+            }
+            Console.WriteLine($"{set.Candidates.Count} candidates in {watch.ElapsedMilliseconds} ms");
+
+            // An archived set is only comparable when its provenance matches.
+            // The refusal is the product here, not an error path.
+            string refusal = null;
+            if (options.AgainstFile != null)
+            {
+                ResultSet archived = ResultSetFile.Load(options.AgainstFile);
+                refusal = set.WhyNotComparableWith(archived);
+                Console.WriteLine(refusal == null
+                    ? $"archived set {options.AgainstFile} is comparable"
+                    : $"COMPARISON REFUSED against {options.AgainstFile}: {refusal}");
+            }
+
+            if (options.OutputDirectory != null)
+            {
+                Directory.CreateDirectory(options.OutputDirectory);
+                File.WriteAllText(Path.Combine(options.OutputDirectory, ResultSetFile.FileName), set.ToJson());
+                File.WriteAllText(
+                    Path.Combine(options.OutputDirectory, ComparisonReport.FileName),
+                    refusal == null
+                        ? ComparisonReport.Build(set, referenceId)
+                        : ComparisonReport.BuildRefusal(refusal, set));
+
+                foreach (CandidateResult c in set.Candidates)
+                {
+                    if (string.Equals(c.ProfileId, referenceId, StringComparison.Ordinal)) continue;
+                    File.WriteAllText(
+                        Path.Combine(options.OutputDirectory, $"pr-draft-{c.ProfileId}.md"),
+                        PrDraft.Build(set, referenceId, c.ProfileId));
+                }
+
+                Console.WriteLine($"report written to {Path.Combine(options.OutputDirectory, ComparisonReport.FileName)}");
+                Console.WriteLine("PR drafts written — the played-observation section in each is deliberately empty.");
+            }
+
+            return refusal == null ? 0 : 2;
+        }
+
+        /// <summary>The commit a result set was measured at; a set retires with it (plan section 3.7).</summary>
+        private static string CurrentCommit()
+        {
+            try
+            {
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo("git", "rev-parse HEAD")
+                    {
+                        RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true,
+                    },
+                };
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd().Trim();
+                process.WaitForExit();
+                return string.IsNullOrEmpty(output) ? "unknown" : output;
+            }
+            catch (Exception)
+            {
+                return "unknown";
+            }
+        }
+
+        // ----------------------------------------------------------------
         // Argument parsing
         // ----------------------------------------------------------------
 
@@ -355,6 +458,7 @@ namespace Nova.AiLab
             public bool Watch;
             public int UnitsPerSide = DuelTable.DefaultUnitsPerSide;
             public int GroupSize = 8;
+            public string AgainstFile;
 
             public static Options Parse(string[] args, string mode)
             {
@@ -400,6 +504,7 @@ namespace Nova.AiLab
                         case "--parallel": options.Parallelism = ParseInt(flag.Value, flag.Key); break;
                         case "--units": options.UnitsPerSide = ParseInt(flag.Value, flag.Key); break;
                         case "--group": options.GroupSize = ParseInt(flag.Value, flag.Key); break;
+                        case "--against": options.AgainstFile = flag.Value; break;
                         case "--out": options.OutputDirectory = flag.Value; break;
                         default: throw new ArgumentException($"unknown option '{flag.Key}'");
                     }
@@ -415,6 +520,10 @@ namespace Nova.AiLab
                 // would just idle after the last unit died. An explicit --ticks
                 // still wins.
                 if ((mode == "duel" || mode == "movement") && !flags.ContainsKey("--ticks")) options.Spec.TickBudget = 3000;
+
+                // The seed axis is empty, so a comparison defaults to ONE seed
+                // instead of pretending eight of them are eight observations.
+                if (mode == "compare" && !flags.ContainsKey("--seeds")) options.SeedCount = 1;
 
                 if (options.Spec.Slots.Length > CanonicalOpening.MaxSeatedSlots)
                 {
