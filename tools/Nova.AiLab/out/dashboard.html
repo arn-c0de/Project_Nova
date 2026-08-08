@@ -588,12 +588,17 @@ document.getElementById('duelnote').innerHTML =
   const weapon  = D.siege.filter(r => r.range === 'LongestWeapon');
   const wd = weapon.filter(r => r.decided).length;
   document.getElementById('siegenote').innerHTML =
-    `<b>Faktor 12, nicht Faktor 2,5.</b> Die Gegenmatrix lässt zwischen Kinetik (30 % gegen
-     <span class="mono">Building</span>) und Explosiv (75 %) einen Faktor 2,5 erwarten. Gemessen
-     braucht Legion-<span class="mono">BasicInfantry</span> 632 Ticks für die Barracks, die
-     <span class="mono">AntiArmorInfantry</span> derselben Fraktion 52 — Nachladezeit, Stückzahl
-     aus dem AE-Budget und Gebäude-Lebenspunkte machen aus dem Matrixwert etwas deutlich Anderes.
-     Genau dafür wird gemessen statt abgelesen.
+    `<b>Diese Staffel läuft NICHT auf AE-Parität</b> — anders als die Einheitenduelle. Jeder
+     Angreifer stellt sechs Einheiten <em>seiner</em> Kosten, die Balkenlängen sind deshalb
+     untereinander nicht direkt vergleichbar: Die AE-Zahl gehört zur Tickzahl dazu.
+     <br><b>Explosiv liegt über dem Matrixwert, aber nicht um Faktor 12.</b> Die Gegenmatrix
+     lässt zwischen Kinetik (30 % gegen <span class="mono">Building</span>) und Explosiv (75 %)
+     einen Faktor 2,5 erwarten. Legion-<span class="mono">BasicInfantry</span> braucht 632 Ticks
+     für die eigene Barracks und setzt dafür 360 AE ein, die
+     <span class="mono">AntiArmorInfantry</span> 52 Ticks für 1.200 AE. Das sind 12,2× an reiner
+     Zeit — <b>je eingesetztem AE aber 3,65×</b>. Auch das liegt über der Matrix, weil
+     Nachladezeit und Gebäude-Lebenspunkte dazukommen; die 12 allein wären ein Vergleich
+     zwischen zwei verschieden grossen Geldbeuteln.
      <br><b>Die <span class="mono">DefensePlatform</span> schiesst zurück</b> — sie ist die einzige,
      die das tut, und sie kostet den Angreifer sichtbar Einheiten (Wert am Balkenende).
      <br><b>Nur ${wd} von ${weapon.length} Belagerungen auf Waffenreichweite wurden entschieden</b>,

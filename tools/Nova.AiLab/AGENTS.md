@@ -165,7 +165,7 @@ der Ausgangspunkt jeder Verbesserung — wer sie verschiebt, muss sagen, um wiev
 |---|---|---|
 | Fernkämpfer laufen bis auf **0 Zellen** heran | Reichweite 20, Sicht 10, **Feuereröffnung bei 7** (Allianz; Legion 18/10/7) → nutzbarer Überlauf **7**, nicht 20 | `movement.ndjson`, `standoff`: `usableRangeOvershootCells` |
 | Artillerie kann ihre Reichweite ohne Aufklärung nicht nutzen | 4 von 36 Siegen (Allianz), 2 von 36 (Legion); alle 100 kontaktlosen Duelle liegen auf Waffenreichweite | `duels.ndjson` |
-| Belagerung streut viel weiter als der Matrixwert | Legion-`BasicInfantry` 632 Ticks gegen Barracks, `AntiArmorInfantry` 52 — Faktor 12 statt der erwarteten 2,5 | `duels.ndjson`, `siege: true` |
+| Belagerung: Explosiv liegt über dem Matrixwert, aber nicht um Faktor 12 | Legion gegen die eigene Barracks, je 6 Einheiten: `BasicInfantry` 632 Ticks für 360 AE, `AntiArmorInfantry` 52 für 1.200 AE. Reine Zeit 12,2× — **je AE aber 3,65×** gegen die 2,5× der Matrix | `duels.ndjson`, `siege: true` |
 | Die Spawnreihenfolge kippt echte Paarungen | **5** Richtungsabweichungen (Spiegelpaarungen werden nicht mehr mit sich selbst verglichen) | `duels.ndjson`, beide Richtungen |
 | Die KI wird **nie** abgelehnt | `intentsRejected` 0 von 1021 | `trace.ndjson` |
 | Enge Stellen sind kein Problem | 16 Einheiten durch eine **Zwei-Zellen**-Engstelle, 0 Blockaden, Ankunft 158/178 | `movement.ndjson`, `blocking`: `wallGapCells` |

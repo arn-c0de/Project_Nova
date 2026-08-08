@@ -293,6 +293,11 @@ def _siege_section(record):
         'Gebäude schiessen nicht zurück — ausser der `DefensePlatform`. Gemessen wird deshalb die '
         'Zeit bis zum Abriss, gegen das eigene Fraktionsgebäude, Staffel *Berührung*. Sortierung '
         'alphabetisch, nicht nach Zeit.', '',
+        '> [!WARNING]',
+        '> **Diese Staffel läuft nicht auf AE-Parität**, anders als die Einheitenduelle. Jeder',
+        '> Angreifer stellt sechs Einheiten *seiner* Kosten, die Tickzahlen sind untereinander',
+        '> deshalb nicht direkt vergleichbar — die AE-Spalte gehört zur Tickspalte dazu. Wer',
+        '> Waffenwirkung vergleichen will, rechnet `Ticks × AE`.', '',
         table(['Angreifer', 'Gebäude', 'Ticks bis Abriss', 'Einheiten', 'AE', 'eigene Verluste'],
               rows, 'llrrrr'), '',
         f"**Nur {sum(1 for r in weapon if r['decided'])} von {len(weapon)} Belagerungen auf "

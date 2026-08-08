@@ -153,6 +153,12 @@ AE-Parität statt Stückzahlparität, drei Startabstände, jede Paarung in beide
 
 Gebäude schiessen nicht zurück — ausser der `DefensePlatform`. Gemessen wird deshalb die Zeit bis zum Abriss, gegen das eigene Fraktionsgebäude, Staffel *Berührung*. Sortierung alphabetisch, nicht nach Zeit.
 
+> [!WARNING]
+> **Diese Staffel läuft nicht auf AE-Parität**, anders als die Einheitenduelle. Jeder
+> Angreifer stellt sechs Einheiten *seiner* Kosten, die Tickzahlen sind untereinander
+> deshalb nicht direkt vergleichbar — die AE-Spalte gehört zur Tickspalte dazu. Wer
+> Waffenwirkung vergleichen will, rechnet `Ticks × AE`.
+
 | Angreifer | Gebäude | Ticks bis Abriss | Einheiten | AE | eigene Verluste |
 | --- | --- | --: | --: | --: | --: |
 | **All.AntiArmorInfantry** | All.Barracks | 52 | 6 | 1.500 | 0 |
