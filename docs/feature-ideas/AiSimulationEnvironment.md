@@ -26,13 +26,17 @@ finden.
 **Drei Regeln, die daraus folgen:**
 
 1. **Laborcode gerät nie in einen PR-Branch.** `feat/`-Branches werden frisch
-   von `upstream/main` abgezweigt. Kein Cherry-Pick aus `lab/`.
+   von `upstream/main` abgezweigt. Kein Cherry-Pick aus `lab/`. Leitplanke
+   dazu: `.gitignore` kennt `tools/Nova.AiLab/` nicht — ein Eintrag in
+   `.git/info/exclude` (lokal, berührt keine Repo-Datei) schützt vor einem
+   versehentlichen `git add -A`.
 2. **PR-Tests hängen nicht vom Labor ab.** Sie folgen dem Muster in
    `SkirmishAiTests.cs` — in sich geschlossen. Sonst ist der PR ohne das lokale
    Werkzeug nicht baubar.
 3. **Ein grüner Laborlauf ist Diagnose, kein Nachweis.** Das Repo behandelt
-   seine `output/`-Artefakte schon so (D-061/D-064). Was im Spiel nicht gesehen
-   wurde, steht genau so im PR-Text.
+   seine `output/`-Artefakte schon so (D-061/D-063, D-067 K1; der SimRunner
+   sagt es selbst: „values outside the … reference method are DIAGNOSIS").
+   Was im Spiel nicht gesehen wurde, steht genau so im PR-Text.
 
 ---
 
@@ -42,14 +46,22 @@ finden.
 |---|---|
 | Kernel engine-frei | `Simulation/SimulationKernel.cs:13` |
 | KI engine-frei | `AI/SkirmishAiSystem.cs:88` |
-| Headless-Läufer, net8.0 | `tools/Nova.SimRunner/Program.cs` — Host in ~40 Zeilen |
-| Vollständige KI-Partie headless | `tools/Nova.SimRunner.Tests/SkirmishAiTests.cs` — Entscheidung bei Tick 2242 |
+| Headless-Läufer, net8.0 | `tools/Nova.SimRunner/Program.cs` — `Main` in ~24 Zeilen, der Rest der 450-Zeilen-Datei ist Szenario-Dispatch |
+| Vollständige KI-Partie headless | `tools/Nova.SimRunner.Tests/SkirmishAiTests.cs` — Entscheidung bei ~Tick 2242 laut Testdoku (asserted ist nur `<= 6000`) |
 | 10.000-Tick-Determinismuslauf | `tools/Nova.SimRunner/Determinism10000Scenario.cs` |
 
 Entscheidend ist das *Wie*: Die Headless-Lane kompiliert per
 `<Compile Include="..\..\Assets\_Project\Scripts\...">` **dieselben
-Quelldateien**, die Unity lädt — der *shared-sources contract* (G0-B,
-`SimulationCore.md` §9).
+Quelldateien**, die Unity lädt — `SimulationCore.md` §9 („Plattform- und
+Assembly-Parität": gleiche Quellen, gleiche Defines, kopierte Logik ist
+unzulässig).
+
+**Eine Lücke im Ist-Zustand, die das Labor selbst schließen muss:**
+`Nova.SimRunner.csproj` linkt `Core`, `Simulation` und `Networking` — **nicht
+`AI/`**, obwohl §9 die `Nova.AI`-Quellen nennt. Die KI-Partie läuft headless
+heute nur über das Tests-Projekt. `Nova.AiLab` bindet die `AI/`- und
+`AI.Data/`-Quellen deshalb selbst per `<Compile Include>` ein; das
+SimRunner-csproj taugt als Muster, nicht als Kopiervorlage.
 
 > „1:1 wie im echten Spiel" ist damit eine **strukturelle Eigenschaft**, keine
 > Disziplinleistung: es kann nicht auseinanderlaufen, weil es nur eine Quelle
@@ -100,7 +112,10 @@ tools/Nova.AiLab/  (eigenes csproj, net8.0, linkt dieselben Quellen)
 ### 3.1 `MultiSlotAiHost`
 
 Grundlage ist der `AiHost` aus `SkirmishAiTests.cs` — laut eigener Doku ein
-*„byte-exact wiring mirror of MatchRunner.InitializeMatch"*.
+*„byte-exact wiring mirror of MatchRunner.InitializeMatch"*. Zu wissen: die
+Datei existiert **doppelt** (`tools/Nova.SimRunner.Tests/` und
+`Assets/Tests/EditMode/AI/`, manuell synchron zu halten); das Labor spiegelt
+nur die tools-Seite, Verhaltens-PRs ziehen beide Kopien nach.
 
 Zu verallgemeinern: Slots von 2 auf N (≤ 8), je KI-Slot eigene `MatchSession` +
 `CommandIngress` + `AiPeerCommandTransport` in die eine Host-Ingress. Offen
@@ -108,14 +123,19 @@ dafür: `CommandLimits.ReservedPlayerSlots = 8`, `FogOfWarSystem.MaxTeams = 8`,
 `VictorySystem.MaxSlots = 8`.
 
 **Registrierungsreihenfolge unverändert** — sie ist Vertrag
-(`13-15_Parallelbetrieb.md`, Punkt 3): Economy → Construction → Production →
-Pathfinding → Movement → FogOfWar → Combat → [KI-Slots] → Victory. Ein Test
-nagelt sie gegen `MatchRunner` fest.
+(`13-15_Parallelbetrieb.md`, Abschnitt „Neue Systeme — wer die Tick-Reihenfolge
+setzt"): Economy → Construction → Production → Pathfinding → Movement →
+FogOfWar → Combat → [KI-Slots] → Victory. Ein Test nagelt sie gegen
+`MatchRunner` fest — Vorbild existiert schon: `CanonicalMatchSetupTests.cs:91`
+pinnt genau diese Reihenfolge inklusive `SkirmishAiSystem`.
 
 **Isolation:** Jedes Match baut Kernel, `EntityManager` und alle Systeme frisch.
 Geteilt wird nur Unveränderliches (`SimDefinitions`, `WeaponProfiles`,
 `DamageMatrix` sind `static readonly`, damit thread-sicher) — N Matches auf N
-Kernen, ohne Sperren.
+Kernen, ohne Sperren. Geprüft: Unter `Simulation/`, `Core/` und `AI/` gibt es
+**kein einziges nicht-readonly statisches Feld**; alle Systeme sind
+Instanzklassen. Die Stichproben-Doppelläufe aus §3.7 bewachen, dass das so
+bleibt.
 
 ### 3.2 Ein- und Ausgabe
 
@@ -216,9 +236,15 @@ Größe: ~200 Entitäten × ~30 Byte × 600 Frames ≈ 4 MB je Partie. Über
    Ketten; der Selbsttest, den `Determinism10000Scenario` vormacht.
 4. **Replay-Konformanz** — der aufgezeichnete Command-Strom wird im echten
    Unity-Spiel abgespielt; gleicher Endzustands-Hash = nachgewiesen, nicht
-   behauptet (`MatchFingerprint` verweigert den Start bei jeder Abweichung).
-   **Das ist die Brücke zurück:** Was das Labor findet, wird so gegengeprüft,
-   bevor es als „gesehen" gilt.
+   behauptet. `MatchFingerprint` verweigert den Start bei Abweichung — heute
+   wirksam über `DefinitionsHash64` plus Schema-Versionen; Rules- und Map-Hash
+   sind noch leere Q-040-Stubs, gegen geänderte Regeln oder Karten schützt der
+   Fingerprint also (noch) nicht. **Das ist die Brücke zurück:** Was das Labor
+   findet, wird so gegengeprüft, bevor es als „gesehen" gilt.
+   Offene Abhängigkeit: Diese Brücke braucht ein spielbares Build auf unserer
+   Plattform — der **Linux-Build ist laut v1.1.0 Bringschuld des Netzstrangs**
+   und steht aus. Bis dahin trägt die Konformanzprüfung nur so weit, wie ein
+   Testbuild reicht; was nicht gespielt wurde, steht als ungespielt im PR.
 
 ### 3.6 Bewertung: Vergleich statt Rangliste
 
@@ -309,8 +335,13 @@ laut v1.1.0 dem Maintainer, und dort steht ausdrücklich: „Befunde kommen per 
 oder Issue, nicht per PR." Die `findings/`-Einträge sind also Vorlage für eine
 Meldung, nicht selbst der Beitrag.
 
-Ein bereits bekannter Kandidat steht in §5: `SetRallyPoint` lehnt das Refinery
-ab, weil die Producer-Liste älter ist als der D-077-Umzug.
+Ein erster Kandidat: **explizite `AttackTarget`-Befehle prüfen die `PlayerId`
+nicht.** `ValidateDomain` (`UnitCommandStateView.cs:174`) hat für
+`AttackTarget` keinen Case, und die Feuerphase im `CombatSystem` prüft nur
+Reichweite und Sichtbarkeit — Friendly Fire per Befehl ist möglich, während
+die Auto-Acquisition (D-087) strikt feindlich filtert. Für die KI-Arbeit heißt
+das: Das Score-Targeting muss eigene Einheiten selbst ausfiltern, der Executor
+tut es nicht.
 
 
 ### 3.9 Drei Laufarten
@@ -323,6 +354,11 @@ schmale Laufarten. Sie kosten wenig, weil sie denselben Host benutzen.
 Arena registriert Economy, Construction und Production — sie ticken nur über
 leere Tabellen. Ein weggelassenes System wäre eine andere Tick-Reihenfolge und
 damit ein anderes Spiel; dann misst man etwas, das es nicht gibt.
+
+Bekannte harte Kappen für Skalierungsläufe: `MaxProducers = 64` und
+`MaxRepairOrders = 64` — jenseits davon wird abgelehnt, nicht gepuffert. Für
+kanonische Partien irrelevant, für einen Massen-Sweep eine Grenze, die der
+Bericht ausweisen muss statt sie als Verhalten zu deuten.
 
 | Laufart | Aufbau | Dauer | Für |
 |---|---|---|---|
@@ -347,10 +383,21 @@ Das Budget wird so gewählt, dass beide Seiten mindestens vier Einheiten stellen
 
 **Echter Fog of War, wie im Spiel.** `CombatSystem` verlangt das Ziel als
 `Visible` in der committed Team-Sicht — Standardsichtweite ist 10 m, Artillerie
-schießt 20 m. Dass Artillerie ihre Reichweite ohne Aufklärung nicht nutzen kann,
-ist damit ein echter Balance-Befund und kein Messfehler. Zu beachten: Die Sicht
-wird nur mit 5 Hz neu berechnet, zwischen zwei Commits gilt die letzte Maske —
-ein Ziel bleibt also bis zu zwei Ticks länger beschießbar.
+schießt darüber hinaus (Allianz 20, Legion 18 Tiles). Dass Artillerie ihre
+Reichweite ohne Aufklärung nicht nutzen kann, ist damit ein echter
+Balance-Befund und kein Messfehler. Zu beachten: Die Sicht wird nur mit 5 Hz
+neu berechnet, zwischen zwei Commits gilt die letzte Maske — ein Ziel bleibt
+also bis zu zwei Ticks länger beschießbar.
+
+**Jede Einheiten-Zahl ist fraktionsgebunden.** Die Werte sind absichtlich
+asymmetrisch — Artillerie 20/18 Tiles und 110/60 Schaden, Harvester-Cargo
+330/300 AE (Allianz/Legion). Genau diese Asymmetrie ist die
+Legion-Waffenidentität aus Issue 01; ein Bericht, der „die Artillerie" ohne
+Fraktion nennt, mittelt zwei verschiedene Waffen. Dazu gehört die Einordnung:
+Die Duell-Arena *misst* Issue 01, die *Umsetzung* neuer Legion-Werte hängt an
+der `Definitions/`-Absprache — die kanonischen Werte liegen in
+`SimDefinitions.cs`, geteilte Vertragsfläche; Issue 01 ist deshalb bis zur
+Absprache als blockiert markiert.
 
 **Drei Startabstände statt einem.** Ein einzelner Abstand entscheidet die halbe
 Tabelle vor:
@@ -368,6 +415,16 @@ deshalb einen Move-Intent auf die Mitte der Gegenseite. Damit misst die lange
 Staffel zusätzlich das Annäherungsverhalten — was gewollt ist, aber beim Lesen
 der Zahlen mitgedacht gehört.
 
+**Belagerung als eigene Staffel.** Die Rüstungsklasse `Building` ist eine ganze
+Spalte der Gegenmatrix — Kinetik trifft sie mit 30 %, Explosiv mit 75 %. Ohne
+sie bleibt ein Drittel der Gegenlogik ungeprüft, und „womit reiße ich eine Basis
+ein" ist die Hälfte dessen, was eine Waffe leisten muss. Gebäude schießen nicht
+zurück, einzige Ausnahme ist die `DefensePlatform`; gemessen wird deshalb anders:
+Ticks bis zum Abriss, eingesetztes AE gegen Gebäudekosten, und bei der
+`DefensePlatform` zusätzlich die Verluste des Angreifers. Erwartung aus der
+Matrix ist ein Faktor 2,5 zwischen Kinetik und Explosiv — die Messung zeigt, was
+Nachladezeit, Reichweite und Gebäude-Lebenspunkte daraus machen.
+
 **Jede Paarung läuft in beide Richtungen.** Die dokumentierte
 **Duell-Asymmetrie** — bei gegenseitigem Kill im selben Tick gewinnt der
 niedrigere Entity-Index — macht A-gegen-B und B-gegen-A zu zwei verschiedenen
@@ -375,17 +432,46 @@ Messungen. Weichen sie auseinander, ist die Paarung so knapp, dass die
 Spawnreihenfolge entscheidet. Das ist selbst ein Befund und gehört in den
 Bericht, nicht wegkalibriert.
 
-**`movement` — Ankunft statt Wegfindung.** Spawnt eine Gruppe, setzt Gebäude als
-Hindernisse (`PlaceCompletedBuilding`, Fußabdrücke sind seit dem
-Truppenführungs-Sprint unpassierbar) und gibt einen Zielbefehl. Gemessen wird,
-was Issue 03 fordert: Ankunftszeit, wie viele überhaupt ankommen, Streuung am
-Ziel, Einheiten mit `IsMoving` ohne Positionsänderung (Blockade), und bei
-Fernkämpfern der gehaltene Abstand.
+**`movement` — vier Szenarien.** Aufbau ist jeweils Daten, nicht Code: eine
+Hindernisliste (`PlaceCompletedBuilding` — Fußabdrücke sind seit dem
+Truppenführungs-Sprint unpassierbar), eine Einheitengruppe, ein Befehl.
+
+| Szenario | Aufbau | Gemessen |
+|---|---|---|
+| `arrival` | Gruppe, freies Feld, ein Zielbefehl | Ticks bis zur Ankunft, Anteil angekommen, Streuung als größte Chebyshev-Distanz zum Zielzentrum |
+| `blocking` | zwei kreuzende Gruppen; große Gruppe durch eine Engstelle zwischen Fußabdrücken | Einheiten mit `IsMoving` und unveränderter Position über K Ticks: Anzahl, Gesamtdauer, längste einzelne Blockade |
+| `standoff` | Fernkämpfer mit Angriffsbefehl auf ein stehendes Ziel | kleinster erreichter Zentrumsabstand gegen die eigene `AttackRange` — der „Überlauf" ist die Zahl, die Issue 03 meint |
+| `detour` | Ziel hinter einer Gebäudewand mit einem Durchlass | Weglänge gegen Luftlinie, Ankunftszeit, ob überhaupt jemand ankommt |
+
+`standoff` braucht Combat im Lauf und ist damit ein Mischszenario — das ist
+gewollt: Abstandhalten *ist* eine Kampfeigenschaft, kein reines Bewegungsthema.
+`detour` prüft Flow-Field und `CostField` unmittelbar.
 
 Seit v1.1.0 gehört auch `Simulation/Pathfinding/` uns — Flow-Field und
 `CostField` inbegriffen, unter der `IsWalkable`-Auflage. Der ganze Weg vom
 Befehl bis zur Ankunft liegt damit im eigenen Scope, und diese Laufart deckt
 ihn ab.
+
+### 3.10 Berichte und PR-Entwurf
+
+**Der Vergleichsbericht ist eine HTML-Datei**, gleiche Machart wie der
+Abspieler: eine selbstständige Seite, sortierbare Tabelle, Verlaufskurven inline,
+Abweichung zur Referenz farbig, Klick führt in den zugehörigen
+Sichtfenster-Lauf. Weil es keine Rangliste gibt (§3.6), *ist* die Lesbarkeit das
+Produkt — und Technik wie Machart teilt sich der Bericht mit dem Abspieler, der
+Zusatzaufwand ist entsprechend klein.
+
+**PR-Textentwurf.** Zu jedem Vorher/Nachher-Vergleich schreibt das Labor einen
+Entwurf für den späteren PR: geänderte Kennzahlen mit alten und neuen Werten,
+verwendete Seeds, Verweis auf das `match.replay`, betroffene Dateien und der
+Hinweis, welche der vier Baseline-Dateien dadurch rot wird.
+
+Eine Grenze gilt dabei absolut: **Der Entwurf enthält ausschließlich Gemessenes.**
+Der Abschnitt für die gespielte Beobachtung bleibt leer und ist als leer
+erkennbar; kein generierter Satz formuliert ein Laborergebnis so, als sei es im
+Spiel gesehen worden. „Nichts als fertig melden, was nicht gelaufen ist" ist die
+wichtigste Regel des Repos — ein Werkzeug, das sie bequem umgehen lässt, wäre
+schlechter als gar keins.
 
 ---
 
@@ -492,7 +578,9 @@ Auto-Acquire, Befehle sind zwingend"). `CombatSystem.cs:20` beschreibt unter
 kennen muss: *explizite* Angriffsbefehle werden nie überschrieben („explicit
 orders are never retargeted"), das Score-Targeting hat also Vorrang vor der
 Automatik und übernimmt die Verantwortung, nicht schlechter zu zielen als sie.
-Die veraltete Doku-Passage ist ein eigener, winziger PR in `AI/`. Kein Blocker.
+Die veraltete Doku-Passage ist ein eigener, winziger PR in `AI/` — zusammen
+mit der zweiten veralteten Passage aus §5 (`SetRallyPoint`/Refinery,
+`SkirmishAiSystem.cs:63`). Kein Blocker.
 
 ### 4.6 `AI.Data/` — die eine Stelle zum Tunen
 
@@ -500,7 +588,20 @@ Enthält heute **nur ein asmdef**, gehört uns exklusiv, ist genau dafür gedach
 Die Werte stecken verstreut in `AiFactionProfile`-Defaults (`TargetPowerMargin
 = 30`, `TargetArmySize = 15`, `AttackSquadThreshold = 8`,
 `TargetHarvesterCount = 2`) und `const` im System (`DecisionTickInterval = 20`,
-`PlacementSearchRadius = 8`, `InfantryQueueBatch = 2`).
+`PlacementSearchRadius = 8`, `InfantryQueueBatch = 2`,
+`HarvesterQueueBatch = 2`).
+
+Drei Vorarbeiten, die die Migration sonst stolpern lassen:
+
+- `AiFactionProfile.Equals`/`GetHashCode` vergleichen **nur den
+  `FactionName`** — zwei Profile mit gleichem Namen und verschiedenen Zahlen
+  gelten als gleich. Die `profileId`-Identität muss das explizit auflösen,
+  nicht erben.
+- Das asmdef in `AI.Data/` steht auf `"noEngineReferences": false` (anders als
+  `Nova.AI` mit `true`). Vor E6 auf `true` ziehen — die Datenschicht soll
+  strukturell enginefrei sein, nicht nur zufällig.
+- Das Labor-csproj muss `AI.Data/` mitlinken (§1: der SimRunner linkt heute
+  nicht einmal `AI/`).
 
 ```json
 { "profileId": "legion-aggressive", "schemaVersion": 1,
@@ -560,10 +661,21 @@ fünf:** `Move`, `AttackTarget`, `Harvest`, `PlaceBuilding`, `QueueUnit`.
 
 Verteidigung ohne Verteidigungsmodule ist nur die halbe Antwort.
 
-**Bekannte Einschränkung:** `SetRallyPoint` lehnt das Refinery heute ab — die
-Producer-Liste in `ProductionSystem` ist älter als der D-077-Umzug des
-Harvester-Produzenten. Sim-seitiger Fehler außerhalb unseres Scopes; die KI
-mikromanagt deshalb wie ein Mensch. Nicht umgehen, nur wissen.
+**Korrektur einer früheren Annahme:** `SetRallyPoint` akzeptiert das Refinery
+heute. `ValidateSetRallyPoint` prüft über `IsProducerRole`, und die liest aus
+der Definitionstabelle statt aus einer harten Liste — laut eigenem Kommentar
+genau deshalb, damit der D-077-Umzug sie nicht strandet
+(`ProductionSystem.cs:477`); der Harvester trägt in beiden Fraktionen
+`producerRole: UnitRole.Refinery`. Die gegenteilige Behauptung lebt nur noch
+als veralteter Doku-Kommentar in `SkirmishAiSystem.cs:63` (Mini-Doku-Fix,
+§4.5). Folge: `SetRallyPoint` ist **sofort nutzbar**, und das
+Harvester-Micromanagement der heutigen KI hat seinen dokumentierten Grund
+verloren — das hebt den Befehl in der E8-Priorität.
+
+Randnotiz zu den Zahlen der Tabelle: Repair 10 HP/Tick, Sell 50 % und
+CancelConstruction 75 % stimmen mit dem Code überein, sind dort aber als
+provisorisch markiert („Q-040 candidate") — bei einer Inhaberentscheidung
+können sie sich ändern.
 
 ---
 
@@ -577,10 +689,11 @@ das Labor nicht, weil der Harness den Host direkt baut wie `SimRunner` und nicht
 durch `MatchConfig` geht. Es entsteht kein Spielmodus, nur ein Testaufbau.
 
 **2 gegen 2: strukturell offen, inhaltlich blockiert.** Da sind 8 Slots, 8
-Team-Masken, 8 Victory-Slots. Es fehlt ein Team-Begriff: Feindschaft ist heute
-`candidate.PlayerId == attacker.PlayerId` (`CombatSystem.cs:192`), und FoW setzt
-`team == PlayerSlot` (D-058). Ein Verbündeter wäre ein Ziel, zwei Verbündete
-teilten keine Sicht.
+Team-Masken, 8 Victory-Slots. Es fehlt ein Team-Begriff: Feind ist heute
+schlicht jede fremde `PlayerId` — der Kandidaten-Scan überspringt nur die
+eigene (`CombatSystem.cs:192`) — und FoW setzt `team == PlayerSlot`
+(MS-1-Vereinfachung, `FogOfWarSystem.cs:28`, im Rahmen von D-058). Ein
+Verbündeter wäre ein Ziel, zwei Verbündete teilten keine Sicht.
 
 | Nötig | Datei | Eigentümer |
 |---|---|---|
@@ -695,6 +808,11 @@ und zwei Läufe mit gleichem Seed liefern identische Hashes.
 
 `MatchSpec` einlesen, `Parallel.For`, Artefakte je Lauf, Metrikkatalog aus §3.3.
 
+Bekannte Durchsatzgrenze, vorab nicht umbauen: `Decide()` allokiert je
+Entscheidungstick rund elf Listen — im Spiel belanglos, bei tausenden
+parallelen Partien GC-Druck. Erst messen; ein Umbau wäre ein Verhaltens-PR-
+Kandidat mit eigener Begründung, kein Labor-Nebeneffekt.
+
 *Fertig, wenn:* Ein Kommando fährt *n* Matches parallel. **Durchsatz gemessen
 und notiert.**
 
@@ -722,6 +840,9 @@ eigener Fassungen als Verlaufsvergleich. Ergebnismengen tragen Spec-Version,
 Seedliste und `ComputeDefinitionsHash64()`; passt eines nicht, verweigert der
 Bericht den Vergleich statt still Unvergleichbares zu mischen.
 
+Berichtsform ist HTML nach §3.10, dazu der PR-Textentwurf mit ausschließlich
+gemessenen Angaben.
+
 Dazu die Selbstkontrolle: jeder zwanzigste Lauf doppelt, Hash-Ketten
 verglichen — 5 % Rechenzeit gegen geteilten Zustand zwischen parallelen Matches.
 
@@ -732,8 +853,9 @@ Bericht lesen, auffälligen Lauf im Sichtfenster nachschauen, entscheiden.
 
 Die zwei schmalen Laufarten aus §3.9, gleicher Host, identische
 Systemregistrierung. `duel` über alle Rollenpaare beider Fraktionen, mit
-AE-Parität, echtem Fog of War, drei Startabständen und beiden Laufrichtungen je
-Paarung; `movement` liefert Ankunftszeit, Streuung und Blockaden für Issue 03.
+AE-Parität, echtem Fog of War, drei Startabständen, beiden Laufrichtungen je
+Paarung und einer eigenen Belagerungs-Staffel; `movement` mit den vier Szenarien
+`arrival`, `blocking`, `standoff` und `detour` für Issue 03.
 
 Beide laufen in Sekunden — damit werden Waffen- und Bewegungsfragen zur
 Sekundenschleife statt zur Partieauswertung. Bewusst am Ende des Laborteils:
@@ -758,6 +880,11 @@ zurück, beschädigte Einheiten ziehen sich zurück, die Armee schießt aufs
 gefährlichste erreichbare Ziel — **plus Spielbericht aus einer echten Partie**,
 inklusive eines Falls, in dem die Reaktion falsch war, mit Einschätzung warum
 das akzeptabel ist.
+
+Abhängigkeit: Der Spielbericht braucht ein spielbares Build auf unserer
+Plattform — der Linux-Build ist laut v1.1.0 Bringschuld des Netzstrangs und
+steht aus (§3.5). Bis dahin gilt §3.10 wörtlich: Der Beobachtungsabschnitt
+bleibt sichtbar leer, der PR ist damit unfertig und sagt das auch.
 
 ### E8 — Fehlende Befehlsarten *(PR, je Verhalten einer)*
 
@@ -792,7 +919,7 @@ Aufklärungsgedächtnis. Metamorphic-Tests nach `AIArchitecture.md` §6.
 | 6 | Gegen den Code bauen, nicht gegen veraltete Doku | D-087 ist implementiert (§4.5) |
 | 7 | Stateless zuerst, Sidecar erst mit Belegen | Issue `04` verlangt das; vermeidet eine unbegründete D-ID-Anfrage |
 | 8 | Datenumstellung verhaltensneutral, getrennt von Verhalten | Grüne Baselines beweisen, dass nichts verschoben wurde (§4.6) |
-| 9 | Laborergebnisse sind Diagnose, nie Nachweis | Deckungsgleich mit der `output/`-Praxis (D-061/D-064) |
+| 9 | Laborergebnisse sind Diagnose, nie Nachweis | Deckungsgleich mit der `output/`-Praxis (D-061/D-063, D-067 K1) |
 | 10 | Beide Sichtdarstellungen in einem Zug | Gemeinsamer Frame-Strom, Mehraufwand gering (§3.4) |
 | 11 | **Keine skalare Gütefunktion, kein Auto-Optimierer** | Eine Zahl belohnt das Falsche; für „sieht im Spiel richtig aus" gibt es keine Kennzahl (§3.6) |
 | 12 | Referenz: eingefrorene heutige KI + eigene Momentaufnahmen | Fester Maßstab plus Verlaufsvergleich; Rückschritt fällt auf (§3.7) |
@@ -807,6 +934,10 @@ Aufklärungsgedächtnis. Metamorphic-Tests nach `AIArchitecture.md` §6.
 | 21 | Echter Fog of War auch im Duell | Ungenutzte Artilleriereichweite ist ein Balance-Befund, kein Messfehler (§3.9) |
 | 22 | Drei Startabstände, jede Paarung in beide Richtungen | Ein Abstand entscheidet die halbe Tabelle vor; die Duell-Asymmetrie macht die Richtung zur eigenen Messung (§3.9) |
 | 23 | Nach jedem Merge-Fenster Referenz und Archiv neu vermessen | Hält Vergleiche ehrlich; alte Mengen werden mit Commit archiviert, nicht gelöscht (§3.7) |
+| 24 | Vier Bewegungsszenarien statt eines | `arrival`, `blocking`, `standoff`, `detour` decken Issue 03 vollständig ab; Aufbau ist Daten, nicht Code (§3.9) |
+| 25 | Eigene Belagerungs-Staffel im Duell | Die `Building`-Spalte trägt ein Drittel der Gegenlogik (§3.9) |
+| 26 | Vergleichsbericht als HTML, Machart wie der Abspieler | Ohne Rangliste ist Lesbarkeit das Produkt; teilt Technik mit dem Abspieler (§3.10) |
+| 27 | PR-Entwurf nur mit Gemessenem, Beobachtungsabschnitt bleibt leer | Ein Werkzeug, das „nichts als fertig melden, was nicht gelaufen ist" bequem umgehen lässt, wäre schlechter als keins (§3.10) |
 
 ## 11. Was Inhaberentscheidung bleibt
 
