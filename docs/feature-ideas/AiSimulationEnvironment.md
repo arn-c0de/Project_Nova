@@ -269,6 +269,23 @@ mit; passt eines nicht, verweigert der Bericht den Vergleich.
 **Tuningmenge und Referenzmenge bleiben getrennt.** Sonst gewinnt die KI
 Benchmarks und verliert Partien.
 
+**Alterung durch Merge-Fenster.** Der Maintainer sammelt simulationsändernde
+PRs und mergt sie in Fenstern; jedes Fenster verschiebt das Verhalten und macht
+eingefrorene Vergleichsdaten ungültig. Antwort: **nach jedem Fenster werden
+Referenzmenge und Archiv einmal komplett neu vermessen.** Alte Mengen werden mit
+ihrem Commit archiviert, nicht gelöscht — sie bleiben lesbar, nur nicht mehr
+vergleichbar. Jede Menge trägt den Commit; der Bericht verweigert den Vergleich
+über Commit-Grenzen.
+
+Damit hängt die Laborkadenz an den Merge-Fenstern, und das hat eine Folge, die
+den Etappenplan stützt:
+
+> **Ein Profil-Archiv überlebt ein Merge-Fenster, ein Code-Archiv nicht.** Eine
+> alte Profildatei lässt sich auf dem neuen Stand neu vermessen; ein alter
+> Codestand ist weg und seine Ergebnismenge geht mit ihm in Rente. Je früher
+> Verhaltensunterschiede in Daten liegen (E6), desto länger bleiben Vergleiche
+> gültig.
+
 **Selbstkontrolle im Sweep:** Jeder zwanzigste Lauf wird doppelt gefahren und
 die Hash-Kette verglichen. Kostet 5 % Rechenzeit und fängt genau den Fehler, der
 sonst unentdeckt bliebe — geteilter Zustand zwischen parallel laufenden Matches,
@@ -313,21 +330,50 @@ damit ein anderes Spiel; dann misst man etwas, das es nicht gibt.
 | `duel` | N gegen M Einheiten auf leerem Feld, keine Wirtschaft | Sekunden | **Issues 01/02** — Legion-Waffen, Rüstungsklassen |
 | `movement` | eine Gruppe, ein Zielbefehl, Hindernisse gesetzt | Sekunden | **Issue 03** — Bewegung am Ziel |
 
-**`duel` — die Gegentabelle empirisch.** Spawnt N Einheiten der Rolle X
-(Fraktion A) gegen M der Rolle Y (Fraktion B), gibt beiden Seiten den
-Angriffsbefehl und misst: Überlebende, Ticks bis zur Entscheidung, ausgeteilter
-und erlittener Schaden, abgegebene Schüsse. Über alle Rollenpaare beider
-Fraktionen gefahren, fällt genau die Tabelle heraus, die Issue 02 verlangt —
-*welche Waffe schlägt welche Rüstung wie deutlich*, gemessen statt aus
-`DamageMatrix` abgelesen. Der Unterschied ist wesentlich: Der Matrixwert sagt
-den Multiplikator, der Duellausgang sagt, was Reichweite, Nachladezeit und
-Lebenspunkte daraus machen.
+**`duel` — die Gegentabelle empirisch.** Misst über alle Rollenpaare beider
+Fraktionen, was Issue 02 verlangt: *welche Waffe schlägt welche Rüstung wie
+deutlich* — gemessen statt aus `DamageMatrix` abgelesen. Der Unterschied ist
+wesentlich: Der Matrixwert nennt den Multiplikator, der Duellausgang zeigt, was
+Reichweite, Nachladezeit und Lebenspunkte daraus machen.
 
-Zwei Dinge, die dabei sichtbar werden und in der Tabelle nicht stehen: die
-dokumentierte **Duell-Asymmetrie** (bei gegenseitigem Kill im selben Tick
-gewinnt der niedrigere Entity-Index — spawnreihenfolgeabhängig und
-balancerelevant), und ob eine Reichweitendifferenz wie Artillerie 20 m gegen
-Infanterie 7 m im Gefecht überhaupt zum Tragen kommt.
+Vier Festlegungen, ohne die eine Duelltabelle nichts aussagt:
+
+**Parität über AE-Kosten, nicht über Stückzahl.** Beide Seiten bekommen dasselbe
+Budget, die Stückzahl folgt daraus (`floor(budget / CostAE)`). Gleiche Stückzahl
+wäre kein Befund — ein doppelt so teurer Panzer *soll* einen Infanteristen
+schlagen. Der Rest, der nicht aufgeht, wird je Seite protokolliert; Paarungen mit
+über 10 % Restbetrag markiert der Bericht, weil dort die Parität selbst wackelt.
+Das Budget wird so gewählt, dass beide Seiten mindestens vier Einheiten stellen.
+
+**Echter Fog of War, wie im Spiel.** `CombatSystem` verlangt das Ziel als
+`Visible` in der committed Team-Sicht — Standardsichtweite ist 10 m, Artillerie
+schießt 20 m. Dass Artillerie ihre Reichweite ohne Aufklärung nicht nutzen kann,
+ist damit ein echter Balance-Befund und kein Messfehler. Zu beachten: Die Sicht
+wird nur mit 5 Hz neu berechnet, zwischen zwei Commits gilt die letzte Maske —
+ein Ziel bleibt also bis zu zwei Ticks länger beschießbar.
+
+**Drei Startabstände statt einem.** Ein einzelner Abstand entscheidet die halbe
+Tabelle vor:
+
+| Staffel | Abstand | Was sie misst |
+|---|---|---|
+| kurz | Berührung | Schaden, Rüstung, Nachladezeit — Reichweite spielt keine Rolle |
+| mittel | längste Reichweite der Paarung | ob die längere Waffe ihre Freischüsse tatsächlich bekommt |
+| lang | außerhalb jeder Sicht | Annäherung und Aufklärung, nicht nur Feuerkraft |
+
+**Auf lange Distanz braucht es einen Bewegungsbefehl** — sonst passiert nichts.
+Auto-Acquisition (D-087) greift nur auf *sichtbare Ziele in Reichweite*; ohne
+Sicht steht beides still, bis das Tickbudget abläuft. Beide Seiten bekommen
+deshalb einen Move-Intent auf die Mitte der Gegenseite. Damit misst die lange
+Staffel zusätzlich das Annäherungsverhalten — was gewollt ist, aber beim Lesen
+der Zahlen mitgedacht gehört.
+
+**Jede Paarung läuft in beide Richtungen.** Die dokumentierte
+**Duell-Asymmetrie** — bei gegenseitigem Kill im selben Tick gewinnt der
+niedrigere Entity-Index — macht A-gegen-B und B-gegen-A zu zwei verschiedenen
+Messungen. Weichen sie auseinander, ist die Paarung so knapp, dass die
+Spawnreihenfolge entscheidet. Das ist selbst ein Befund und gehört in den
+Bericht, nicht wegkalibriert.
 
 **`movement` — Ankunft statt Wegfindung.** Spawnt eine Gruppe, setzt Gebäude als
 Hindernisse (`PlaceCompletedBuilding`, Fußabdrücke sind seit dem
@@ -685,9 +731,9 @@ Bericht lesen, auffälligen Lauf im Sichtfenster nachschauen, entscheiden.
 ### E5 — Duell-Arena und Bewegungsszenario *(lokal)*
 
 Die zwei schmalen Laufarten aus §3.9, gleicher Host, identische
-Systemregistrierung. `duel` über alle Rollenpaare beider Fraktionen ergibt die
-gemessene Gegentabelle für Issues 01/02; `movement` liefert Ankunftszeit,
-Streuung und Blockaden für Issue 03.
+Systemregistrierung. `duel` über alle Rollenpaare beider Fraktionen, mit
+AE-Parität, echtem Fog of War, drei Startabständen und beiden Laufrichtungen je
+Paarung; `movement` liefert Ankunftszeit, Streuung und Blockaden für Issue 03.
 
 Beide laufen in Sekunden — damit werden Waffen- und Bewegungsfragen zur
 Sekundenschleife statt zur Partieauswertung. Bewusst am Ende des Laborteils:
@@ -757,6 +803,10 @@ Aufklärungsgedächtnis. Metamorphic-Tests nach `AIArchitecture.md` §6.
 | 17 | Drei Laufarten: `match`, `duel`, `movement` | Eine Partie ist ein schlechtes Messgerät für eine Waffenzahl; alle drei teilen die Systemregistrierung (§3.9) |
 | 18 | `tickBudget` 27.000 wie im Spiel, je Spec überschreibbar | Standard = Spielwert, damit ein Ergebnis ohne Fußnote gilt; Kürzen verzerrt zugunsten schneller Strategien (§3.2) |
 | 19 | Determinismus-Stichprobe: jeder 20. Lauf doppelt | 5 % Rechenzeit gegen geteilten Zustand, den ein einzelner Suite-Test nie sähe (§3.7) |
+| 20 | Duell-Parität über AE-Kosten, nicht Stückzahl | Gleiche Stückzahl ist kein Befund — ein teurerer Panzer *soll* gewinnen (§3.9) |
+| 21 | Echter Fog of War auch im Duell | Ungenutzte Artilleriereichweite ist ein Balance-Befund, kein Messfehler (§3.9) |
+| 22 | Drei Startabstände, jede Paarung in beide Richtungen | Ein Abstand entscheidet die halbe Tabelle vor; die Duell-Asymmetrie macht die Richtung zur eigenen Messung (§3.9) |
+| 23 | Nach jedem Merge-Fenster Referenz und Archiv neu vermessen | Hält Vergleiche ehrlich; alte Mengen werden mit Commit archiviert, nicht gelöscht (§3.7) |
 
 ## 11. Was Inhaberentscheidung bleibt
 
