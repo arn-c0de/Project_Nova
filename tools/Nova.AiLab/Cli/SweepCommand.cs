@@ -9,12 +9,32 @@ namespace Nova.AiLab
     /// </summary>
     internal static class SweepCommand
     {
+        /// <summary>
+        /// Chain interval a sweep falls back to when the caller named none.
+        /// <para>
+        /// The self-check advertises "diverges at tick N", and without a chain
+        /// it cannot say that: <c>SweepRunner.Compare</c> then sees two empty
+        /// chains and can only compare the end state and the decision. That
+        /// still catches a divergence, but it throws away the one diagnostic
+        /// the sweep exists to produce — and shared state between parallel
+        /// matches is exactly the bug where knowing the tick is the difference
+        /// between a finding and a shrug.
+        /// </para>
+        /// </summary>
+        public const int DefaultHashIntervalTicks = 500;
+
         public static int Run(Options options)
         {
             ulong[] seeds = SeedSeries.Derive(options.Spec.Seed, options.SeedCount);
+
+            bool chainDefaulted = options.Spec.HashIntervalTicks <= 0;
+            if (chainDefaulted) options.Spec.HashIntervalTicks = DefaultHashIntervalTicks;
+
             Console.WriteLine(
                 $"sweep: {seeds.Length} seeds, {options.Spec.Slots.Length} slots, budget {options.Spec.TickBudget}, " +
-                $"parallelism {(options.Parallelism > 0 ? options.Parallelism : Environment.ProcessorCount)}");
+                $"parallelism {(options.Parallelism > 0 ? options.Parallelism : Environment.ProcessorCount)}, " +
+                $"hash chain every {options.Spec.HashIntervalTicks} ticks" +
+                (chainDefaulted ? " (default — the self-check needs a chain to name a divergence tick)" : ""));
 
             SweepResult sweep = SweepRunner.Run(
                 options.Spec, seeds, options.OutputDirectory, options.Parallelism);

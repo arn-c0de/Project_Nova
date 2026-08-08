@@ -231,6 +231,43 @@ namespace Nova.AiLab.Tests
             }
         }
 
+        [Test]
+        public void Artifacts_NameTheProfileThatActuallyPlayed()
+        {
+            // This line used to be the literal string "canonical" for every
+            // slot of every run. In a comparison that is a lie about the ONE
+            // artifact the report links into: the sample run kept for
+            // `late-push` claimed both slots played the shipped profile. A
+            // number with the wrong provenance still reads like a measurement,
+            // which makes it worse than a missing one.
+            MatchSpec spec = ShortSpec();
+            spec.Slots[0].ProfileId = "late-push";
+            spec.Slots[1].ProfileId = SlotSpec.CanonicalProfileId;
+
+            string json = RunArtifacts.BuildResultJson(spec, MatchRun.Execute(spec));
+
+            Assert.That(json, Does.Contain("\"profile\": \"late-push\""),
+                "the run artifact must name the profile that played this slot");
+            Assert.That(json, Does.Contain($"\"profile\": \"{SlotSpec.CanonicalProfileId}\""),
+                "and the reference slot must be named too, not left as a generic label");
+            Assert.That(json, Does.Not.Contain("\"profile\": \"canonical\""),
+                "the hard-coded placeholder must be gone — it made every candidate's run look like the reference");
+        }
+
+        [Test]
+        public void Artifacts_SayNoProfileForASlotThatNobodyDecidesFor()
+        {
+            // A scripted slot has a seat and no AI. Printing a profile id there
+            // would claim a decision maker the arena deliberately does not have.
+            MatchSpec spec = ShortSpec();
+            spec.Slots[1].Controller = SlotController.Passive;
+
+            string json = RunArtifacts.BuildResultJson(spec, MatchRun.Execute(spec));
+
+            Assert.That(json, Does.Contain("\"profile\": \"none\""),
+                "a slot without an AI has no profile, and saying so is not the same as saying 'canonical'");
+        }
+
         // ================================================================
         // (d) SPEC FILE
         // ================================================================

@@ -2,6 +2,8 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using Nova.AI;
+using Nova.AI.Data;
 using Nova.Simulation.CommandsV1;
 using Nova.Simulation.State;
 
@@ -59,18 +61,26 @@ namespace Nova.AiLab
                         break;
 
                     case "mode":
+                        // A spec file describes a MATCH. The duel arena and the
+                        // movement scenarios exist (E5) but build their own
+                        // hosts from their own spec types, so they are CLI
+                        // modes, not spec modes — naming one here would read
+                        // like it configured something and would configure
+                        // nothing.
                         string mode = property.Value.GetString();
                         if (mode != "match")
                         {
                             throw new FormatException(
-                                $"{origin}: mode '{mode}' is not implemented — 'duel' and 'movement' arrive with E5");
+                                $"{origin}: mode '{mode}' is not a spec mode — a spec file describes a match. " +
+                                "'duel' and 'movement' are command-line modes with their own scenario parameters " +
+                                "(nova-ailab duel --units …, nova-ailab movement --group …)");
                         }
                         break;
 
                     case "seed": spec.Seed = RequireSeed(property, origin); break;
                     case "tickBudget": spec.TickBudget = RequireInt(property, origin); break;
-                    case "mapWidth": spec.MapWidth = (ushort)RequireInt(property, origin); break;
-                    case "mapHeight": spec.MapHeight = (ushort)RequireInt(property, origin); break;
+                    case "mapWidth": spec.MapWidth = RequireMapExtent(property, origin); break;
+                    case "mapHeight": spec.MapHeight = RequireMapExtent(property, origin); break;
                     case "entityCapacity": spec.EntityCapacity = RequireInt(property, origin); break;
                     case "startingCreditsAE": spec.StartingCreditsAE = RequireLong(property, origin); break;
                     case "traceIntervalTicks": spec.TraceIntervalTicks = RequireInt(property, origin); break;
@@ -116,6 +126,8 @@ namespace Nova.AiLab
             {
                 var slot = new SlotSpec { Slot = (byte)index, Faction = FactionId.Alliance, Controller = SlotController.Ai };
                 bool factionGiven = false;
+                bool profileGiven = false;
+                AiProfile namedProfile = default;
 
                 foreach (JsonProperty property in entry.EnumerateObject())
                 {
@@ -149,17 +161,21 @@ namespace Nova.AiLab
                             break;
 
                         case "profile":
-                            // E6 turns profiles into data under AI.Data/. Until
-                            // then only the shipped profile exists, and naming
-                            // another one must fail loudly rather than run the
-                            // canonical one under a foreign label.
+                            // E6 turned profiles into data under AI.Data/, so a
+                            // spec may now name any candidate the lab knows.
+                            // An unknown name still fails loudly rather than
+                            // running the shipped profile under a foreign label
+                            // — that would put a wrong provenance on every
+                            // number the run produces.
                             string profile = property.Value.GetString();
-                            if (profile != "canonical")
+                            if (profile == "canonical") profile = SlotSpec.CanonicalProfileId;
+                            if (!LabProfiles.TryGet(profile, out AiProfile named))
                             {
                                 throw new FormatException(
-                                    $"{origin}: profile '{profile}' does not exist yet — profiles become data in E6; " +
-                                    "'canonical' is the profile MatchRunner ships");
+                                    $"{origin}: profile '{profile}' is unknown — known ids: {LabProfiles.KnownIds()}");
                             }
+                            namedProfile = named;
+                            profileGiven = true;
                             break;
 
                         default:
@@ -171,7 +187,18 @@ namespace Nova.AiLab
                 {
                     slot.Faction = (index % 2) == 0 ? FactionId.Alliance : FactionId.Legion;
                 }
-                slot.Profile = SlotSpec.CanonicalProfile(slot.Faction);
+
+                if (profileGiven)
+                {
+                    slot.Profile = new AiFactionProfile(slot.Faction.ToString(), namedProfile);
+                    slot.ProfileId = namedProfile.ProfileId;
+                }
+                else
+                {
+                    slot.Profile = SlotSpec.CanonicalProfile(slot.Faction);
+                    slot.ProfileId = SlotSpec.CanonicalProfileId;
+                }
+
                 slots[index] = slot;
                 index++;
             }
@@ -210,6 +237,23 @@ namespace Nova.AiLab
                 throw new FormatException($"{origin}: '{property.Name}' must be a whole number");
             }
             return value;
+        }
+
+        /// <summary>
+        /// A map extent, range-checked instead of cast. <c>(ushort)</c> on a
+        /// raw int turns 70.000 into 4.464 and -1 into 65.535 without a word,
+        /// and a spec that silently ran on a different map than it names would
+        /// produce numbers nobody can reproduce.
+        /// </summary>
+        private static ushort RequireMapExtent(JsonProperty property, string origin)
+        {
+            int value = RequireInt(property, origin);
+            if (value < 1 || value > ushort.MaxValue)
+            {
+                throw new FormatException(
+                    $"{origin}: '{property.Name}' must be between 1 and {ushort.MaxValue}, got {value}");
+            }
+            return (ushort)value;
         }
 
         private static long RequireLong(JsonProperty property, string origin)

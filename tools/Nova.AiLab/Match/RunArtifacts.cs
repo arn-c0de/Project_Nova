@@ -95,10 +95,16 @@ namespace Nova.AiLab
             for (int i = 0; i < spec.Slots.Length; i++)
             {
                 SlotSpec slot = spec.Slots[i];
+                // The profile is NAMED, never assumed. This line used to be the
+                // literal string "canonical" for every slot of every run, which
+                // made the sample run a comparison links into misreport the
+                // profile that actually played.
                 json.Append("    { \"slot\": ").Append(slot.Slot)
                     .Append(", \"faction\": \"").Append(slot.Faction.ToString().ToLowerInvariant())
                     .Append("\", \"controller\": \"").Append(slot.Controller.ToString().ToLowerInvariant())
-                    .Append("\", \"profile\": \"canonical\" }");
+                    .Append("\", \"profile\": \"")
+                    .Append(slot.IsAi ? slot.ProfileId ?? "unknown" : "none")
+                    .Append("\" }");
                 if (i < spec.Slots.Length - 1) json.Append(',');
                 json.Append('\n');
             }

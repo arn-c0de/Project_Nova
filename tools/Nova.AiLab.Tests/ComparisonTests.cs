@@ -48,6 +48,72 @@ namespace Nova.AiLab.Tests
             Assert.That(Set().WhyNotComparableWith(Set()), Is.Null);
         }
 
+        [TestCase("specVersion")]
+        [TestCase("profileSchemaVersion")]
+        [TestCase("commit")]
+        [TestCase("tickBudget")]
+        [TestCase("slotCount")]
+        [TestCase("definitionsHash64")]
+        [TestCase("seeds")]
+        public void AnArchiveMissingAProvenanceFieldIsRefused_NotDefaulted(string field)
+        {
+            // The failure this guards against is the quiet one: a missing field
+            // used to fall back to THIS BUILD's value, so an archive that never
+            // recorded its spec version compared as if it matched. A truncated
+            // or hand-edited archive has to refuse, because a wrong comparison
+            // looks exactly like a right one.
+            string json = Set().ToJson();
+            string stripped = StripProperty(json, field);
+            Assert.That(stripped, Is.Not.EqualTo(json), $"the fixture must actually contain '{field}'");
+
+            Assert.That(() => ResultSetFile.Parse(stripped, "<stripped>"),
+                Throws.TypeOf<FormatException>().With.Message.Contains(field),
+                $"an archive without '{field}' must refuse, never inherit the current build's value");
+        }
+
+        [Test]
+        public void AnArchiveWithAnEmptyCommitIsRefused()
+        {
+            // A set retires with the commit it was measured at (plan 3.7), so a
+            // set that cannot name one cannot be compared against anything.
+            string json = Set(commit: "abc123").ToJson().Replace("\"commit\": \"abc123\"", "\"commit\": \"\"");
+
+            Assert.That(() => ResultSetFile.Parse(json, "<empty-commit>"),
+                Throws.TypeOf<FormatException>().With.Message.Contains("commit"));
+        }
+
+        /// <summary>Removes one top-level property from the hand-written JSON.</summary>
+        private static string StripProperty(string json, string name)
+        {
+            var kept = new List<string>();
+            int depth = 0;
+            foreach (string line in json.Split('\n'))
+            {
+                string trimmed = line.Trim();
+                bool startsProperty = trimmed.StartsWith($"\"{name}\":", StringComparison.Ordinal);
+                if (startsProperty && depth <= 1)
+                {
+                    // "seeds" is a one-line array in this writer, so dropping
+                    // the line drops the whole property.
+                    continue;
+                }
+                kept.Add(line);
+                depth += CountOf(line, '{') + CountOf(line, '[');
+                depth -= CountOf(line, '}') + CountOf(line, ']');
+            }
+            return string.Join("\n", kept);
+        }
+
+        private static int CountOf(string text, char c)
+        {
+            int count = 0;
+            foreach (char ch in text)
+            {
+                if (ch == c) count++;
+            }
+            return count;
+        }
+
         [Test]
         public void ADifferentDefinitionsTableRefusesTheComparison()
         {

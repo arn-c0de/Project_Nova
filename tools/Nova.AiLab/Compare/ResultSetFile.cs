@@ -32,21 +32,32 @@ namespace Nova.AiLab
             JsonElement root = document.RootElement;
             var set = new ResultSet();
 
-            if (root.TryGetProperty("specVersion", out JsonElement specVersion))
-                set.SpecVersion = specVersion.GetInt32();
-            if (root.TryGetProperty("profileSchemaVersion", out JsonElement schema))
-                set.ProfileSchemaVersion = schema.GetInt32();
-            if (root.TryGetProperty("commit", out JsonElement commit))
-                set.Commit = commit.GetString();
-            if (root.TryGetProperty("tickBudget", out JsonElement budget))
-                set.TickBudget = budget.GetInt32();
-            if (root.TryGetProperty("slotCount", out JsonElement slots))
-                set.SlotCount = slots.GetInt32();
+            // EVERY PROVENANCE FIELD IS REQUIRED. Falling back to a default
+            // here means falling back to the CURRENT build's value, which makes
+            // an archive that never recorded its spec version compare as if it
+            // matched. That is the one failure mode section 3.7 exists to
+            // prevent: a wrong comparison looks exactly like a right one. A
+            // truncated or hand-edited archive must refuse, not agree.
+            set.SpecVersion = RequireInt(root, "specVersion", origin);
+            set.ProfileSchemaVersion = RequireInt(root, "profileSchemaVersion", origin);
+            set.TickBudget = RequireInt(root, "tickBudget", origin);
+            set.SlotCount = RequireInt(root, "slotCount", origin);
+            set.DefinitionsHash64 = ParseHex(RequireText(root, "definitionsHash64", origin), origin, "definitionsHash64");
 
-            if (root.TryGetProperty("definitionsHash64", out JsonElement hash))
-                set.DefinitionsHash64 = ParseHex(hash.GetString(), origin, "definitionsHash64");
+            set.Commit = RequireText(root, "commit", origin);
+            if (string.IsNullOrWhiteSpace(set.Commit))
+            {
+                throw new FormatException(
+                    $"{origin}: 'commit' is empty — a result set retires with the commit it was measured at, " +
+                    "so a set that cannot name one cannot be compared against anything");
+            }
 
-            if (root.TryGetProperty("seeds", out JsonElement seeds) && seeds.ValueKind == JsonValueKind.Array)
+            if (!root.TryGetProperty("seeds", out JsonElement seeds) || seeds.ValueKind != JsonValueKind.Array)
+            {
+                throw new FormatException(
+                    $"{origin}: 'seeds' is missing — a different starting set is a different experiment, " +
+                    "and a set without its seed list cannot prove it was the same one");
+            }
             {
                 var parsed = new List<ulong>(seeds.GetArrayLength());
                 foreach (JsonElement seed in seeds.EnumerateArray())
@@ -93,6 +104,28 @@ namespace Nova.AiLab
                 if (trimmed.Length > 0) list.Add(trimmed);
             }
             return list;
+        }
+
+        /// <summary>A provenance integer that must be present — never defaulted.</summary>
+        private static int RequireInt(JsonElement root, string name, string origin)
+        {
+            if (!root.TryGetProperty(name, out JsonElement value) || !value.TryGetInt32(out int parsed))
+            {
+                throw new FormatException(
+                    $"{origin}: '{name}' is missing or not a whole number. Provenance is not optional: " +
+                    "a missing field would inherit this build's value and the comparison would pass by accident");
+            }
+            return parsed;
+        }
+
+        /// <summary>A provenance string that must be present — never defaulted.</summary>
+        private static string RequireText(JsonElement root, string name, string origin)
+        {
+            if (!root.TryGetProperty(name, out JsonElement value) || value.ValueKind != JsonValueKind.String)
+            {
+                throw new FormatException($"{origin}: '{name}' is missing — provenance is not optional");
+            }
+            return value.GetString();
         }
 
         private static string Text(JsonElement element, string name) =>

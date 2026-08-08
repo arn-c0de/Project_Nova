@@ -46,10 +46,28 @@ namespace Nova.AiLab
         /// <summary>
         /// The AI profile of this slot. The canonical default mirrors
         /// <c>MatchRunner.InitializeMatch</c> exactly (power margin 0, army 12,
-        /// squad threshold 6, harvesters 2) — E6 moves these numbers into
-        /// <c>AI.Data/</c>, until then they live here as they live in the game.
+        /// squad threshold 6, harvesters 2) — E6 moved these numbers into
+        /// <c>AI.Data/</c>, and the shipped profile still carries them
+        /// value-for-value.
         /// </summary>
         public AiFactionProfile Profile;
+
+        /// <summary>
+        /// WHICH profile the slot played, by name — provenance, not behaviour.
+        /// <para>
+        /// <see cref="AiFactionProfile"/> carries the numbers but no identity a
+        /// report can print, so <c>result.json</c> used to write the literal
+        /// string "canonical" for every slot of every run. In a comparison that
+        /// is a lie about the one artifact the report links into: the sample run
+        /// kept for <c>late-push</c> claimed both slots played the shipped
+        /// profile. A number whose provenance is wrong is worse than a missing
+        /// number, because it still reads like a measurement.
+        /// </para>
+        /// </summary>
+        public string ProfileId = CanonicalProfileId;
+
+        /// <summary>The shipped profile's id — the one <c>MatchRunner</c> constructs.</summary>
+        public const string CanonicalProfileId = "ms1-canonical";
 
         public static AiFactionProfile CanonicalProfile(FactionId faction) =>
             new AiFactionProfile(faction.ToString(),

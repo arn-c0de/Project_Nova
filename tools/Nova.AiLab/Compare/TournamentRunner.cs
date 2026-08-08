@@ -87,6 +87,10 @@ namespace Nova.AiLab
                         AiProfile profile = slot == candidateSlot ? candidate : LabProfiles.Reference;
                         FactionId faction = spec.Slots[slot].Faction;
                         spec.Slots[slot].Profile = new AiFactionProfile(faction.ToString(), profile);
+                        // The id travels with the numbers: without it the run
+                        // artifact cannot say which profile played, and the
+                        // sample run the report links into misnames it.
+                        spec.Slots[slot].ProfileId = profile.ProfileId;
                     }
 
                     MatchRunResult run = MatchRun.Execute(spec);
@@ -119,6 +123,7 @@ namespace Nova.AiLab
                     Faction = spec.Slots[i].Faction,
                     Controller = spec.Slots[i].Controller,
                     Profile = spec.Slots[i].Profile,
+                    ProfileId = spec.Slots[i].ProfileId,
                 };
             }
 

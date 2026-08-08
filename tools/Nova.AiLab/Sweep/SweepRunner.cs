@@ -127,6 +127,7 @@ namespace Nova.AiLab
                     Faction = source.Faction,
                     Controller = source.Controller,
                     Profile = source.Profile,
+                    ProfileId = source.ProfileId,
                 };
             }
 
@@ -147,7 +148,16 @@ namespace Nova.AiLab
             };
         }
 
-        /// <summary>Returns null when both runs agree, otherwise the first difference.</summary>
+        /// <summary>
+        /// Returns null when both runs agree, otherwise the first difference.
+        /// <para>
+        /// NOTE ON REACH: with no hash chain recorded this can only see the end
+        /// state and the decision. That still catches a divergence, but it
+        /// cannot say at which tick — which is why <c>SweepCommand</c> gives a
+        /// sweep a default chain interval rather than leaving the self-check
+        /// half blind.
+        /// </para>
+        /// </summary>
         public static string Compare(MatchRunResult a, MatchRunResult b)
         {
             if (a.FinalStateHash != b.FinalStateHash)
