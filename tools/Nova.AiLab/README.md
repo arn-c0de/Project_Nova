@@ -10,13 +10,18 @@ nie dorthin gecherry-pickt und es gehört in keinen PR. Plan und Begründung:
 *untracked* Pfade und hält deshalb genau dort, wo es darauf ankommt — auf einem
 `feat/`-Branch, wo `tools/Nova.AiLab*` nicht getrackt ist, fängt es ein
 versehentliches `git add -A` ab. Auf `lab/ai-simulation` ist das Verzeichnis
-getrackt und die Regel folgenlos. Dieselbe Datei schliesst auch `out/` (die
-Laborartefakte) und `run.sh` aus. Sie ist lokal und wird nicht mitgeklont:
-nach einem frischen Clone gehören die Einträge von Hand nachgetragen.
+getrackt und die Regel folgenlos. Dieselbe Datei schliesst auch `out/` und
+`run.sh` aus. Sie ist lokal und wird nicht mitgeklont: nach einem frischen
+Clone gehören die Einträge von Hand nachgetragen.
 
-Für `out/` gilt dieselbe Zweiteilung: der Ausschluss schützt die `feat/`-Branches,
+Die Laborartefakte liegen seit dem Umzug **unter** `tools/Nova.AiLab/out/` und
+sind damit vom selben Eintrag gedeckt, der schon das Labor schützt — eine
+Leitplanke statt zwei. Der verbliebene `out/`-Eintrag deckt weiterhin ein
+versehentlich auf oberster Ebene angelegtes Ausgabeverzeichnis ab.
+
+Für `tools/Nova.AiLab/out/` gilt dieselbe Zweiteilung: der Ausschluss schützt die `feat/`-Branches,
 auf `lab/ai-simulation` liegt der **jeweils letzte vollständige Lauf** unter
-`out/lab/` versioniert — bewusst per `git add -f`, damit Messwerte und der Commit,
+`tools/Nova.AiLab/out/` versioniert — bewusst per `git add -f`, damit Messwerte und der Commit,
 zu dem sie gehören, zusammenbleiben. Nach einem Merge-Fenster des Maintainers ist
 diese Menge nicht mehr vergleichbar und wird durch einen neuen Lauf ersetzt.
 
@@ -29,7 +34,7 @@ Spiel gesehen wurde, steht als ungesehen im PR-Text.
 export DOTNET_ROOT="$PWD/.dotnet"; export PATH="$DOTNET_ROOT:$PATH"   # falls dotnet nicht im PATH ist
 
 # eine KI-gegen-KI-Partie, mit Metriken und Artefakten
-dotnet run --project tools/Nova.AiLab -c Release -- match --trace-every 100 --out out/run1
+dotnet run --project tools/Nova.AiLab -c Release -- match --trace-every 100 --out tools/Nova.AiLab/out/run1
 
 # zwei Läufe desselben Specs, Hash-Ketten verglichen
 dotnet run --project tools/Nova.AiLab -c Release -- match --repeat 2 --hash-every 100
@@ -37,31 +42,31 @@ dotnet run --project tools/Nova.AiLab -c Release -- match --repeat 2 --hash-ever
 # die laufende Partie im Terminal mitsehen
 dotnet run --project tools/Nova.AiLab -c Release -- match --watch
 
-# aufzeichnen und danach im Browser zurückspulen: out/run1/player.html öffnen
-dotnet run --project tools/Nova.AiLab -c Release -- match --view-every 25 --fog --out out/run1
+# aufzeichnen und danach im Browser zurückspulen: tools/Nova.AiLab/out/run1/player.html öffnen
+dotnet run --project tools/Nova.AiLab -c Release -- match --view-every 25 --fog --out tools/Nova.AiLab/out/run1
 
 # Seed-Matrix über alle Kerne, jeder 20. Lauf doppelt zur Selbstkontrolle
-dotnet run --project tools/Nova.AiLab -c Release -- sweep --seeds 24 --out out/sweep
+dotnet run --project tools/Nova.AiLab -c Release -- sweep --seeds 24 --out tools/Nova.AiLab/out/sweep
 
 # die Gegentabelle: 576 Duelle in Sekunden (Issues 01/02)
-dotnet run --project tools/Nova.AiLab -c Release -- duel --out out/duel
+dotnet run --project tools/Nova.AiLab -c Release -- duel --out tools/Nova.AiLab/out/duel
 
 # die vier Bewegungsszenarien (Issue 03)
-dotnet run --project tools/Nova.AiLab -c Release -- movement --out out/movement
+dotnet run --project tools/Nova.AiLab -c Release -- movement --out tools/Nova.AiLab/out/movement
 
-# alle Kandidatenprofile gegen die eingefrorene Referenz: out/compare/report.html
-dotnet run --project tools/Nova.AiLab -c Release -- compare --out out/compare
+# alle Kandidatenprofile gegen die eingefrorene Referenz: tools/Nova.AiLab/out/compare/report.html
+dotnet run --project tools/Nova.AiLab -c Release -- compare --out tools/Nova.AiLab/out/compare
 
 # gegen eine archivierte Ergebnismenge — verweigert bei fremdem Commit oder Definitionstabelle
-dotnet run --project tools/Nova.AiLab -c Release -- compare --against out/alt/resultset.json --out out/compare2
+dotnet run --project tools/Nova.AiLab -c Release -- compare --against tools/Nova.AiLab/out/alt/resultset.json --out tools/Nova.AiLab/out/compare2
 
 # vier Slots (die Karte hat vier Eckplätze)
 dotnet run --project tools/Nova.AiLab -c Release -- match --slots 4
 
 dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
 
-# alle vier Laufarten in eine Seite: out/lab/dashboard.html
-python3 tools/Nova.AiLab/report/build_dashboard.py out/lab
+# alle vier Laufarten in eine Seite: tools/Nova.AiLab/out/dashboard.html
+python3 tools/Nova.AiLab/report/build_dashboard.py tools/Nova.AiLab/out
 ```
 
 ## Was hier liegt
@@ -138,7 +143,7 @@ ohne etwas dafür zu bekommen.)
 | Datei | Inhalt |
 |---|---|
 | `Program.cs` | nur `Main` und die Modus-Weiche — rund 50 Zeilen, sonst nichts |
-| `report/build_dashboard.py` | fasst die Artefakte **aller vier Laufarten** zu `out/lab/dashboard.html` zusammen — Kurven, Gegentabelle als Heatmap, Belagerung, Bewegung. Verdichtet nur, rechnet nichts dazu und vergibt keine Note |
+| `report/build_dashboard.py` | fasst die Artefakte **aller vier Laufarten** zu `tools/Nova.AiLab/out/dashboard.html` zusammen — Kurven, Gegentabelle als Heatmap, Belagerung, Bewegung. Verdichtet nur, rechnet nichts dazu und vergibt keine Note |
 | `report/dashboard.tpl.html` | die Seite dazu: eine Datei, kein Build, kein Server, kein Netzzugriff |
 
 Das Testprojekt `../Nova.AiLab.Tests/` zieht diese Ordner mit **einem** Glob ein;

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Baut die Gesamtauswertung eines Laborlaufs: out/lab/dashboard.html.
+"""Baut die Gesamtauswertung eines Laborlaufs: tools/Nova.AiLab/out/dashboard.html.
 
 Liest die Artefakte, die `match`, `duel`, `movement` und `compare` geschrieben
 haben, verdichtet sie zu einem kompakten JSON-Block und bettet den in
 `dashboard.tpl.html` ein. Ergebnis ist eine selbststaendige Seite ohne Build,
 ohne Server und ohne Netzzugriff.
 
-    python3 tools/Nova.AiLab/report/build_dashboard.py out/lab
+    python3 tools/Nova.AiLab/report/build_dashboard.py tools/Nova.AiLab/out
 
 WERKZEUG, KEIN BEITRAG. Die Seite ist Diagnose; was nicht im laufenden Spiel
 gesehen wurde, steht als ungesehen im PR-Text. Der Leser wird oben auf der
@@ -133,6 +133,6 @@ def build(root, out_path=None):
 
 
 if __name__ == '__main__':
-    directory = sys.argv[1] if len(sys.argv) > 1 else 'out/lab'
+    directory = sys.argv[1] if len(sys.argv) > 1 else 'tools/Nova.AiLab/out'
     written, size = build(directory)
     print(f'{written} — {size // 1024} KiB')

@@ -677,10 +677,10 @@ document.getElementById('duelnote').innerHTML =
 /* ---------------- FOOTER ---------------- */
 document.getElementById('repro').textContent =
 `export DOTNET_ROOT="$PWD/.dotnet"; export PATH="$DOTNET_ROOT:$PATH"
-dotnet run --project tools/Nova.AiLab -c Release -- match --trace-every 50 --hash-every 500 --view-every 25 --fog --out out/lab/match
-dotnet run --project tools/Nova.AiLab -c Release -- duel     --out out/lab/duel
-dotnet run --project tools/Nova.AiLab -c Release -- movement --out out/lab/movement
-dotnet run --project tools/Nova.AiLab -c Release -- compare  --out out/lab/compare`;
+dotnet run --project tools/Nova.AiLab -c Release -- match --trace-every 50 --hash-every 500 --view-every 25 --fog --out tools/Nova.AiLab/out/match
+dotnet run --project tools/Nova.AiLab -c Release -- duel     --out tools/Nova.AiLab/out/duel
+dotnet run --project tools/Nova.AiLab -c Release -- movement --out tools/Nova.AiLab/out/movement
+dotnet run --project tools/Nova.AiLab -c Release -- compare  --out tools/Nova.AiLab/out/compare`;
 
 document.getElementById('footmeta').innerHTML =
   `Nova.AiLab ist lokales Werkzeug, kein Beitrag — es gerät in keinen <span class="mono">feat/</span>-Branch

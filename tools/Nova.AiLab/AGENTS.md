@@ -1,6 +1,6 @@
 # Nova.AiLab — Handreichung für Agenten
 
-**Stand:** Messmenge in `out/lab/` gemessen an Commit `3b3f27d` · Definitionstabelle
+**Stand:** Messmenge in `tools/Nova.AiLab/out/` gemessen an Commit `3b3f27d` · Definitionstabelle
 `0x6326FA3E56CFF5A3` · Etappen E0–E6 erledigt, E7 offen
 **Gilt zusätzlich:** `../../CLAUDE.md` (Arbeitsvertrag), `../../AGENTS.md`, `README.md` nebenan,
 Plan: [`docs/feature-ideas/AiSimulationEnvironment.md`](../../docs/feature-ideas/AiSimulationEnvironment.md)
@@ -12,7 +12,7 @@ Evaluierung benutzt**, und **welche Schritte als nächstes das KI-Verhalten verb
 
 ## 0. Vier Sätze, bevor irgendetwas läuft
 
-1. **Werkzeug, kein Beitrag.** Alles unter `tools/Nova.AiLab*` und `out/` lebt auf
+1. **Werkzeug, kein Beitrag.** Alles unter `tools/Nova.AiLab*` und `tools/Nova.AiLab/out/` lebt auf
    `lab/ai-simulation` und gerät in keinen `feat/`-Branch. `feat/`-Branches werden
    frisch von `upstream/main` abgezweigt, nie aus `lab/` gecherry-pickt.
 2. **Ein grüner Laborlauf ist Diagnose, kein Nachweis.** Was nicht im laufenden Spiel
@@ -81,7 +81,7 @@ vergleichbar statt schätzungsweise.
 | `duels.ndjson` | Duell (576) | `winner`, `decidedTick`, `noContact`, `parityWobbles`, `survivors*` |
 | `movement.ndjson` | Szenario × Fraktion (8) | `usableRangeOvershootCells` (nicht `overshootCells` — siehe unten), `blockedUnits`, `arrived`, `travelledCells`, `wallGapCells` |
 | `resultset.json` | Vergleichslauf | je Kandidat Siegquote, Mittelwerte, `changes`, plus Herkunft (Commit, Seeds, Hashes) |
-| `dashboard.html` | — | alle vier Laufarten in einer Seite: `python3 tools/Nova.AiLab/report/build_dashboard.py out/lab` |
+| `dashboard.html` | — | alle vier Laufarten in einer Seite: `python3 tools/Nova.AiLab/report/build_dashboard.py tools/Nova.AiLab/out` |
 
 **Zwei Felder, bei denen der naheliegende Name der falsche ist.** `overshootCells`
 misst gegen die *nominale* Waffenreichweite — die Einheit kann sie ohne Aufklärung
@@ -102,9 +102,9 @@ Profil — `sweep` sagt das selbst hin, wenn alle Läufe gleich ausgehen.
 
 ```bash
 # 1  Referenz festhalten, BEVOR etwas geändert wird
-dotnet run --project tools/Nova.AiLab -c Release -- match --hash-every 100 --out out/ref
-dotnet run --project tools/Nova.AiLab -c Release -- duel     --out out/ref/duel
-dotnet run --project tools/Nova.AiLab -c Release -- movement --out out/ref/movement
+dotnet run --project tools/Nova.AiLab -c Release -- match --hash-every 100 --out tools/Nova.AiLab/out/ref
+dotnet run --project tools/Nova.AiLab -c Release -- duel     --out tools/Nova.AiLab/out/ref/duel
+dotnet run --project tools/Nova.AiLab -c Release -- movement --out tools/Nova.AiLab/out/ref/movement
 
 # 2  Verhalten ändern — in AI/, AI.Data/, Combat/, Movement/, Pathfinding/, Factions/
 
@@ -112,9 +112,9 @@ dotnet run --project tools/Nova.AiLab -c Release -- movement --out out/ref/movem
 dotnet run --project tools/Nova.AiLab -c Release -- match --repeat 2 --hash-every 100; echo "exit=$?"
 
 # 4  Wirkung messen und gegen die Referenz halten
-dotnet run --project tools/Nova.AiLab -c Release -- match --hash-every 100 --out out/new
-diff <(jq -r '.entries[]|"\(.tick) \(.stateHash)"' out/ref/hashchain.json) \
-     <(jq -r '.entries[]|"\(.tick) \(.stateHash)"' out/new/hashchain.json) | head
+dotnet run --project tools/Nova.AiLab -c Release -- match --hash-every 100 --out tools/Nova.AiLab/out/new
+diff <(jq -r '.entries[]|"\(.tick) \(.stateHash)"' tools/Nova.AiLab/out/ref/hashchain.json) \
+     <(jq -r '.entries[]|"\(.tick) \(.stateHash)"' tools/Nova.AiLab/out/new/hashchain.json) | head
 
 # 5  Suite. 87 Labortests + die grosse Suite; die vier Baselines dürfen rot werden.
 dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
@@ -148,7 +148,7 @@ nur ausfüllen, wenn ein Mensch tatsächlich gespielt hat.
 
 ## 5. Was die Zahlen heute sagen
 
-Aus dem letzten vollständigen Lauf (`out/lab/`, Commit `3b3f27d`). Diese Werte sind
+Aus dem letzten vollständigen Lauf (`tools/Nova.AiLab/out/`, Commit `3b3f27d`). Diese Werte sind
 der Ausgangspunkt jeder Verbesserung — wer sie verschiebt, muss sagen, um wieviel.
 
 | Befund | Zahl | Quelle |
