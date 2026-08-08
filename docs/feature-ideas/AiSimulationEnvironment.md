@@ -47,7 +47,7 @@ finden.
 | Kernel engine-frei | `Simulation/SimulationKernel.cs:13` |
 | KI engine-frei | `AI/SkirmishAiSystem.cs:88` |
 | Headless-Läufer, net8.0 | `tools/Nova.SimRunner/Program.cs` — `Main` in ~24 Zeilen, der Rest der 450-Zeilen-Datei ist Szenario-Dispatch |
-| Vollständige KI-Partie headless | `tools/Nova.SimRunner.Tests/SkirmishAiTests.cs` — Entscheidung bei ~Tick 2242 laut Testdoku (asserted ist nur `<= 6000`) |
+| Vollständige KI-Partie headless | `tools/Nova.SimRunner.Tests/SkirmishAiTests.cs` — Entscheidung bei Tick **2241** (gemessen; die Testdoku in `SkirmishAiTests.cs:52` sagt 2242, asserted ist ohnehin nur `<= 6000`) |
 | 10.000-Tick-Determinismuslauf | `tools/Nova.SimRunner/Determinism10000Scenario.cs` |
 
 Entscheidend ist das *Wie*: Die Headless-Lane kompiliert per
@@ -56,7 +56,8 @@ Quelldateien**, die Unity lädt — `SimulationCore.md` §9 („Plattform- und
 Assembly-Parität": gleiche Quellen, gleiche Defines, kopierte Logik ist
 unzulässig).
 
-**Eine Lücke im Ist-Zustand, die das Labor selbst schließen muss:**
+**Eine Lücke im Ist-Zustand, die das Labor selbst schließen muss** — seit E1
+geschlossen, `Nova.AiLab.csproj` linkt beide Verzeichnisse:
 `Nova.SimRunner.csproj` linkt `Core`, `Simulation` und `Networking` — **nicht
 `AI/`**, obwohl §9 die `Nova.AI`-Quellen nennt. Die KI-Partie läuft headless
 heute nur über das Tests-Projekt. `Nova.AiLab` bindet die `AI/`- und
@@ -787,7 +788,7 @@ SDK 8.0.318 unter `Project_Nova/.dotnet/` (`global.json` pinnt hart mit
 Suite inklusive Determinismus-Baselines und End-to-End-KI-Partie braucht zehn
 Sekunden — die Durchsatzerwartung aus E2 ist damit eher konservativ.
 
-### E1 — Harness, KI gegen KI *(lokal)*
+### E1 — Harness, KI gegen KI ✅ **erledigt (2026-08-08)**
 
 `tools/Nova.AiLab/` anlegen, `MultiSlotAiHost` aus dem `AiHost`-Muster.
 N-Slot-fähig gebaut, **erst mit 2 Slots belegt** — 4 Slots sind danach eine
@@ -803,6 +804,41 @@ das Verhalten.
 
 *Fertig, wenn:* Eine KI-gegen-KI-Partie liefert Outcome und Endzustands-Hash,
 und zwei Läufe mit gleichem Seed liefern identische Hashes.
+
+**Nachweis.** `dotnet run --project tools/Nova.AiLab -- match --repeat 2 --hash-every 100`:
+Seed `0xA17E57DE57`, zwei KI-Slots, `VictoryElimination` für Slot 0 (Allianz)
+bei Tick 12.975, Endzustand `0x4947D4769384585C`, beide Läufe über alle 130
+Kettenglieder identisch. `tools/Nova.AiLab.Tests/` ist grün (12 Tests, 4 s),
+die bestehende Suite unverändert bei 549/0.
+
+Wie „gleiche Verdrahtung" belegt wird, ohne eine Konstante abzuschreiben: Die
+Testsuite baut den `AiHost` aus `SkirmishAiTests.cs` von Hand nach — dieselbe
+Technik, mit der `CanonicalMatchSetupTests` seine zwei Lanes verbindet — und
+vergleicht **Zustands-Hashes**, nicht Zahlen: Registrierungsliste, Tick-0-Hash,
+alle 100 Ticks über 2.000 Ticks, und Entscheidungstick plus Endzustand. Das
+Labor entscheidet die Referenzpartie bei Tick **2241** mit Endzustand
+`0x07CA2429C5FE7E5A` — Wert für Wert wie die bestehende Lane.
+
+Drei Beobachtungen, die der Lauf nebenbei liefert:
+
+- **Durchsatz** (E2-Vorgriff, noch nicht parallel): 2 Slots über 12.975 Ticks
+  ≈ 0,6 s, 4 Slots über 27.000 Ticks ≈ 1,4 s je Kern. Die Erwartung aus E0
+  war konservativ.
+- **Die 4-Slot-Partie endet im Zeitlimit-Unentschieden.** Genau die Vorhersage
+  aus Entscheidung 13: Die KI setzt voraus, dass das entfernteste Feld die
+  Feindbasis markiert (`GetEnemyStartAreaCell`), und bei vier Basen stimmt das
+  für niemanden. Der Lauf ist reproduzierbar, sein *Ausgang* ist damit kein
+  Befund — die N-Slot-Fähigkeit ist belegt, mehr behauptet er nicht.
+- **Sitzplätze statt Slots.** Der Host trägt die vertraglichen acht Slots, die
+  kanonische Karte hat aber vier Eckplätze. `CanonicalOpening` wirft ab Slot 4
+  laut, statt Positionen zu erfinden, über die nie jemand entschieden hat.
+
+Zwei Dinge, die E1 bewusst *nicht* getan hat: Der Metrikkatalog aus §3.3 bleibt
+E2 — insbesondere `intentsRejected`, das eine Zähl-Hülle um den Transport
+bräuchte und damit die byte-exakte Spiegelung aufweichen würde, die E1 gerade
+erst belegt hat. Und `AI.Data/` ist im csproj verdrahtet, aber leer: die Werte
+stehen weiter dort, wo das Spiel sie hat (`SlotSpec.CanonicalProfile` spiegelt
+`MatchRunner`), bis E6 sie zu Daten macht.
 
 ### E2 — Lauftreiber, Metriken, Parallelität *(lokal)*
 
