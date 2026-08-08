@@ -14,10 +14,10 @@
   "hashIntervalTicks": 500,
   "traceSamples": 255,
   "hashChainEntries": 51,
-  "elapsedMilliseconds": 819,
+  "elapsedMilliseconds": 791,
   "slots": [
-    { "slot": 0, "faction": "alliance", "controller": "ai", "profile": "canonical" },
-    { "slot": 1, "faction": "legion", "controller": "ai", "profile": "canonical" }
+    { "slot": 0, "faction": "alliance", "controller": "ai", "profile": "early-push" },
+    { "slot": 1, "faction": "legion", "controller": "ai", "profile": "ms1-canonical" }
   ],
   "evidence": "DIAGNOSIS — a lab run is never proof; what was not seen in the running game is reported as unseen."
 }

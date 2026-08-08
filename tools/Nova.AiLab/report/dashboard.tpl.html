@@ -605,7 +605,7 @@ document.getElementById('duelnote').innerHTML =
 (function movement() {
   const M = D.movement;
   const so = M.filter(r => r.scenario === 'Standoff');
-  const W = 460, ml = 118, mr = 96, mt = 16, rowH = 40;
+  const W = 460, ml = 118, mr = 152, mt = 16, rowH = 42;
   const H = mt + so.length*rowH + 8, pw = W - ml - mr;
   const max = Math.max(...so.map(r => r.attackRangeCells));
   const host = document.getElementById('standoffchart');
@@ -619,9 +619,14 @@ document.getElementById('duelnote').innerHTML =
     // nominale Reichweite (hell) > nutzbare Reichweite (Feuereröffnung) >
     // Überlauf (rot). Der Abstand zwischen Band 1 und Band 2 gehört der Sicht,
     // nicht der Bewegung — nur Band 3 kann Verhaltensarbeit zurückholen.
-    el('rect', {x:ml, y:y-5, width:pw*r.attackRangeCells/max, height:bh+10, rx:5, fill:'var(--div-0)'}, s);
+    // Die Baender sind ineinander gezeichnet, deshalb muessen sie sich in der
+    // HOEHE unterscheiden: heute ist der Ueberlauf exakt so gross wie die
+    // nutzbare Reichweite (7 == 7), ein gleich hohes Band waere vollstaendig
+    // verdeckt. 4px Rand je Seite halten es sichtbar, bis Verhaltensarbeit
+    // den roten Balken schrumpfen laesst — dann trennen sie sich von selbst.
+    el('rect', {x:ml, y:y-8, width:pw*r.attackRangeCells/max, height:bh+16, rx:5, fill:'var(--div-0)'}, s);
     const usable = r.firstContactDistanceCells >= 0 ? r.firstContactDistanceCells : 0;
-    el('rect', {x:ml, y:y-2, width:Math.max(pw*usable/max,3), height:bh+4, rx:4, fill:'var(--div-1)'}, s);
+    el('rect', {x:ml, y:y-4, width:Math.max(pw*usable/max,3), height:bh+8, rx:4, fill:'var(--seq-2)'}, s);
     const w = pw*r.usableRangeOvershootCells/max;
     el('rect', {x:ml, y:y, width:Math.max(w,3), height:bh, rx:4, fill:'var(--critical)'}, s);
     el('text', {class:'vallab', x:ml+pw*r.attackRangeCells/max+8, y:y+bh/2+4}, s).textContent =

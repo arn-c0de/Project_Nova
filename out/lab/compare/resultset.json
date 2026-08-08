@@ -2,7 +2,7 @@
   "specVersion": 1,
   "profileSchemaVersion": 1,
   "definitionsHash64": "0x6326FA3E56CFF5A3",
-  "commit": "bf8a59c0b9ce1ed0f974f6ac61df827fe5bd874b",
+  "commit": "3b3f27d7b4338ca48b5a956ba81ba38506cca362",
   "tickBudget": 27000,
   "slotCount": 2,
   "seeds": ["0x6656D5210FB2CE85"],

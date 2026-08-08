@@ -1,6 +1,7 @@
 # Nova.AiLab — Handreichung für Agenten
 
-**Stand:** Commit `8dbaeae` · Definitionstabelle `0x6326FA3E56CFF5A3` · Etappen E0–E6 erledigt, E7 offen
+**Stand:** Messmenge in `out/lab/` gemessen an Commit `3b3f27d` · Definitionstabelle
+`0x6326FA3E56CFF5A3` · Etappen E0–E6 erledigt, E7 offen
 **Gilt zusätzlich:** `../../CLAUDE.md` (Arbeitsvertrag), `../../AGENTS.md`, `README.md` nebenan,
 Plan: [`docs/feature-ideas/AiSimulationEnvironment.md`](../../docs/feature-ideas/AiSimulationEnvironment.md)
 
@@ -147,7 +148,7 @@ nur ausfüllen, wenn ein Mensch tatsächlich gespielt hat.
 
 ## 5. Was die Zahlen heute sagen
 
-Aus dem letzten vollständigen Lauf (`out/lab/`, Commit `bf8a59c`). Diese Werte sind
+Aus dem letzten vollständigen Lauf (`out/lab/`, Commit `3b3f27d`). Diese Werte sind
 der Ausgangspunkt jeder Verbesserung — wer sie verschiebt, muss sagen, um wieviel.
 
 | Befund | Zahl | Quelle |
