@@ -373,6 +373,7 @@ def report_markdown(record, dashboard_link='../out/dashboard.html'):
             ['gemessen am', run['timestamp']],
             ['Commit', f"`{run['commit'] or '—'}`"],
             ['Definitionstabelle', f"`{run['definitionsHash64']}`"],
+            ['KI-Verhalten', f"`{run.get('aiBehaviorId') or '—'}`"],
             ['Seed', f"`{result['seed']}`"],
             ['Tickbudget', fmt(result['tickBudget'])],
             ['Slots', fmt(result['slotCount'])],
@@ -426,6 +427,7 @@ def run_summary(record):
         'timestamp': run['timestamp'],
         'commitShort': run['commitShort'] or '—',
         'definitionsHash64': run['definitionsHash64'],
+        'aiBehaviorId': run.get('aiBehaviorId', ''),
         'winnerSlot': result['winnerSlot'],
         'decidedTick': result['decidedTick'],
         'finalStateHash': result['finalStateHash'],
@@ -498,6 +500,7 @@ def index_markdown(summaries):
                 ['gemessen am', newest['timestamp']],
                 ['Commit', f"`{newest['commitShort']}`"],
                 ['Definitionstabelle', f"`{newest['definitionsHash64']}`"],
+                ['KI-Verhalten', f"`{newest.get('aiBehaviorId') or '—'}`"],
                 ['Partie entschieden bei Tick',
                  f"{fmt(newest['decidedTick'])} — Slot {newest['winnerSlot']}"
                  if newest['winnerSlot'] >= 0 else fmt(newest['decidedTick'])],

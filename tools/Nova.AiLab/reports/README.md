@@ -21,22 +21,24 @@ python3 tools/Nova.AiLab/report/build_reports.py tools/Nova.AiLab/out
 python3 tools/Nova.AiLab/report/build_reports.py --regenerate
 ```
 
-## Zuletzt vermessen — [`20260808-2035-ab6cb9a1`](latest.md)
+## Zuletzt vermessen — [`20260808-2125-7ac3015a`](latest.md)
 
 | Was | Wert |
 | --- | --: |
-| gemessen am | 2026-08-08T20:35:24Z |
-| Commit | `ab6cb9a1` |
+| gemessen am | 2026-08-08T21:25:28Z |
+| Commit | `7ac3015a` |
 | Definitionstabelle | `0x6326FA3E56CFF5A3` |
+| KI-Verhalten | `r2.A037B84D` |
 | Partie entschieden bei Tick | 8.715 — Slot 0 |
 | Duelle entschieden | 395 von 576, 100 ohne Kontakt |
 | Überlauf `standoff` | 14 von 14 nutzbaren Zellen |
 | Endzustands-Hash | `0x5D8FB2D45FFD16B6` |
 
-## Historie — 2 Läufe
+## Historie — 3 Läufe
 
 | Lauf | gemessen (UTC) | Commit | Sieger | entsch. Tick | Duelle entsch. | ohne Kontakt | wackelnd | Überlauf standoff | angekommen | Endzustands-Hash |
 | --- | --- | --- | --- | --: | --: | --: | --: | --: | --: | --- |
+| [`20260808-2125-7ac3015a`](runs/20260808-2125-7ac3015a.md) | 2026-08-08 21:25 | `7ac3015a` | Slot 0 | 8.715 | 395/576 | 100 | 6 | 14/14 | 64/64 | `0x5D8FB2D45FFD16B6` |
 | [`20260808-2035-ab6cb9a1`](runs/20260808-2035-ab6cb9a1.md) | 2026-08-08 20:35 | `ab6cb9a1` | Slot 0 | 8.715 | 395/576 | 100 | 6 | 14/14 | 64/64 | `0x5D8FB2D45FFD16B6` |
 | [`20260808-1945-3b3f27d7`](runs/20260808-1945-3b3f27d7.md) | 2026-08-08 19:45 | `3b3f27d7` | Slot 0 | 12.975 | 395/576 | 100 | 6 | 14/14 | 64/64 | `0x4947D4769384585C` |
 
@@ -45,9 +47,9 @@ python3 tools/Nova.AiLab/report/build_reports.py --regenerate
 ```mermaid
 xychart-beta
     title "Entscheidungstick der Partie"
-    x-axis ["20260808-1945", "20260808-2035"]
+    x-axis ["20260808-1945", "20260808-2035", "20260808-2125"]
     y-axis "Tick" 0 --> 20000
-    line [12975, 8715]
+    line [12975, 8715, 8715]
 ```
 
 **Duelle ohne Kontakt** — je Lauf, ältester links
@@ -55,9 +57,9 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Duelle ohne Kontakt"
-    x-axis ["20260808-1945", "20260808-2035"]
+    x-axis ["20260808-1945", "20260808-2035", "20260808-2125"]
     y-axis "Duelle" 0 --> 100
-    line [100, 100]
+    line [100, 100, 100]
 ```
 
 **Überlauf im Szenario standoff** — je Lauf, ältester links
@@ -65,9 +67,9 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Überlauf im Szenario standoff"
-    x-axis ["20260808-1945", "20260808-2035"]
+    x-axis ["20260808-1945", "20260808-2035", "20260808-2125"]
     y-axis "Zellen" 0 --> 20
-    line [14, 14]
+    line [14, 14, 14]
 ```
 
 ---

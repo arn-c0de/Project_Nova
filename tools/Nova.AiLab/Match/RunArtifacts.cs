@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using Nova.AI.Data;
 
 namespace Nova.AiLab
 {
@@ -86,6 +87,12 @@ namespace Nova.AiLab
             // silently mixing what is not comparable (plan section 3.7).
             json.Append("  \"definitionsHash64\": \"0x")
                 .Append(result.DefinitionsHash64.ToString("X16", CultureInfo.InvariantCulture)).Append("\",\n");
+            // WHICH AI produced these numbers. The definitions hash pins the
+            // unit table, the state hash pins the outcome — neither says which
+            // behaviour played. Without this a measurement cannot be tied to an
+            // entry in reports/behavior-log.md, which is the whole point of
+            // keeping that journal.
+            json.Append("  \"aiBehaviorId\": \"").Append(AiBehaviorId.Value).Append("\",\n");
             json.Append("  \"traceIntervalTicks\": ").Append(spec.TraceIntervalTicks).Append(",\n");
             json.Append("  \"hashIntervalTicks\": ").Append(spec.HashIntervalTicks).Append(",\n");
             json.Append("  \"traceSamples\": ").Append(result.Trace.Count).Append(",\n");

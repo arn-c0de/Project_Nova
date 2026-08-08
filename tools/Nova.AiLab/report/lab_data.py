@@ -143,6 +143,9 @@ def run_identity(root, data):
         'commit': commit,
         'commitShort': commit[:8],
         'definitionsHash64': data['compare'].get('definitionsHash64', ''),
+        # WELCHE KI gespielt hat. Ohne diese Zeile laesst sich eine Messung
+        # keinem Eintrag im Verhaltensjournal zuordnen.
+        'aiBehaviorId': data['match']['result'].get('aiBehaviorId', ''),
         'finalStateHash': data['match']['result']['finalStateHash'],
         'fingerprint': fingerprint(data),
         'source': os.path.normpath(root),

@@ -10,11 +10,12 @@
   "finalTick": 11241,
   "finalStateHash": "0x9C075AC597CF2B36",
   "definitionsHash64": "0x6326FA3E56CFF5A3",
+  "aiBehaviorId": "r2.A037B84D",
   "traceIntervalTicks": 100,
   "hashIntervalTicks": 500,
   "traceSamples": 113,
   "hashChainEntries": 23,
-  "elapsedMilliseconds": 690,
+  "elapsedMilliseconds": 668,
   "slots": [
     { "slot": 0, "faction": "alliance", "controller": "ai", "profile": "fast-cadence" },
     { "slot": 1, "faction": "legion", "controller": "ai", "profile": "ms1-canonical" }

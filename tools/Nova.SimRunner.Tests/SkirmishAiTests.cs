@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Nova.AI;
+using Nova.AI.Data;
 using Nova.Core;
 using Nova.Simulation;
 using Nova.Simulation.Combat;
@@ -375,7 +376,53 @@ namespace Nova.SimRunner.Tests
         }
 
         // ----------------------------------------------------------------
-        // (e) Target choice is a score, not the order of the visible list
+        // (e) The behaviour identifier — the guard against a silent change
+        // ----------------------------------------------------------------
+
+        /// <summary>
+        /// Pins <see cref="AiBehaviorId"/> TOGETHER with what the AI actually
+        /// does. Either half alone is useless: the identifier's profile hash
+        /// catches changed numbers but never a changed rule, and the end state
+        /// catches a changed rule but does not know the identifier exists.
+        /// <para>
+        /// WHEN THIS GOES RED — and only then read on, because the failure
+        /// message is the procedure:
+        /// </para>
+        /// <list type="number">
+        /// <item>Was the behaviour change intended? If not, fix the code. The
+        /// test just told you the AI plays differently than you thought.</item>
+        /// <item>If it was: bump <c>AiBehaviorId.Revision</c>, add its line to
+        /// the history in that file, write the journal entry in
+        /// <c>tools/Nova.AiLab/reports/behavior-log.md</c> — measured values,
+        /// better AND worse — and only then update the numbers below.</item>
+        /// </list>
+        /// <para>
+        /// This is NOT one of the four determinism baselines and must not be
+        /// treated as one: those live in their own files and separate a
+        /// behaviour PR from a baseline PR. This pin belongs to the behaviour
+        /// change and is updated in the same commit as the revision bump.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void AiBehaviorId_TracksWhatTheAiActuallyDoes()
+        {
+            AiHost host = BuildMatch(Seed);
+            uint decided = host.RunUntilDecided(EndToEndBudgetTicks);
+            ulong endState = host.Kernel.CalculateStateHash();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(AiBehaviorId.Value, Is.EqualTo("r2.A037B84D"),
+                    "the AI identifier changed — bump the revision and write the journal entry");
+                Assert.That(decided, Is.EqualTo(2241u),
+                    "the AI decides the canonical match on a different tick than the pinned one");
+                Assert.That($"0x{endState:X16}", Is.EqualTo("0x07CA2429C5FE7E5A"),
+                    "same identifier, different end state: behaviour moved without the revision moving");
+            });
+        }
+
+        // ----------------------------------------------------------------
+        // (f) Target choice is a score, not the order of the visible list
         // ----------------------------------------------------------------
 
         /// <summary>

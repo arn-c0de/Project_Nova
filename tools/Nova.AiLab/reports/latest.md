@@ -1,4 +1,4 @@
-# Laborlauf 20260808-2035-ab6cb9a1
+# Laborlauf 20260808-2125-7ac3015a
 
 > [!IMPORTANT]
 > **DIAGNOSE, kein Nachweis.** Nichts in diesem Bericht wurde im laufenden Spiel gesehen.
@@ -8,14 +8,15 @@
 
 | Herkunft | Wert |
 | --- | --: |
-| gemessen am | 2026-08-08T20:35:24Z |
-| Commit | `ab6cb9a18f6fed46a68dda63e910e83183e141a5` |
+| gemessen am | 2026-08-08T21:25:28Z |
+| Commit | `7ac3015a36489410f59889d96561e49c9bfbc38c` |
 | Definitionstabelle | `0x6326FA3E56CFF5A3` |
+| KI-Verhalten | `r2.A037B84D` |
 | Seed | `0xA17E57DE57` |
 | Tickbudget | 27.000 |
 | Slots | 2 |
 | specVersion | 1 |
-| Fingerabdruck | `58e7847e9dfa51dc` |
+| Fingerabdruck | `1ae42079549078fc` |
 
 Interaktive Fassung derselben Zahlen: [`dashboard.html`](../out/dashboard.html) — Kurven mit Fadenkreuz, Heatmap mit Abstandsdetail, Scrubber. Lokal öffnen, kein Server nötig; GitHub zeigt HTML nicht an, dafür ist dieser Bericht da.
 
@@ -27,7 +28,7 @@ Eine kanonische Partie über beide Slots, Metriken alle 50 Ticks, reine Beobacht
 | --- | --: | --- |
 | Ausgang | VictoryElimination | Slot 0 · alliance |
 | Entschieden bei Tick | 8.715 | von 27.000 Budget |
-| Rechenzeit | 809 ms | 10.773 Ticks/s |
+| Rechenzeit | 835 ms | 10.437 Ticks/s |
 | Metrikproben | 175 | alle 50 Ticks |
 | Hash-Kette | 18 | alle 500 Ticks |
 | Endzustands-Hash | `0x5D8FB2D45FFD16B6` | bei Tick 8.715 |
@@ -241,6 +242,6 @@ python3 tools/Nova.AiLab/report/build_reports.py tools/Nova.AiLab/out
 
 ---
 
-Nova.AiLab ist lokales Werkzeug, kein Beitrag — es gerät in keinen `feat/`-Branch und wird nie gemergt. Diese Ergebnismenge ist an Commit `ab6cb9a1` und Definitionstabelle `0x6326FA3E56CFF5A3` gebunden. Nach dem nächsten Merge-Fenster des Maintainers sind die Zahlen nicht mehr vergleichbar und werden neu vermessen, nicht über die Grenze hinweg verglichen.
+Nova.AiLab ist lokales Werkzeug, kein Beitrag — es gerät in keinen `feat/`-Branch und wird nie gemergt. Diese Ergebnismenge ist an Commit `7ac3015a` und Definitionstabelle `0x6326FA3E56CFF5A3` gebunden. Nach dem nächsten Merge-Fenster des Maintainers sind die Zahlen nicht mehr vergleichbar und werden neu vermessen, nicht über die Grenze hinweg verglichen.
 
 *DIAGNOSIS — never proof. No scalar score, no ranking: the numbers sit side by side and a human picks.*
