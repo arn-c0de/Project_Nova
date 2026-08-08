@@ -23,7 +23,12 @@ namespace Nova.AiLab
     /// </summary>
     public static class PrDraft
     {
-        public const string FileName = "pr-draft.md";
+        /// <summary>
+        /// One draft per candidate, so the file name carries the candidate.
+        /// A single <c>pr-draft.md</c> would be overwritten by whichever
+        /// candidate was written last.
+        /// </summary>
+        public static string FileNameFor(string candidateProfileId) => $"pr-draft-{candidateProfileId}.md";
 
         /// <summary>The four files any behaviour change turns red — by design, not by defect.</summary>
         public static readonly string[] BaselineFiles =

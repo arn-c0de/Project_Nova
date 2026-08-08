@@ -47,7 +47,7 @@ namespace Nova.AiLab
             "compare:\n" +
             "  --seeds <n>            seeds per candidate (default 1 — the seed axis is empty today)\n" +
             "  --ticks <n>            tick budget per match (default 27000)\n" +
-            "  --out <dir>            write report.html, resultset.json, pr-draft.md and one run per candidate\n" +
+            "  --out <dir>            write report.html, resultset.json, pr-draft-<candidate>.md and one run each\n" +
             "  --against <file>       compare against an archived resultset.json instead of the built-in reference\n" +
             "  --parallel <n>         max concurrent candidates (default: processor count)\n" +
             "\n" +

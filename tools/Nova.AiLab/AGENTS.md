@@ -78,9 +78,17 @@ vergleichbar statt schätzungsweise.
 | `trace.ndjson` | Metriktick | 21 Kennzahlen je Slot plus `buildingsByRole[9]` |
 | `view.ndjson` | Sichtframe | Position, Tätigkeit, Ziel, Fog-Ebene — für `player.html` |
 | `duels.ndjson` | Duell (576) | `winner`, `decidedTick`, `noContact`, `parityWobbles`, `survivors*` |
-| `movement.ndjson` | Szenario × Fraktion (8) | `overshootCells`, `blockedUnits`, `arrived`, `travelledCells` |
+| `movement.ndjson` | Szenario × Fraktion (8) | `usableRangeOvershootCells` (nicht `overshootCells` — siehe unten), `blockedUnits`, `arrived`, `travelledCells`, `wallGapCells` |
 | `resultset.json` | Vergleichslauf | je Kandidat Siegquote, Mittelwerte, `changes`, plus Herkunft (Commit, Seeds, Hashes) |
 | `dashboard.html` | — | alle vier Laufarten in einer Seite: `python3 tools/Nova.AiLab/report/build_dashboard.py out/lab` |
+
+**Zwei Felder, bei denen der naheliegende Name der falsche ist.** `overshootCells`
+misst gegen die *nominale* Waffenreichweite — die Einheit kann sie ohne Aufklärung
+gar nicht nutzen (Sicht 10, Artillerie 20). Die Zahl, die Verhaltensarbeit
+zurückholen kann, ist `usableRangeOvershootCells`, gerechnet gegen die Entfernung,
+auf der tatsächlich zum ersten Mal Schaden fiel. Und `unitsLost` / `lowPowerTicks`
+sind **kumulativ seit Tick 0**, nicht je Intervall — wer sie als Intervallwerte
+liest, macht aus einer flachen Wirtschaft eine einbrechende.
 
 **Der Seed ist keine Achse.** Kein Simulationssystem zieht aus dem Kernel-PRNG; der
 Seed geht in Zustands-Hash und Snapshot, sonst nirgendwohin. Ein Sweep über 24 Seeds
@@ -107,7 +115,7 @@ dotnet run --project tools/Nova.AiLab -c Release -- match --hash-every 100 --out
 diff <(jq -r '.entries[]|"\(.tick) \(.stateHash)"' out/ref/hashchain.json) \
      <(jq -r '.entries[]|"\(.tick) \(.stateHash)"' out/new/hashchain.json) | head
 
-# 5  Suite. 72 Labortests + die grosse Suite; die vier Baselines dürfen rot werden.
+# 5  Suite. 87 Labortests + die grosse Suite; die vier Baselines dürfen rot werden.
 dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
 dotnet test tools/Nova.SimRunner.Tests/Nova.SimRunner.Tests.csproj -c Release
 ```
@@ -144,12 +152,12 @@ der Ausgangspunkt jeder Verbesserung — wer sie verschiebt, muss sagen, um wiev
 
 | Befund | Zahl | Quelle |
 |---|---|---|
-| Fernkämpfer halten **keinerlei** Abstand | Überlauf 20 von 20 Zellen (Allianz), 18 von 18 (Legion), angekommen 0/8 | `movement.ndjson`, Szenario `standoff` |
+| Fernkämpfer laufen bis auf **0 Zellen** heran | Reichweite 20, Sicht 10, **Feuereröffnung bei 7** (Allianz; Legion 18/10/7) → nutzbarer Überlauf **7**, nicht 20 | `movement.ndjson`, `standoff`: `usableRangeOvershootCells` |
 | Artillerie kann ihre Reichweite ohne Aufklärung nicht nutzen | 4 von 36 Siegen (Allianz), 2 von 36 (Legion); alle 100 kontaktlosen Duelle liegen auf Waffenreichweite | `duels.ndjson` |
 | Belagerung streut viel weiter als der Matrixwert | Legion-`BasicInfantry` 632 Ticks gegen Barracks, `AntiArmorInfantry` 52 — Faktor 12 statt der erwarteten 2,5 | `duels.ndjson`, `siege: true` |
-| Die Spawnreihenfolge kippt echte Paarungen | 38 Richtungsabweichungen, davon 33 Spiegelpaarungen → **5 echte** | `duels.ndjson`, beide Richtungen |
+| Die Spawnreihenfolge kippt echte Paarungen | **5** Richtungsabweichungen (Spiegelpaarungen werden nicht mehr mit sich selbst verglichen) | `duels.ndjson`, beide Richtungen |
 | Die KI wird **nie** abgelehnt | `intentsRejected` 0 von 1021 | `trace.ndjson` |
-| Enge Stellen sind kein Problem | 16 Einheiten durch eine Ein-Zellen-Engstelle, 0 Blockaden | `movement.ndjson`, `blocking` |
+| Enge Stellen sind kein Problem | 16 Einheiten durch eine **Zwei-Zellen**-Engstelle, 0 Blockaden, Ankunft 158/178 | `movement.ndjson`, `blocking`: `wallGapCells` |
 
 Die vorletzte Zeile ist die interessanteste für einen Agenten: **`intentsRejected` ist
 heute strukturell 0**, weil die KI nur fünf brave Befehlsarten benutzt. Sobald E7/E8

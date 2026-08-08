@@ -26,6 +26,11 @@ namespace Nova.AiLab
     /// documented production brake does — low power halves
     /// <c>ProductionSpeedMultiplierQ16</c> — so <see cref="LowPowerTicks"/>
     /// counts exactly that, under its own name.</item>
+    /// <item><b>The accumulating fields are RUNNING TOTALS</b>
+    /// (<see cref="LowPowerTicks"/>, <see cref="UnitsLost"/>,
+    /// <see cref="HealthLost"/>): every sample carries the value since the
+    /// start of the match, not since the previous sample. Reading them as
+    /// per-interval numbers turns a flat economy into a collapsing one.</item>
     /// <item><c>activeGoal</c>/<c>goalUtility</c>/<c>goalSwitches</c>: the goal
     /// system does not exist before E7. These fields appear when it does, not
     /// as zeros pretending to be measurements.</item>
@@ -55,15 +60,36 @@ namespace Nova.AiLab
         // Production — TryGetProducer / TryGetQueueEntry
         public int Producers;
         public int QueuedUnits;
-        /// <summary>Ticks in this interval the slot spent under the low-power brake.</summary>
+
+        /// <summary>
+        /// Ticks the slot has spent under the low-power brake SINCE THE START
+        /// OF THE MATCH — a running total, not a per-interval figure. Take a
+        /// difference between two samples for the interval.
+        /// </summary>
         public int LowPowerTicks;
 
         // Army — entity scan
         public int ArmySize;
         public long ArmyHealthSum;
-        /// <summary>Own units that vanished since the previous sample (cumulative).</summary>
+
+        /// <summary>
+        /// Owned ENTITIES that vanished since the start of the match — a
+        /// running total.
+        /// <para>
+        /// The name says units and the number counts entities: a destroyed
+        /// building and an abandoned construction site are entities too, and
+        /// both land here. That is the honest reading of what the entity scan
+        /// can see, and it matters when a slot loses a refinery rather than a
+        /// squad. Kept under this name because archived result sets key on
+        /// <c>unitsLost</c>.
+        /// </para>
+        /// </summary>
         public int UnitsLost;
-        /// <summary>Health lost since the previous sample, dead units included (cumulative).</summary>
+
+        /// <summary>
+        /// Health lost since the start of the match, dead entities included —
+        /// a running total, same reading as <see cref="UnitsLost"/>.
+        /// </summary>
         public long HealthLost;
 
         // Sight — GetVisibleEntities

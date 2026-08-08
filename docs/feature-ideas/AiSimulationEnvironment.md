@@ -441,8 +441,8 @@ Truppenführungs-Sprint unpassierbar), eine Einheitengruppe, ein Befehl.
 |---|---|---|
 | `arrival` | Gruppe, freies Feld, ein Zielbefehl | Ticks bis zur Ankunft, Anteil angekommen, Streuung als größte Chebyshev-Distanz zum Zielzentrum |
 | `blocking` | zwei kreuzende Gruppen; große Gruppe durch eine Engstelle zwischen Fußabdrücken | Einheiten mit `IsMoving` und unveränderter Position über K Ticks: Anzahl, Gesamtdauer, längste einzelne Blockade |
-| `standoff` | Fernkämpfer mit Angriffsbefehl auf ein stehendes Ziel | kleinster erreichter Zentrumsabstand gegen die eigene `AttackRange` — der „Überlauf" ist die Zahl, die Issue 03 meint |
-| `detour` | Ziel hinter einer Gebäudewand mit einem Durchlass | Weglänge gegen Luftlinie, Ankunftszeit, ob überhaupt jemand ankommt |
+| `standoff` | Fernkämpfer mit Move- **und** Angriffsbefehl auf ein stehendes Ziel | kleinster erreichter Zentrumsabstand **und** die Entfernung, auf der das Ziel zum ersten Mal Schaden nimmt — die zweite Zahl ist die, die Issue 03 meint (siehe Nachtrag unten) |
+| `detour` | Ziel hinter einer Gebäudewand mit **genau einem** Durchlass | Weglänge gegen Luftlinie, Ankunftszeit, ob überhaupt jemand ankommt; der Durchlass wird aus dem `CostField` **zurückgemessen**, nicht angenommen |
 
 `standoff` braucht Combat im Lauf und ist damit ein Mischszenario — das ist
 gewollt: Abstandhalten *ist* eine Kampfeigenschaft, kein reines Bewegungsthema.
@@ -1089,19 +1089,75 @@ gebaut wurden:
 > abgelesenem Matrixwert und gemessenem Duellausgang meint. Basisinfanterie
 > stirbt an der `DefensePlatform`, dem einzigen Gebäude, das zurückschießt.
 
-> **Fernkämpfer halten überhaupt keinen Abstand.** Allianz-Artillerie mit
+> **Fernkämpfer laufen bis auf 0 Zellen heran.** Allianz-Artillerie mit
 > **20 Zellen Reichweite** läuft auf **0 Zellen** an den Feind heran, Legion mit
-> 18 ebenso — Überlauf 20 bzw. 18, also der volle Reichweitenvorteil verschenkt.
-> Das ist die Zahl, die Issue 03 meint, jetzt als Kommando messbar. Ein Test
-> hält sie fest und schlägt fehl, sobald der Überlauf schrumpft — dann landet
-> die Verhaltensarbeit.
+> 18 ebenso. ⚠️ **Die daraus zuerst gezogene Folgerung — „Überlauf 20, also der
+> volle Reichweitenvorteil verschenkt" — war falsch. Siehe Nachtrag unten.**
 
 Zwei Nebenbefunde: Ein **`AttackTarget`-Befehl allein bewegt nichts** — Artillerie
 40 Zellen vor einem Ziel steht und feuert nie (GB-002 in der Praxis, kein
 Attack-Move); die Annäherung muss explizit befohlen werden, wie die KI es tut.
-Und **16 Einheiten fädeln ohne messbare Blockade durch eine Ein-Zellen-Engstelle**
-(erste Ankunft Tick 161, letzte 176) — ein positiver Befund über die Bewegung,
-kein Problem.
+Und **16 Einheiten fädeln ohne messbare Blockade durch eine Engstelle** — ein
+positiver Befund über die Bewegung, kein Problem. ⚠️ Die Engstelle war
+allerdings nicht eine Zelle breit, wie hier zuerst stand; auch dazu der
+Nachtrag.
+
+#### Nachtrag: was eine Prüfung der Messaufbauten gefunden hat (2026-08-08)
+
+Drei der oben notierten E5-Befunde beschrieben nicht das, was gemessen wurde.
+Gefunden nicht durch die Zahlen, sondern durch eine Prüfung des Aufbaus gegen
+den laufenden Code — dieselbe Sorte Fehler, die E3 in E2 gefunden hat, und
+derselbe Grund: **eine Kennzahl, die still etwas anderes misst als ihr Name.**
+
+**1. Die Mauer war oben offen, und `detour` lief durch das Loch.** `PlaceWall`
+kachelte in 3-Zellen-Schritten bis `mapHeight - step`. 128 ist kein Vielfaches
+von 3, also blieben die Zeilen **126 und 127 begehbar** — ein zweiter, nie
+entworfener Durchlass am oberen Kartenrand. Belegt am `CostField`:
+`walkable rows at x=64: 18..23 | 126..127`. Die Gruppe nahm ihn: **84 Zellen
+Weg gegen 50 Luftlinie**, wo der geplante Durchlass über 150 kostet. `detour`
+prüfte damit Flow-Field und `CostField` an einer Öffnung, über die niemand
+entschieden hatte. Nach der Korrektur: **175 Zellen, Ankunft Tick 427/440.**
+
+**2. Eine Ein-Zellen-Engstelle war nie baubar.** Ein 3×3-Fußabdruck freizulassen
+gibt drei Zeilen frei; `gapHeight: 1` erzeugte eine **Drei-Zellen**-Öffnung. Der
+Kommentar im Code sagte selbst, drei Zellen ließen die Gruppe nebeneinander
+durchlaufen — und genau das zeigte das Ergebnis. Die Mauer wird jetzt von
+**beiden Kartenrändern zur Lücke hin** gekachelt; das drückt sie auf **zwei
+Zellen**, das schmalste, was das Raster hergibt. Ergebnis unverändert: **0
+blockierte Einheiten** (Ankunft 158/178). Der positive Bewegungsbefund steht —
+jetzt an einer Engstelle, die es gibt.
+
+**3. `standoff` maß Gehorsam, nicht Abstandhalten.** Die Gruppe bekommt einen
+Move-Befehl **auf die Zielzelle**; ein Annäherungsabstand von 0 ist damit
+zuallererst eine befolgte Order. Ein Kontrolllauf entscheidet die Sache:
+identischer Aufbau, Move nur bis zur Reichweitenkante — die Artillerie erreichte
+19 Zellen und richtete über 2.000 Ticks **null Schaden** an, weil die Sicht
+10 Zellen beträgt und `CombatSystem` das Ziel als `Visible` verlangt.
+
+> **Die naive Abhilfe („auf Reichweite stehenbleiben") macht die Artillerie
+> wirkungslos.** „Hält keinen Abstand" und „kann so weit nicht sehen" sind zwei
+> verschiedene Befunde, und der Aufbau konnte sie nicht trennen.
+
+Das Szenario liefert deshalb jetzt **zwei** Entfernungen: den kleinsten
+erreichten Abstand und die Entfernung, auf der das Ziel zum ersten Mal Schaden
+nimmt. Gemessen: Feuereröffnung bei **7 Zellen**. Der ehrliche Überlauf ist
+damit **7, nicht 20** — und nur diese 7 kann Verhaltensarbeit zurückholen. Der
+Rest gehört der Aufklärung und damit `Simulation/Vision/`, fremdes Terrain
+(§3.8).
+
+**Zwei weitere Messwerkzeuge, die falsch zählten.** Die Richtungsabweichungen
+der Duelltabelle verglichen Selbstpaarungen (gleiche Fraktion, gleiche Rolle)
+**mit sich selbst** — 33 der gemeldeten 38 Zeilen; die fünf echten Funde lagen
+darunter begraben. Und `result.json` schrieb für jeden Slot jedes Laufs das
+feste Wort `"canonical"`, also gerade im Vergleichslauf einen falschen
+Profilnamen in genau das Artefakt, in das der Bericht verlinkt.
+
+Was daraus als Regel folgt und jetzt im Code steht: **Der Messaufbau wird
+zurückgemessen, nicht angenommen.** Die Mauer liest ihre Öffnung aus dem
+`CostField` und verweigert den Lauf bei mehr als einer; jede Platzierung prüft
+ihr Verdikt; das Artefakt nennt das Profil, das gespielt hat. Ein Labor, dessen
+Aufbau nur behauptet wird, misst irgendwann etwas anderes als es meldet — und
+merkt es nicht.
 
 Die 44 Duelle „ohne Berührung" auf Waffenreichweite sind ein eigener Ausgang im
 Bericht, kein Unentschieden: Eine Waffe, die weiter reicht als ihre Sicht

@@ -65,7 +65,7 @@ namespace Nova.AiLab
                 {
                     if (string.Equals(c.ProfileId, referenceId, StringComparison.Ordinal)) continue;
                     File.WriteAllText(
-                        Path.Combine(options.OutputDirectory, $"pr-draft-{c.ProfileId}.md"),
+                        Path.Combine(options.OutputDirectory, PrDraft.FileNameFor(c.ProfileId)),
                         PrDraft.Build(set, referenceId, c.ProfileId));
                 }
 

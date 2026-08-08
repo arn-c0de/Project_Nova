@@ -104,10 +104,21 @@ namespace Nova.AiLab
 
         /// <summary>
         /// Attributes disappearances and health drops to their owner, then
-        /// re-snapshots. KNOWN BLIND SPOT: a unit born and killed between two
-        /// samples is invisible here. At the default interval of 10 ticks that
-        /// is a second of simulated time, well below any unit's build time —
-        /// but it is a sampling result, not a ledger, and reads as one.
+        /// re-snapshots. The totals it feeds are CUMULATIVE over the match —
+        /// each sample carries the value since tick 0, not since the previous
+        /// sample.
+        /// <para>
+        /// KNOWN BLIND SPOT: a unit born and killed between two samples is
+        /// invisible here. At the default interval of 10 ticks that is a second
+        /// of simulated time, well below any unit's build time — but it is a
+        /// sampling result, not a ledger, and reads as one.
+        /// </para>
+        /// <para>
+        /// SECOND READING NOTE: this walks every entity the slot owns, so a
+        /// destroyed building and a cancelled construction site count exactly
+        /// like a dead soldier. The field is named <c>UnitsLost</c> for
+        /// archive compatibility; what it measures is entities.
+        /// </para>
         /// </summary>
         private void AccumulateLosses()
         {

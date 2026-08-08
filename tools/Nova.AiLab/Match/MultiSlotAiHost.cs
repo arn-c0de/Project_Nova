@@ -95,6 +95,20 @@ namespace Nova.AiLab
         /// an all-AI lab match nobody submits through it: it is the ingress
         /// owner and the tick clock of the host, exactly as slot 0 is the
         /// passive fixture in SkirmishAiTests.
+        /// <para>
+        /// ONE DEVIATION FROM MatchRunner, WORTH KNOWING. In the game the host
+        /// session IS the local slot's session. Here, when slot 0 is played by
+        /// an AI, slot 0 owns TWO sessions: this host session and its own peer
+        /// session, and both can assign local sequences for slot 0. Nothing
+        /// collides today because the host ingress is only ever an intake — no
+        /// code path submits through it in a lab match, so every slot-0 record
+        /// carries a peer-assigned sequence and the numbering stays monotone.
+        /// The invariant is load-bearing rather than incidental: submitting
+        /// through <see cref="Ingress"/> in an all-AI match would interleave
+        /// two independent sequence counters on one slot, and the host intake
+        /// would start refusing records as duplicates. Submit through
+        /// <see cref="SlotPeer.Ingress"/>, never through this one.
+        /// </para>
         /// </summary>
         public const byte HostSlot = 0;
 

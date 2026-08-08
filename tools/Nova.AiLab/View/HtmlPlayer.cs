@@ -31,7 +31,6 @@ namespace Nova.AiLab
                 .Replace("__MAP_HEIGHT__", mapHeight.ToString(CultureInfo.InvariantCulture))
                 .Replace("__SLOT_COUNT__", slotCount.ToString(CultureInfo.InvariantCulture))
                 .Replace("__SEED__", "0x" + seed.ToString("X", CultureInfo.InvariantCulture))
-                .Replace("__TRACE_FILE__", RunArtifacts.TraceFileName)
                 .Replace("__VIEW_FILE__", RunArtifacts.ViewFileName));
             return html.ToString();
         }
