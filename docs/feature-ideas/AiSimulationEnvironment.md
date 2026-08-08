@@ -81,7 +81,7 @@ xxHash64, byte-genaue Serialisierung, bis hin zur Duell-Asymmetrie im Combat).
 | # | Anforderung | Stand |
 |---|---|---|
 | **R1** | Simulation ohne Unity | ✅ vorhanden |
-| **R2** | Parallel, vielfach, schnell | ⚠️ möglich, keine Ansteuerung |
+| **R2** | Parallel, vielfach, schnell | ✅ seit E2 — 143.000 Ticks/s über 24 Kerne |
 | **R3** | Bit-identisch zum Spiel | ✅ strukturell garantiert |
 | **R4** | KI gegen KI | ⚠️ im Labor baubar, im Spiel gesperrt |
 | **R5** | 2 gegen 2 | ❌ kein Team-Begriff |
@@ -840,7 +840,7 @@ erst belegt hat. Und `AI.Data/` ist im csproj verdrahtet, aber leer: die Werte
 stehen weiter dort, wo das Spiel sie hat (`SlotSpec.CanonicalProfile` spiegelt
 `MatchRunner`), bis E6 sie zu Daten macht.
 
-### E2 — Lauftreiber, Metriken, Parallelität *(lokal)*
+### E2 — Lauftreiber, Metriken, Parallelität ✅ **erledigt (2026-08-08)**
 
 `MatchSpec` einlesen, `Parallel.For`, Artefakte je Lauf, Metrikkatalog aus §3.3.
 
@@ -851,6 +851,70 @@ Kandidat mit eigener Begründung, kein Labor-Nebeneffekt.
 
 *Fertig, wenn:* Ein Kommando fährt *n* Matches parallel. **Durchsatz gemessen
 und notiert.**
+
+**Durchsatz.** `sweep --seeds 24` auf 24 Kernen: 24 volle Partien
+(311.400 Ticks) in **2,2 s = 143.000 Ticks/s** über alle Kerne, seriell rund
+13.000 Ticks/s je Kern. Die GC-Sorge aus dem Absatz oben hat sich nicht
+bestätigt und bleibt unangetastet — es gibt keinen Grund, `Decide()` anzufassen.
+
+**Messen kostet nichts, und das ist geprüft.** Zwei Tests nageln fest, dass
+Trace-Collector und Intent-Zählung dieselbe Hash-Kette liefern wie ein Lauf
+ohne sie — dieselbe Bedingung, die §3.4 ans Sichtfenster stellt, „als Test,
+nicht als Vorsatz". Ein Beobachter, der die Partie verändert, würde alles
+entwerten, was durch ihn gemessen wurde.
+
+**`intentsRejected` braucht eine eigene Verdrahtung.** Die naheliegende
+Ableitung — vergebene Sequenzen minus `SealedWatermark` — ist *falsch*, und
+zwar lautlos: Der Watermark ist ein Hochwasserstand, keine Zählung. Eine
+abgelehnte Sequenz mitten im Strom hinterlässt eine Lücke, über die spätere
+Records hinwegversiegeln; die Ablehnung verschwindet aus der Rechnung. Gezählt
+wird deshalb dort, wo das Verdikt entsteht: `CountingAiPeerTransport` benutzt
+den `ICommandTransport`-Vertrag, ersetzt `AiPeerCommandTransport` nur in
+Metrikläufen und ändert `AI/` nicht. **Gemessenes Ergebnis: die heutige KI wird
+nie abgelehnt (0 von 541 Intents).** Die Zahl wird erst mit E7/E8 interessant.
+
+Drei Abweichungen vom Katalog in §3.3, jede weil die genannte Größe im
+committed State nicht existiert — benannt statt erfunden:
+
+| §3.3 nennt | Labor liefert | Grund |
+|---|---|---|
+| `damageDealt`/`damageTaken`/`kills` | `unitsLost`, `healthLost` je Slot | Es gibt kein Schadensbuch im State. Bei zwei Slots rechnet der Bericht „dealt" aus dem „taken" der Gegenseite; bei mehr Slots ist Schaden gar nicht zuordenbar |
+| `queueStallTicks` | `lowPowerTicks` | Eine Stockung hat keine Markierung im State, die dokumentierte Produktionsbremse schon (`ProductionSpeedMultiplierQ16` halbiert) |
+| `activeGoal`, `goalUtility`, `goalSwitches` | — | Das Goal-System entsteht erst in E7. Nullen, die wie Messwerte aussehen, wären schlechter als eine Lücke |
+
+#### Der Befund, der die Sweep-Methodik ändert
+
+> **Kein einziges Simulationssystem zieht aus dem Kernel-PRNG.** `SimRandom`
+> wird im Kernel gehalten, in Zustands-Hash und Snapshot geschrieben — und nie
+> gezogen. Belegt per Codesuche über `Scripts/Simulation/` und per Messung:
+> drei völlig verschiedene Seeds (`0x1`, `0xDEADBEEF`, `0xA17E57DE57`) liefern
+> denselben Trace, dieselbe Armeegröße, dieselben Credits. 24 Seeds im Sweep
+> entscheiden alle bei Tick 12.975 für Slot 0.
+
+Der Seed verändert den **Zustands-Hash**, nicht die **Partie**. Das ist kein
+Defekt — eine zufallsfreie Simulation ist für Lockstep eine saubere
+Entscheidung — aber es hebelt eine Annahme aus, die an mehreren Stellen im Plan
+steckt:
+
+- **§3.7 „Referenz-Seedmenge"** ist heute kein Messinstrument. Eine Seedmenge
+  fixiert nichts, weil es nichts zu fixieren gibt.
+- **E4 „Matrix aus Seeds × Profilen"** hat heute nur eine echte Achse. Ein
+  Sweep über *n* Seeds ist *eine* Beobachtung, keine *n*.
+- **Entscheidung 13** (Kartenvarianz erst nach E7) verschärft das: Ohne Zufall
+  *und* ohne Kartenvarianz gibt es bis E6 überhaupt keine Varianzquelle außer
+  dem Profil.
+
+Das Labor versteckt das nicht: `sweep` zählt verschiedene Entscheidungen und
+schreibt „the seed axis is empty" hin, wenn alle Läufe gleich ausgehen. Ein
+Test hält den Befund fest — und dokumentiert, dass sein Fehlschlagen eine gute
+Nachricht wäre, weil dann etwas zieht und die Achse echt wird.
+
+**Was daraus folgt, ohne den Plan einseitig umzuschreiben:** Die Reihenfolge
+E4-vor-E6 verliert ihren Sinn, solange Profile die einzige Varianzquelle sind
+und es nur ein Profil gibt. Der Vergleichsbericht braucht etwas zu vergleichen.
+Naheliegend wäre, **E6 (Profile zu Daten) vor E4 zu ziehen** — das ist aber
+eine Planänderung und keine Laborentscheidung, deshalb steht sie hier als
+Vorschlag und nicht als Tatsache.
 
 ### E3 — 2D-Sichtfenster, beide Darstellungen *(lokal)*
 
