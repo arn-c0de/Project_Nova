@@ -15,11 +15,11 @@ Kandidat `power-buffer` — geändert gegenüber `ms1-canonical`: powerReserve 0
 |---|---:|---:|
 | Siegrate | 50% | 0% |
 | Partien (S/N/U) | 1/1/0 | 0/2/0 |
-| Entscheidungstick (Mittel) | 12975 | 7025 |
-| Credits am Ende (Mittel) | 36000 | 16280 |
-| Armeegröße am Ende (Mittel) | 7 | 2 |
-| Verlorene Einheiten (Mittel) | 124 | 60 |
-| Intents gesendet | 1012 | 456 |
+| Entscheidungstick (Mittel) | 8715 | 3648 |
+| Credits am Ende (Mittel) | 23405 | 5565 |
+| Armeegröße am Ende (Mittel) | 5 | 6 |
+| Verlorene Einheiten (Mittel) | 81 | 20 |
+| Intents gesendet | 706 | 158 |
 | Intents abgelehnt | 0 | 0 |
 
 Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
@@ -27,7 +27,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 3b3f27d7b4338ca48b5a956ba81ba38506cca362
+- Commit ab6cb9a18f6fed46a68dda63e910e83183e141a5
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

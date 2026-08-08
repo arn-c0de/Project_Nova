@@ -87,7 +87,11 @@ namespace Nova.AiLab
             int? harvesterQueueBatch = null,
             int? targetArmySize = null,
             int? attackSquadThreshold = null,
-            int? infantryQueueBatch = null)
+            int? infantryQueueBatch = null,
+            int? targetDamageWeight = null,
+            int? targetThreatWeight = null,
+            int? targetFinishWeight = null,
+            int? targetDistanceWeight = null)
         {
             AiProfile b = Reference;
             return new AiProfile(
@@ -99,7 +103,11 @@ namespace Nova.AiLab
                 harvesterQueueBatch: harvesterQueueBatch ?? b.HarvesterQueueBatch,
                 targetArmySize: targetArmySize ?? b.TargetArmySize,
                 attackSquadThreshold: attackSquadThreshold ?? b.AttackSquadThreshold,
-                infantryQueueBatch: infantryQueueBatch ?? b.InfantryQueueBatch);
+                infantryQueueBatch: infantryQueueBatch ?? b.InfantryQueueBatch,
+                targetDamageWeight: targetDamageWeight ?? b.TargetDamageWeight,
+                targetThreatWeight: targetThreatWeight ?? b.TargetThreatWeight,
+                targetFinishWeight: targetFinishWeight ?? b.TargetFinishWeight,
+                targetDistanceWeight: targetDistanceWeight ?? b.TargetDistanceWeight);
         }
 
         /// <summary>Which values a candidate changed against the reference, for the report.</summary>
@@ -123,6 +131,17 @@ namespace Nova.AiLab
                 diffs.Add($"squadThreshold {r.AttackSquadThreshold}→{candidate.AttackSquadThreshold}");
             if (candidate.InfantryQueueBatch != r.InfantryQueueBatch)
                 diffs.Add($"infantryBatch {r.InfantryQueueBatch}→{candidate.InfantryQueueBatch}");
+            // Ohne diese vier meldete der Bericht "geaendert: —" fuer einen
+            // Kandidaten, der sich sehr wohl unterscheidet — eine stille
+            // Luecke waere schlimmer als eine fehlende Zeile.
+            if (candidate.TargetDamageWeight != r.TargetDamageWeight)
+                diffs.Add($"targetDmg {r.TargetDamageWeight}→{candidate.TargetDamageWeight}");
+            if (candidate.TargetThreatWeight != r.TargetThreatWeight)
+                diffs.Add($"targetThreat {r.TargetThreatWeight}→{candidate.TargetThreatWeight}");
+            if (candidate.TargetFinishWeight != r.TargetFinishWeight)
+                diffs.Add($"targetFinish {r.TargetFinishWeight}→{candidate.TargetFinishWeight}");
+            if (candidate.TargetDistanceWeight != r.TargetDistanceWeight)
+                diffs.Add($"targetDist {r.TargetDistanceWeight}→{candidate.TargetDistanceWeight}");
             return diffs;
         }
     }

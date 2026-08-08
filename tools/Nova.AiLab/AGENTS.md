@@ -85,6 +85,7 @@ vergleichbar statt schätzungsweise.
 | `reports/latest.md` | Lauf | **dieselben Zahlen als Markdown**, auf GitHub direkt lesbar: Kennzahlen, Gegentabelle, Belagerung, Bewegung, Kurven als Mermaid |
 | `reports/README.md` | — | Gesamtübersicht: jeder archivierte Lauf eine Zeile, dazu der Verlauf innerhalb der aktuellen Definitionstabelle |
 | `reports/data/<id>.json` | Lauf | der verdichtete Messblock mit Herkunft und Fingerabdruck — **die Quelle**, aus der die Berichte jederzeit neu entstehen |
+| `reports/behavior-log.md` | Verhaltensänderung | **von Hand geführt, nicht generiert**: was genau geändert wurde, was besser und was schlechter wurde, und ein Abschnitt „Widerlegt" gegen doppelte Arbeit. **Vor jeder neuen Änderung lesen.** |
 
 Beides schreibt ein Kommando: `python3 tools/Nova.AiLab/report/build_reports.py
 tools/Nova.AiLab/out` (oder `./tools/Nova.AiLab/lab.sh`, das vorher misst).
@@ -129,7 +130,16 @@ diff <(jq -r '.entries[]|"\(.tick) \(.stateHash)"' tools/Nova.AiLab/out/ref/hash
 # 5  Suite. 87 Labortests + die grosse Suite; die vier Baselines dürfen rot werden.
 dotnet test tools/Nova.AiLab.Tests/Nova.AiLab.Tests.csproj -c Release
 dotnet test tools/Nova.SimRunner.Tests/Nova.SimRunner.Tests.csproj -c Release
+
+# 6  Eintrag ins Verhaltensjournal — VOR der nächsten Änderung, nicht danach
+$EDITOR tools/Nova.AiLab/reports/behavior-log.md
 ```
+
+**Schritt 6 ist nicht Kosmetik.** `reports/behavior-log.md` trägt je Änderung die
+genauen Werte, die Folgen in **beide** Richtungen und einen Abschnitt „Widerlegt".
+Wer eine Idee hat, liest ihn zuerst: eine Sackgasse, die niemand aufgeschrieben
+hat, wird zuverlässig ein zweites Mal gelaufen. Ein Eintrag ohne Abschnitt
+„Schlechter" ist verdächtig, nicht sauber.
 
 **Der erste abweichende Kettenglied-Tick ist die wertvollste Zahl der Schleife.** Er
 sagt, *ab wann* zwei Stände auseinanderlaufen — eine rote Baseline sagt nur *dass*.
@@ -148,7 +158,8 @@ nur ausfüllen, wenn ein Mensch tatsächlich gespielt hat.
 
 | Verboten | Warum, und was stattdessen |
 |---|---|
-| Eine **Baseline** anpassen, damit CI grün wird | Der eine Fehler, gegen den die ganze Regel gebaut ist. Verhaltens-PR **ohne** Baseline (er ist dann rot, das ist korrekt), neue Baseline in einem eigenen PR mit altem Wert, neuem Wert, Begründung. Seit `e1a6a57` lehnt `check_baseline_guard.py` einen PR maschinell ab, der eine der vier Dateien **und** `Scripts/{AI,AI.Data,Core,Data,Simulation,Networking,Gameplay/Match}/` oder `Assets/_Project/Data/` zugleich anfasst. Override nur per Maintainer-Label `baseline-reset-approved`. |
+| Eine **Baseline** anpassen, damit CI grün wird | Der eine Fehler, gegen den die ganze Regel gebaut ist. Verhaltens-PR **ohne** Baseline, neue Baseline in einem eigenen PR mit altem Wert, neuem Wert, Begründung. Seit `e1a6a57` lehnt `check_baseline_guard.py` einen PR maschinell ab, der eine der vier Dateien **und** `Scripts/{AI,AI.Data,Core,Data,Simulation,Networking,Gameplay/Match}/` oder `Assets/_Project/Data/` zugleich anfasst. Override nur per Maintainer-Label `baseline-reset-approved`. |
+| Erwarten, dass eine **KI-Änderung die Baselines rot macht** | Tut sie nicht — gemessen in V001. Die vier Dateien erwähnen `SkirmishAi` mit keiner Zeile, ihre Szenarien fahren kein KI-System. Ein Verhaltens-PR in `AI/` kann vollständig grün sein. Die Trennungsregel gilt trotzdem, der Guard führt `Scripts/AI/` in seinen Pfaden — nur die Begründung „wäre ohnehin rot" trägt hier nicht. Und: `SkirmishAiTests` prüft Ausgang und Sieger, **nicht** den Entscheidungstick; es blieb grün, während sich die Partie um 4.260 Ticks verschob. |
 | Eine **Gesamtnote** bilden, sortieren, „bestes Profil" wählen | Entscheidung 11: eine einzelne Zahl belohnt zuverlässig das Falsche. Eine KI, die 5 % häufiger gewinnt, weil sie den Gegner mit Bauarbeitern zumüllt, ist keine bessere KI. Ein Test prüft, dass im Bericht weder „score" noch „rank" steht. Der Agent legt nebeneinander, ein Mensch wählt. |
 | **„geprüft" / „funktioniert"** schreiben, gestützt auf einen Laborlauf | Diagnose ≠ Nachweis. Formulierung: „im Labor gemessen: …, im laufenden Spiel nicht geprüft". |
 | **Fremdes Terrain** reparieren, weil das Labor dort einen Fehler findet | Befund unter `findings/` ablegen: Beobachtung, Pfad, Eigentümer, Seed + MatchSpec zur Reproduktion, `match.replay`, Fundstelle. Der Weg nach draussen ist **Mail oder Issue, kein PR**. |
@@ -192,7 +203,11 @@ die behauptet, `SetRallyPoint` akzeptiere das Refinery nicht. Ein winziger PR in
 `AI/`, verhaltensneutral, Baselines bleiben grün. Guter erster Beitrag für einen
 Agenten, weil er den ganzen PR-Weg einmal durchläuft, ohne etwas zu riskieren.
 
-### 6.2 E7 — Reaktive KI, Stufe 1 *(verhaltensändernd, Baselines werden rot)*
+### 6.2 E7 — Reaktive KI, Stufe 1 *(verhaltensändernd)*
+
+> **Score-Targeting ist erledigt** — siehe [`reports/behavior-log.md`](reports/behavior-log.md)
+> V001. Entscheidung 33 % früher, beide Seiten verlieren weniger, aber
+> `early-push` fällt von 50 % auf 0 %. Vier von fünf Bausteinen stehen noch aus.
 
 Fünf Bausteine, jeder mit einer Zahl, an der er gemessen wird:
 

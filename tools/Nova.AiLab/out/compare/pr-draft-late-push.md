@@ -15,11 +15,11 @@ Kandidat `late-push` — geändert gegenüber `ms1-canonical`: armySize 12→20,
 |---|---:|---:|
 | Siegrate | 50% | 100% |
 | Partien (S/N/U) | 1/1/0 | 2/0/0 |
-| Entscheidungstick (Mittel) | 12975 | 12598 |
-| Credits am Ende (Mittel) | 36000 | 36570 |
-| Armeegröße am Ende (Mittel) | 7 | 15 |
-| Verlorene Einheiten (Mittel) | 124 | 126 |
-| Intents gesendet | 1012 | 1109 |
+| Entscheidungstick (Mittel) | 8715 | 8228 |
+| Credits am Ende (Mittel) | 23405 | 21990 |
+| Armeegröße am Ende (Mittel) | 5 | 11 |
+| Verlorene Einheiten (Mittel) | 81 | 72 |
+| Intents gesendet | 706 | 714 |
 | Intents abgelehnt | 0 | 0 |
 
 Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
@@ -27,7 +27,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 3b3f27d7b4338ca48b5a956ba81ba38506cca362
+- Commit ab6cb9a18f6fed46a68dda63e910e83183e141a5
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

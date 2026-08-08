@@ -475,6 +475,12 @@ def index_markdown(summaries):
         'Messwerte, aus denen beides jederzeit neu entsteht. Die interaktive Fassung mit Kurven, '
         'Heatmap und Scrubber bleibt [`../out/dashboard.html`](../out/dashboard.html) — sie '
         'braucht einen Browser, dieser Ordner nicht.', '',
+        '> [!IMPORTANT]',
+        '> **Was hier NICHT generiert wird: [`behavior-log.md`](behavior-log.md).** Die Berichte '
+        'sagen, wo die Zahlen stehen — das Journal sagt, *warum* sie sich bewegt haben: je '
+        'Verhaltensänderung die genauen Werte, die Folgen in beide Richtungen und ein Abschnitt '
+        '„Widerlegt". Vor einer neuen Idee zuerst dort nachsehen; eine Sackgasse, die niemand '
+        'aufgeschrieben hat, wird ein zweites Mal gelaufen.', '',
         '```bash',
         '# messen, Bericht schreiben, Historie fortschreiben — ein Kommando',
         'python3 tools/Nova.AiLab/report/build_reports.py tools/Nova.AiLab/out',

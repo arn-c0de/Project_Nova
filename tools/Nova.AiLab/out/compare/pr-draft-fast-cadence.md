@@ -15,11 +15,11 @@ Kandidat `fast-cadence` — geändert gegenüber `ms1-canonical`: cadence 20→1
 |---|---:|---:|
 | Siegrate | 50% | 50% |
 | Partien (S/N/U) | 1/1/0 | 1/1/0 |
-| Entscheidungstick (Mittel) | 12975 | 11454 |
-| Credits am Ende (Mittel) | 36000 | 32310 |
-| Armeegröße am Ende (Mittel) | 7 | 8 |
-| Verlorene Einheiten (Mittel) | 124 | 110 |
-| Intents gesendet | 1012 | 1477 |
+| Entscheidungstick (Mittel) | 8715 | 12948 |
+| Credits am Ende (Mittel) | 23405 | 36875 |
+| Armeegröße am Ende (Mittel) | 5 | 5 |
+| Verlorene Einheiten (Mittel) | 81 | 132 |
+| Intents gesendet | 706 | 1696 |
 | Intents abgelehnt | 0 | 0 |
 
 Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
@@ -27,7 +27,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 3b3f27d7b4338ca48b5a956ba81ba38506cca362
+- Commit ab6cb9a18f6fed46a68dda63e910e83183e141a5
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

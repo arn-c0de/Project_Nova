@@ -2,17 +2,17 @@
   "specVersion": 1,
   "profileSchemaVersion": 1,
   "definitionsHash64": "0x6326FA3E56CFF5A3",
-  "commit": "3b3f27d7b4338ca48b5a956ba81ba38506cca362",
+  "commit": "ab6cb9a18f6fed46a68dda63e910e83183e141a5",
   "tickBudget": 27000,
   "slotCount": 2,
   "seeds": ["0x6656D5210FB2CE85"],
   "candidates": [
-    { "profileId": "ms1-canonical", "matches": 2, "wins": 1, "losses": 1, "draws": 0, "winPercent": 50, "averageDecidedTick": 12975, "averageCredits": 36000, "averageArmySize": 7, "averageUnitsLost": 124, "intentsSubmitted": 1012, "intentsRejected": 0, "changes": "" },
-    { "profileId": "early-push", "matches": 2, "wins": 1, "losses": 1, "draws": 0, "winPercent": 50, "averageDecidedTick": 16299, "averageCredits": 44715, "averageArmySize": 4, "averageUnitsLost": 156, "intentsSubmitted": 1780, "intentsRejected": 0, "changes": "armySize 12→10; squadThreshold 6→3" },
-    { "profileId": "late-push", "matches": 2, "wins": 2, "losses": 0, "draws": 0, "winPercent": 100, "averageDecidedTick": 12598, "averageCredits": 36570, "averageArmySize": 15, "averageUnitsLost": 126, "intentsSubmitted": 1109, "intentsRejected": 0, "changes": "armySize 12→20; squadThreshold 6→12" },
-    { "profileId": "greedy-economy", "matches": 2, "wins": 1, "losses": 1, "draws": 0, "winPercent": 50, "averageDecidedTick": 8635, "averageCredits": 44410, "averageArmySize": 6, "averageUnitsLost": 86, "intentsSubmitted": 947, "intentsRejected": 0, "changes": "harvesters 2→4; armySize 12→16; squadThreshold 6→8" },
-    { "profileId": "power-buffer", "matches": 2, "wins": 0, "losses": 2, "draws": 0, "winPercent": 0, "averageDecidedTick": 7025, "averageCredits": 16280, "averageArmySize": 2, "averageUnitsLost": 60, "intentsSubmitted": 456, "intentsRejected": 0, "changes": "powerReserve 0→30" },
-    { "profileId": "fast-cadence", "matches": 2, "wins": 1, "losses": 1, "draws": 0, "winPercent": 50, "averageDecidedTick": 11454, "averageCredits": 32310, "averageArmySize": 8, "averageUnitsLost": 110, "intentsSubmitted": 1477, "intentsRejected": 0, "changes": "cadence 20→10" }
+    { "profileId": "ms1-canonical", "matches": 2, "wins": 1, "losses": 1, "draws": 0, "winPercent": 50, "averageDecidedTick": 8715, "averageCredits": 23405, "averageArmySize": 5, "averageUnitsLost": 81, "intentsSubmitted": 706, "intentsRejected": 0, "changes": "" },
+    { "profileId": "early-push", "matches": 2, "wins": 0, "losses": 2, "draws": 0, "winPercent": 0, "averageDecidedTick": 15401, "averageCredits": 41255, "averageArmySize": 3, "averageUnitsLost": 150, "intentsSubmitted": 1683, "intentsRejected": 0, "changes": "armySize 12→10; squadThreshold 6→3" },
+    { "profileId": "late-push", "matches": 2, "wins": 2, "losses": 0, "draws": 0, "winPercent": 100, "averageDecidedTick": 8228, "averageCredits": 21990, "averageArmySize": 11, "averageUnitsLost": 72, "intentsSubmitted": 714, "intentsRejected": 0, "changes": "armySize 12→20; squadThreshold 6→12" },
+    { "profileId": "greedy-economy", "matches": 2, "wins": 1, "losses": 1, "draws": 0, "winPercent": 50, "averageDecidedTick": 11470, "averageCredits": 62295, "averageArmySize": 8, "averageUnitsLost": 114, "intentsSubmitted": 1225, "intentsRejected": 0, "changes": "harvesters 2→4; armySize 12→16; squadThreshold 6→8" },
+    { "profileId": "power-buffer", "matches": 2, "wins": 0, "losses": 2, "draws": 0, "winPercent": 0, "averageDecidedTick": 3648, "averageCredits": 5565, "averageArmySize": 6, "averageUnitsLost": 20, "intentsSubmitted": 158, "intentsRejected": 0, "changes": "powerReserve 0→30" },
+    { "profileId": "fast-cadence", "matches": 2, "wins": 1, "losses": 1, "draws": 0, "winPercent": 50, "averageDecidedTick": 12948, "averageCredits": 36875, "averageArmySize": 5, "averageUnitsLost": 132, "intentsSubmitted": 1696, "intentsRejected": 0, "changes": "cadence 20→10" }
   ],
   "evidence": "DIAGNOSIS — never proof. No scalar score, no ranking: the numbers sit side by side and a human picks."
 }
