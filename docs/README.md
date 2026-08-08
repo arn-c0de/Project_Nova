@@ -58,6 +58,15 @@ D-066 bleiben gültig, ruhen aber bis Tier 3 – siehe
 Research ist historischer Entscheidungsinput. Bei Versions- oder Scopekonflikt
 führen D-056–D-066.
 
+## Feature-Ideen
+
+- [LinienFormation](feature-ideas/LinienFormation.md) (0.1.0, Idee) – Einheiten
+  entlang einer gezogenen Linie aufstellen; kurzer Klick behält das heutige
+  Verhalten
+
+Feature-Ideen sind unverbindliche Entwürfe ohne D-ID. Sie werden erst mit
+einem Eintrag im [DecisionLog](production/DecisionLog.md) verbindlich.
+
 ## Vision und Game Design
 
 - Vision: [Vision](vision/Vision.md), [USP](vision/USP.md),
