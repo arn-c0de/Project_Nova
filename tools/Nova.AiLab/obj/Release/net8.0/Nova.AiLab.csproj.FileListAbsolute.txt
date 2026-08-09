@@ -1,0 +1,15 @@
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/Nova.AiLab.GeneratedMSBuildEditorConfig.editorconfig
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/Nova.AiLab.AssemblyInfoInputs.cache
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/Nova.AiLab.AssemblyInfo.cs
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/Nova.AiLab.csproj.CoreCompileInputs.cache
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/Nova.AiLab.sourcelink.json
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/bin/Release/net8.0/Nova.AiLab
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/bin/Release/net8.0/Nova.AiLab.deps.json
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/bin/Release/net8.0/Nova.AiLab.runtimeconfig.json
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/bin/Release/net8.0/Nova.AiLab.dll
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/bin/Release/net8.0/Nova.AiLab.pdb
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/Nova.AiLab.dll
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/refint/Nova.AiLab.dll
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/Nova.AiLab.pdb
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/Nova.AiLab.genruntimeconfig.cache
+/media/arn/5e5f88ae-05b4-4c21-85e4-6ae8e68e44183/Projects/Contributions/ProjectNova - HASHKRIEG/Project_Nova/tools/Nova.AiLab/obj/Release/net8.0/ref/Nova.AiLab.dll

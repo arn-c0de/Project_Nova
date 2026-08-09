@@ -82,6 +82,29 @@ namespace Nova.AiLab
             // the opposite of the expectation: units that gather far out have
             // already made the dangerous part of the walk alone.
             Derive("wave-6-far", waveSize: 6, stagingDistanceCells: 70, stagingToleranceCells: 6),
+
+            // ---- retreat ----
+            //
+            // A wounded unit walks home instead of dying where it stands.
+            // There is no health hysteresis and there cannot be one: MS-1
+            // units never heal (Repair validates its target as a completed
+            // BUILDING), so an exit percentage would never be reached. Three
+            // entry thresholds, one danger radius apart, so the shape of the
+            // trade-off is visible instead of a single point.
+            // The off setting stays reachable, same reason as `wave-off`.
+            Derive("retreat-off", retreatHealthPercent: 0),
+
+            // Below and above the shipped 60. Measured one-sided over 25, 40,
+            // 60, 75 and 90: the exchange ratio rises to 75 and turns down at
+            // 90, but 75 pays for it with a match twice as long and twice the
+            // own losses. These two keep both sides of the turn visible.
+            Derive("retreat-40", retreatHealthPercent: 40),
+            Derive("retreat-75", retreatHealthPercent: 75),
+
+            // Same threshold, half the danger radius — measured worse (128
+            // against 138 as Alliance), which says the radius is not where the
+            // effect comes from.
+            Derive("retreat-25-near", retreatHealthPercent: 25, retreatDangerCells: 4),
         };
 
         public static bool TryGet(string profileId, out AiProfile profile)
@@ -124,7 +147,9 @@ namespace Nova.AiLab
             int? targetDistanceWeight = null,
             int? waveSize = null,
             int? stagingDistanceCells = null,
-            int? stagingToleranceCells = null)
+            int? stagingToleranceCells = null,
+            int? retreatHealthPercent = null,
+            int? retreatDangerCells = null)
         {
             AiProfile b = Reference;
             return new AiProfile(
@@ -143,7 +168,9 @@ namespace Nova.AiLab
                 targetDistanceWeight: targetDistanceWeight ?? b.TargetDistanceWeight,
                 waveSize: waveSize ?? b.WaveSize,
                 stagingDistanceCells: stagingDistanceCells ?? b.StagingDistanceCells,
-                stagingToleranceCells: stagingToleranceCells ?? b.StagingToleranceCells);
+                stagingToleranceCells: stagingToleranceCells ?? b.StagingToleranceCells,
+                retreatHealthPercent: retreatHealthPercent ?? b.RetreatHealthPercent,
+                retreatDangerCells: retreatDangerCells ?? b.RetreatDangerCells);
         }
 
         /// <summary>Which values a candidate changed against the reference, for the report.</summary>
@@ -184,6 +211,10 @@ namespace Nova.AiLab
                 diffs.Add($"staging {r.StagingDistanceCells}→{candidate.StagingDistanceCells}");
             if (candidate.StagingToleranceCells != r.StagingToleranceCells)
                 diffs.Add($"stagingTol {r.StagingToleranceCells}→{candidate.StagingToleranceCells}");
+            if (candidate.RetreatHealthPercent != r.RetreatHealthPercent)
+                diffs.Add($"retreatAt {r.RetreatHealthPercent}→{candidate.RetreatHealthPercent}%");
+            if (candidate.RetreatDangerCells != r.RetreatDangerCells)
+                diffs.Add($"retreatDanger {r.RetreatDangerCells}→{candidate.RetreatDangerCells}");
             return diffs;
         }
     }

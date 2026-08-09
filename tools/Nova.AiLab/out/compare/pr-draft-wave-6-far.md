@@ -14,24 +14,24 @@ Kandidat `wave-6-far` — geändert gegenüber `ms1-canonical`: waveSize 12→6,
 | Kennzahl | ms1-canonical | wave-6-far |
 |---|---:|---:|
 | Siegrate | 50% | 0% |
-| Partien (S/N/U) | 1/1/0 | 0/1/1 |
-| Entscheidungstick (Mittel) | 6223 | 17705 |
-| Credits am Ende (Mittel) | 17730 | 48275 |
-| Armeegröße am Ende (Mittel) | 10 | 4 |
-| Verlorene Einheiten (Mittel) | 41 | 173 |
-| Intents gesendet | 313 | 1294 |
+| Partien (S/N/U) | 1/1/0 | 0/2/0 |
+| Entscheidungstick (Mittel) | 5931 | 13784 |
+| Credits am Ende (Mittel) | 17100 | 37575 |
+| Armeegröße am Ende (Mittel) | 10 | 5 |
+| Verlorene Einheiten (Mittel) | 35 | 130 |
+| Intents gesendet | 308 | 1375 |
 | Intents abgelehnt | 0 | 0 |
 
 ### Spielgefühl
 
 | Kennzahl | ms1-canonical | wave-6-far |
 |---|---:|---:|
-| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 83 |
-| Gefechtsintervalle (mit Verlusten) | 11 | 63 |
-| Grösster Verlustsprung in einem Intervall | 9 | 7 |
-| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 23 |
-| Unbeantworteter Schaden (Ereignisse) | 39 | 159 |
-| Aktionen pro Minute | 14 | 23 |
+| Austauschverhältnis (Feindverluste je 100 eigene) | 123 | 66 |
+| Gefechtsintervalle (mit Verlusten) | 10 | 58 |
+| Grösster Verlustsprung in einem Intervall | 9 | 8 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 116 | 30 |
+| Unbeantworteter Schaden (Ereignisse) | 35 | 121 |
+| Aktionen pro Minute | 15 | 29 |
 | Verschiedene Partieausgänge über die Menge | 1 | 2 |
 
 `-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
@@ -42,7 +42,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
+- Commit 3f7f5811d00b858a1e0e56b16c80804ed39b62e8
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

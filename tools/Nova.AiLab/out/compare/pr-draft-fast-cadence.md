@@ -13,25 +13,25 @@ Kandidat `fast-cadence` — geändert gegenüber `ms1-canonical`: cadence 20→1
 
 | Kennzahl | ms1-canonical | fast-cadence |
 |---|---:|---:|
-| Siegrate | 50% | 50% |
-| Partien (S/N/U) | 1/1/0 | 1/1/0 |
-| Entscheidungstick (Mittel) | 6223 | 7033 |
-| Credits am Ende (Mittel) | 17730 | 19745 |
-| Armeegröße am Ende (Mittel) | 10 | 6 |
-| Verlorene Einheiten (Mittel) | 41 | 52 |
-| Intents gesendet | 313 | 738 |
+| Siegrate | 50% | 0% |
+| Partien (S/N/U) | 1/1/0 | 0/1/1 |
+| Entscheidungstick (Mittel) | 5931 | 22655 |
+| Credits am Ende (Mittel) | 17100 | 73830 |
+| Armeegröße am Ende (Mittel) | 10 | 7 |
+| Verlorene Einheiten (Mittel) | 35 | 148 |
+| Intents gesendet | 308 | 1313 |
 | Intents abgelehnt | 0 | 0 |
 
 ### Spielgefühl
 
 | Kennzahl | ms1-canonical | fast-cadence |
 |---|---:|---:|
-| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 103 |
-| Gefechtsintervalle (mit Verlusten) | 11 | 17 |
+| Austauschverhältnis (Feindverluste je 100 eigene) | 123 | 122 |
+| Gefechtsintervalle (mit Verlusten) | 10 | 59 |
 | Grösster Verlustsprung in einem Intervall | 9 | 8 |
-| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 28 |
-| Unbeantworteter Schaden (Ereignisse) | 39 | 45 |
-| Aktionen pro Minute | 14 | 31 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 116 | 103 |
+| Unbeantworteter Schaden (Ereignisse) | 35 | 133 |
+| Aktionen pro Minute | 15 | 17 |
 | Verschiedene Partieausgänge über die Menge | 1 | 2 |
 
 `-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
@@ -42,7 +42,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
+- Commit 3f7f5811d00b858a1e0e56b16c80804ed39b62e8
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

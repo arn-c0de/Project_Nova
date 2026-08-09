@@ -15,23 +15,23 @@ Kandidat `early-push` — geändert gegenüber `ms1-canonical`: armySize 12→10
 |---|---:|---:|
 | Siegrate | 50% | 50% |
 | Partien (S/N/U) | 1/1/0 | 1/1/0 |
-| Entscheidungstick (Mittel) | 6223 | 8042 |
-| Credits am Ende (Mittel) | 17730 | 22605 |
-| Armeegröße am Ende (Mittel) | 10 | 8 |
-| Verlorene Einheiten (Mittel) | 41 | 54 |
-| Intents gesendet | 313 | 488 |
+| Entscheidungstick (Mittel) | 5931 | 10335 |
+| Credits am Ende (Mittel) | 17100 | 31890 |
+| Armeegröße am Ende (Mittel) | 10 | 4 |
+| Verlorene Einheiten (Mittel) | 35 | 59 |
+| Intents gesendet | 308 | 652 |
 | Intents abgelehnt | 0 | 0 |
 
 ### Spielgefühl
 
 | Kennzahl | ms1-canonical | early-push |
 |---|---:|---:|
-| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 86 |
-| Gefechtsintervalle (mit Verlusten) | 11 | 21 |
+| Austauschverhältnis (Feindverluste je 100 eigene) | 123 | 116 |
+| Gefechtsintervalle (mit Verlusten) | 10 | 22 |
 | Grösster Verlustsprung in einem Intervall | 9 | 7 |
-| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 10 |
-| Unbeantworteter Schaden (Ereignisse) | 39 | 48 |
-| Aktionen pro Minute | 14 | 17 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 116 | 77 |
+| Unbeantworteter Schaden (Ereignisse) | 35 | 57 |
+| Aktionen pro Minute | 15 | 18 |
 | Verschiedene Partieausgänge über die Menge | 1 | 2 |
 
 `-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
@@ -42,7 +42,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
+- Commit 3f7f5811d00b858a1e0e56b16c80804ed39b62e8
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

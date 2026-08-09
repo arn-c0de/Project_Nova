@@ -1,4 +1,4 @@
-# Laborlauf 20260809-0748-0b0c211c
+# Laborlauf 20260809-0807-3f7f5811
 
 > [!IMPORTANT]
 > **DIAGNOSE, kein Nachweis.** Nichts in diesem Bericht wurde im laufenden Spiel gesehen.
@@ -8,15 +8,15 @@
 
 | Herkunft | Wert |
 | --- | --: |
-| gemessen am | 2026-08-09T07:48:31Z |
-| Commit | `0b0c211c55a16e0fbe20c420337a0b8e5ad2d754` |
+| gemessen am | 2026-08-09T08:07:17Z |
+| Commit | `3f7f5811d00b858a1e0e56b16c80804ed39b62e8` |
 | Definitionstabelle | `0x6326FA3E56CFF5A3` |
-| KI-Verhalten | `r3.1D8DA20F` |
+| KI-Verhalten | `r4.779A1B5B` |
 | Seed | `0xA17E57DE57` |
 | Tickbudget | 27.000 |
 | Slots | 2 |
 | specVersion | 1 |
-| Fingerabdruck | `666dc745d9b50e92` |
+| Fingerabdruck | `cc1521db140ac28f` |
 
 Interaktive Fassung derselben Zahlen: [`dashboard.html`](../out/dashboard.html) — Kurven mit Fadenkreuz, Heatmap mit Abstandsdetail, Scrubber. Lokal öffnen, kein Server nötig; GitHub zeigt HTML nicht an, dafür ist dieser Bericht da.
 
@@ -27,32 +27,32 @@ Eine kanonische Partie über beide Slots, Metriken alle 50 Ticks, reine Beobacht
 | Kennzahl | Wert | Kontext |
 | --- | --: | --- |
 | Ausgang | VictoryElimination | Slot 0 · alliance |
-| Entschieden bei Tick | 6.223 | von 27.000 Budget |
-| Rechenzeit | 680 ms | 9.151 Ticks/s |
-| Metrikproben | 125 | alle 50 Ticks |
-| Hash-Kette | 13 | alle 500 Ticks |
-| Endzustands-Hash | `0x5243FDAD54967102` | bei Tick 6.223 |
+| Entschieden bei Tick | 5.931 | von 27.000 Budget |
+| Rechenzeit | 886 ms | 6.694 Ticks/s |
+| Metrikproben | 119 | alle 50 Ticks |
+| Hash-Kette | 12 | alle 500 Ticks |
+| Endzustands-Hash | `0x8E054C63DE80BDD6` | bei Tick 5.931 |
 
 | Endwert je Slot | Slot 0 · alliance | Slot 1 · legion |
 | --- | --: | --: |
-| Credits | 16.210 | 19.250 |
-| Armeegrösse | 12 | 9 |
-| Verluste, kumuliert | 34 | 48 |
+| Credits | 16.090 | 18.110 |
+| Armeegrösse | 12 | 8 |
+| Verluste, kumuliert | 24 | 47 |
 | Harvester | 2 | 2 |
 | Gebäude | 4 | 3 |
-| Sichtbare Feindeinheiten | 3 | 5 |
+| Sichtbare Feindeinheiten | 3 | 4 |
 
-1. Linie **Slot 0 · alliance** · 2. Linie **Slot 1 · legion**. `xychart-beta` kennt keine Legende, deshalb steht die Zuordnung hier. x-Achse Tick 0 bis 6.200, alle Werte ganzzahlig — kein Float verlässt die Simulation.
+1. Linie **Slot 0 · alliance** · 2. Linie **Slot 1 · legion**. `xychart-beta` kennt keine Legende, deshalb steht die Zuordnung hier. x-Achse Tick 0 bis 5.900, alle Werte ganzzahlig — kein Float verlässt die Simulation.
 
 **Credits** — Kassenstand je Slot
 
 ```mermaid
 xychart-beta
     title "Credits"
-    x-axis "Tick" 0 --> 6200
+    x-axis "Tick" 0 --> 5900
     y-axis "Credits" 0 --> 20000
-    line [3000, 2300, 2300, 450, 450, 450, 280, 610, 310, 490, 820, 1150, 1810, 2350, 2320, 2740, 3070, 3730, 4060, 4720, 5380, 5710, 6010, 6670, 7000, 7420, 7030, 7690, 8350, 8680, 9010, 9670, 10090, 10420, 11080, 10690, 11230, 11770, 12100, 12640, 13300, 13630, 13930, 14260, 14920, 15220, 15550, 16210]
-    line [3000, 2450, 950, 950, 350, 530, 830, 1130, 1730, 2330, 2930, 3530, 4130, 4310, 4430, 5030, 5270, 5870, 6470, 7070, 7670, 7970, 8090, 8510, 8750, 9350, 9890, 10490, 11090, 11690, 11990, 12590, 12350, 12830, 13370, 13670, 14270, 14870, 15470, 16070, 16670, 16670, 16670, 17150, 17750, 18350, 18650, 19250]
+    line [3000, 2300, 2300, 450, 450, 450, 280, 610, 220, 160, 490, 1150, 1480, 2140, 1990, 2650, 2860, 3520, 3850, 4510, 4840, 5500, 5710, 6250, 6580, 7240, 7570, 8230, 8440, 8860, 8950, 9610, 9940, 9640, 9970, 10630, 10960, 11380, 11710, 12370, 12700, 13360, 13450, 14110, 14440, 15100, 15430, 16090]
+    line [3000, 2450, 950, 950, 350, 530, 530, 1130, 1730, 2330, 2630, 3230, 3530, 4130, 4310, 4730, 5030, 5630, 5930, 6530, 7130, 7730, 7790, 7970, 8270, 8810, 9410, 9710, 10310, 10910, 10910, 11510, 12110, 12110, 12410, 12890, 13190, 13730, 14330, 14930, 15230, 15830, 15890, 16130, 16610, 17210, 17510, 18110]
 ```
 
 **Armeegrösse** — lebende Kampfeinheiten
@@ -60,10 +60,10 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Armeegrösse"
-    x-axis "Tick" 0 --> 6200
+    x-axis "Tick" 0 --> 5900
     y-axis "Armeegrösse" 0 --> 20
-    line [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 5, 6, 5, 3, 4, 5, 7, 8, 9, 11, 12, 9, 11, 12, 9, 6, 7, 8, 10, 11, 12, 10, 12, 11, 6, 7, 8, 9, 9, 11, 12, 10, 11, 12, 9, 10, 12]
-    line [0, 0, 0, 0, 1, 3, 5, 6, 8, 10, 11, 12, 12, 8, 3, 5, 6, 8, 9, 11, 12, 12, 2, 3, 4, 5, 6, 8, 10, 11, 12, 11, 2, 4, 5, 6, 8, 10, 11, 12, 12, 12, 1, 2, 4, 6, 7, 9]
+    line [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 4, 5, 7, 4, 4, 5, 7, 8, 9, 10, 12, 10, 11, 12, 12, 12, 12, 11, 10, 9, 11, 12, 5, 6, 7, 8, 8, 9, 10, 11, 12, 10, 11, 12, 12, 12, 12]
+    line [0, 0, 0, 0, 1, 3, 4, 6, 7, 9, 10, 12, 12, 12, 5, 4, 6, 7, 9, 11, 12, 12, 6, 3, 4, 5, 6, 8, 9, 11, 12, 12, 12, 2, 2, 4, 5, 6, 7, 9, 11, 12, 5, 4, 3, 5, 6, 8]
 ```
 
 **Verluste, kumuliert** — verlorene Einheiten seit Tick 0
@@ -71,10 +71,10 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Verluste, kumuliert"
-    x-axis "Tick" 0 --> 6200
+    x-axis "Tick" 0 --> 5900
     y-axis "Verluste, kumuliert" 0 --> 50
-    line [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 6, 6, 6, 6, 6, 6, 6, 6, 9, 9, 9, 12, 17, 17, 17, 17, 17, 17, 19, 19, 20, 26, 26, 27, 27, 28, 28, 28, 31, 31, 31, 34, 34, 34]
-    line [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 11, 11, 11, 11, 11, 11, 11, 11, 22, 22, 23, 24, 24, 24, 24, 24, 24, 25, 35, 35, 36, 36, 36, 36, 36, 36, 36, 36, 48, 48, 48, 48, 48, 48]
+    line [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 5, 5, 5, 5, 5, 5, 7, 7, 7, 7, 7, 7, 8, 10, 12, 12, 12, 20, 20, 20, 20, 22, 22, 22, 22, 22, 24, 24, 24, 24, 24, 24]
+    line [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 10, 10, 10, 10, 10, 10, 10, 16, 21, 21, 22, 22, 22, 22, 22, 22, 22, 22, 33, 34, 34, 34, 35, 35, 35, 35, 35, 42, 45, 47, 47, 47, 47]
 ```
 
 **Harvester** — Erntefahrzeuge im Feld
@@ -82,13 +82,13 @@ xychart-beta
 ```mermaid
 xychart-beta
     title "Harvester"
-    x-axis "Tick" 0 --> 6200
+    x-axis "Tick" 0 --> 5900
     y-axis "Harvester" 0 --> 2
-    line [0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+    line [0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
     line [0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
 ```
 
-**Verworfene Intents:** 0 von 179 (Slot 0) und 0 von 134 (Slot 1). Diese Spalte ist die unterschätzte — sie zeigt, wo die KI gegen Executor-Regeln anrennt, und ist überall sonst stumm, weil `Submit()` das Verdikt nicht auswertet.
+**Verworfene Intents:** 0 von 177 (Slot 0) und 0 von 131 (Slot 1). Diese Spalte ist die unterschätzte — sie zeigt, wo die KI gegen Executor-Regeln anrennt, und ist überall sonst stumm, weil `Submit()` das Verdikt nicht auswertet.
 
 **Der Seed ändert die Partie nicht.** Kein Simulationssystem zieht aus dem Kernel-PRNG; der Seed geht in Zustands-Hash und Snapshot, sonst nirgendwohin. Ein Sweep über 24 Seeds ist *eine* Beobachtung.
 
@@ -98,16 +98,20 @@ Jeder Kandidat spielt gegen `ms1-canonical`, in beiden Fraktionsrollen — das h
 
 | Kandidat | geändert gegen Referenz | Sieg % | S/N/U | Entsch. Tick | Credits | Armee | verloren | Intents | verworfen |
 | --- | --- | --: | --: | --: | --: | --: | --: | --: | --: |
-| **ms1-canonical** _Referenz_ | — | 50 % | 1/1/0 | 6.223 | 17.730 | 10 | 41 | 313 | 0 |
-| **early-push** | armySize 12→10; squadThreshold 6→3 | 50 % | 1/1/0 | 8.042 (+29 %) | 22.605 (+27 %) | 8 (-20 %) | 54 (+32 %) | 488 | 0 |
-| **late-push** | armySize 12→20; squadThreshold 6→12 | 50 % | 1/1/0 | 8.734 (+40 %) | 23.270 (+31 %) | 9 (-10 %) | 84 (+105 %) | 788 | 0 |
-| **greedy-economy** | harvesters 2→4; armySize 12→16; squadThreshold 6→8 | 50 % | 1/1/0 | 7.450 (+20 %) | 39.115 (+121 %) | 7 (-30 %) | 70 (+71 %) | 648 | 0 |
-| **power-buffer** | powerReserve 0→30 | 0 % | 0/2/0 | 6.279 (+1 %) | 8.780 (-50 %) | 0 (-100 %) | 33 (-20 %) | 134 | 0 |
-| **fast-cadence** | cadence 20→10 | 50 % | 1/1/0 | 7.033 (+13 %) | 19.745 (+11 %) | 6 (-40 %) | 52 (+27 %) | 738 | 0 |
-| **wave-off** | waveSize 12→1 | 0 % | 0/1/1 | 17.768 (+186 %) | 48.545 (+174 %) | 1 (-90 %) | 175 (+327 %) | 1.208 | 0 |
-| **wave-6** | waveSize 12→6 | 0 % | 0/1/1 | 16.436 (+164 %) | 44.280 (+150 %) | 3 (-70 %) | 159 (+288 %) | 1.134 | 0 |
-| **wave-10** | waveSize 12→10 | 50 % | 1/1/0 | 7.720 (+24 %) | 21.330 (+20 %) | 6 (-40 %) | 61 (+49 %) | 469 | 0 |
-| **wave-6-far** | waveSize 12→6; staging 12→70; stagingTol 4→6 | 0 % | 0/1/1 | 17.705 (+185 %) | 48.275 (+172 %) | 4 (-60 %) | 173 (+322 %) | 1.294 | 0 |
+| **ms1-canonical** _Referenz_ | — | 50 % | 1/1/0 | 5.931 | 17.100 | 10 | 35 | 308 | 0 |
+| **early-push** | armySize 12→10; squadThreshold 6→3 | 50 % | 1/1/0 | 10.335 (+74 %) | 31.890 (+86 %) | 4 (-60 %) | 59 (+69 %) | 652 | 0 |
+| **late-push** | armySize 12→20; squadThreshold 6→12 | 100 % | 2/0/0 | 9.753 (+64 %) | 27.635 (+62 %) | 18 (+80 %) | 89 (+154 %) | 951 | 0 |
+| **greedy-economy** | harvesters 2→4; armySize 12→16; squadThreshold 6→8 | 50 % | 1/1/0 | 13.065 (+120 %) | 80.365 (+370 %) | 8 (-20 %) | 97 (+177 %) | 1.147 | 0 |
+| **power-buffer** | powerReserve 0→30 | 0 % | 0/2/0 | 8.126 (+37 %) | 17.510 (+2 %) | 3 (-70 %) | 53 (+51 %) | 389 | 0 |
+| **fast-cadence** | cadence 20→10 | 0 % | 0/1/1 | 22.655 (+282 %) | 73.830 (+332 %) | 7 (-30 %) | 148 (+323 %) | 1.313 | 0 |
+| **wave-off** | waveSize 12→1 | 50 % | 1/1/0 | 11.389 (+92 %) | 31.070 (+82 %) | 8 (-20 %) | 100 (+186 %) | 1.093 | 0 |
+| **wave-6** | waveSize 12→6 | 50 % | 1/0/1 | 22.707 (+283 %) | 69.225 (+305 %) | 10 | 227 (+549 %) | 1.958 | 0 |
+| **wave-10** | waveSize 12→10 | 50 % | 1/1/0 | 15.935 (+169 %) | 48.080 (+181 %) | 7 (-30 %) | 152 (+334 %) | 1.097 | 0 |
+| **wave-6-far** | waveSize 12→6; staging 12→70; stagingTol 4→6 | 0 % | 0/2/0 | 13.784 (+132 %) | 37.575 (+120 %) | 5 (-50 %) | 130 (+271 %) | 1.375 | 0 |
+| **retreat-off** | retreatAt 60→0% | 50 % | 1/1/0 | 7.929 (+34 %) | 22.470 (+31 %) | 9 (-10 %) | 62 (+77 %) | 476 | 0 |
+| **retreat-40** | retreatAt 60→40% | 50 % | 1/1/0 | 8.429 (+42 %) | 24.885 (+46 %) | 10 | 63 (+80 %) | 521 | 0 |
+| **retreat-75** | retreatAt 60→75% | 50 % | 1/1/0 | 14.475 (+144 %) | 46.280 (+171 %) | 7 (-30 %) | 79 (+126 %) | 826 | 0 |
+| **retreat-25-near** | retreatAt 60→25%; retreatDanger 8→4 | 50 % | 1/1/0 | 6.675 (+13 %) | 18.450 (+8 %) | 9 (-10 %) | 45 (+29 %) | 397 | 0 |
 
 **Was hier _nicht_ steht.** Keine Spalte ist zu einer Note verrechnet und nichts ist nach Güte sortiert. Eine einzelne Zahl belohnt zuverlässig das Falsche — eine KI, die 5 % häufiger gewinnt, weil sie den Gegner mit Bauarbeitern zumüllt, ist keine bessere KI.
 
@@ -246,6 +250,6 @@ python3 tools/Nova.AiLab/report/build_reports.py tools/Nova.AiLab/out
 
 ---
 
-Nova.AiLab ist lokales Werkzeug, kein Beitrag — es gerät in keinen `feat/`-Branch und wird nie gemergt. Diese Ergebnismenge ist an Commit `0b0c211c` und Definitionstabelle `0x6326FA3E56CFF5A3` gebunden. Nach dem nächsten Merge-Fenster des Maintainers sind die Zahlen nicht mehr vergleichbar und werden neu vermessen, nicht über die Grenze hinweg verglichen.
+Nova.AiLab ist lokales Werkzeug, kein Beitrag — es gerät in keinen `feat/`-Branch und wird nie gemergt. Diese Ergebnismenge ist an Commit `3f7f5811` und Definitionstabelle `0x6326FA3E56CFF5A3` gebunden. Nach dem nächsten Merge-Fenster des Maintainers sind die Zahlen nicht mehr vergleichbar und werden neu vermessen, nicht über die Grenze hinweg verglichen.
 
 *DIAGNOSIS — never proof. No scalar score, no ranking: the numbers sit side by side and a human picks.*

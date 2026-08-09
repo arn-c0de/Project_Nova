@@ -152,6 +152,26 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   560/560 SimRunner-Tests grün, die vier Baseline-Dateien bleiben grün und sind
   nicht angefasst. **Im laufenden Spiel nicht geprüft** — der Linux-Build steht
   aus; Messwerte in `tools/Nova.AiLab/reports/behavior-log.md`, Eintrag V004.
+- **Angeschlagene KI-Einheiten drehen ab (Einheitenstrang, KI-Verhalten
+  `r4`):** Eine Einheit unter 60 % Leben, in deren Nähe ein **bewaffneter**
+  Feind sichtbar ist, läuft zum Sammelpunkt zurück, statt bis zum letzten
+  Lebenspunkt zu kämpfen; zu Hause zieht sie mit der nächsten Welle wieder los.
+  Ein unbewaffneter Harvester am Zaun löst nichts aus — Überreaktion auf
+  Belangloses war der Fehler, an dem `DefendBase` gescheitert ist. Zwei neue
+  Profilfelder (`retreatHealthPercent`, `retreatDangerCells`); `0` schaltet die
+  Regel ab. **Bewusst ohne Lebens-Hysterese:** MS-1-Einheiten heilen nie
+  (`Repair` verlangt ein Gebäude als Ziel), ein Austrittswert wäre also nie
+  erreicht worden und Verwundete hätten dauerhaft die Armeeobergrenze belegt.
+  **Einseitig gemessen** gegen dasselbe Binary ohne die Regel: Verluste 35
+  statt 62, Austauschverhältnis 123 statt 93, Intervalle mit Verlusten 10 statt
+  20, Entscheidung bei Tick 5.931 statt 7.929. Die Schwelle ist gemessen und
+  nicht gewählt — über fünf Werte von 25 bis 90, mit einem Umschlagpunkt
+  oberhalb von 75. Mit enthalten: eine Korrektur an der Wellenregel aus `r3`
+  (eine zurückgerufene Einheit, die am Sammelpunkt vorbeimarschierte, bekam
+  keinen Befehl und lief weiter). Determinismus geprüft, 561/561
+  SimRunner-Tests grün, Baseline-Dateien unberührt. **Im laufenden Spiel nicht
+  geprüft** — Prüfliste in `tools/Nova.AiLab/PLAYTEST-CHECKLIST.md`, Messwerte
+  im Verhaltensjournal, Eintrag V005.
 - **Governance-Tier 2 (D-091):** Externe Beiträge erfolgen nur aus Forks;
   `@cubetribe` (Dennis Westermann) und `@travelhawk` (Michael Falk) bleiben die
   einzigen Accounts mit Merge-Zugang zu `main`. `integrity` läuft auf jedem PR;

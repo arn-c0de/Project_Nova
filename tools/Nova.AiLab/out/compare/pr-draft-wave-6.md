@@ -13,25 +13,25 @@ Kandidat `wave-6` — geändert gegenüber `ms1-canonical`: waveSize 12→6.
 
 | Kennzahl | ms1-canonical | wave-6 |
 |---|---:|---:|
-| Siegrate | 50% | 0% |
-| Partien (S/N/U) | 1/1/0 | 0/1/1 |
-| Entscheidungstick (Mittel) | 6223 | 16436 |
-| Credits am Ende (Mittel) | 17730 | 44280 |
-| Armeegröße am Ende (Mittel) | 10 | 3 |
-| Verlorene Einheiten (Mittel) | 41 | 159 |
-| Intents gesendet | 313 | 1134 |
+| Siegrate | 50% | 50% |
+| Partien (S/N/U) | 1/1/0 | 1/0/1 |
+| Entscheidungstick (Mittel) | 5931 | 22707 |
+| Credits am Ende (Mittel) | 17100 | 69225 |
+| Armeegröße am Ende (Mittel) | 10 | 10 |
+| Verlorene Einheiten (Mittel) | 35 | 227 |
+| Intents gesendet | 308 | 1958 |
 | Intents abgelehnt | 0 | 0 |
 
 ### Spielgefühl
 
 | Kennzahl | ms1-canonical | wave-6 |
 |---|---:|---:|
-| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 76 |
-| Gefechtsintervalle (mit Verlusten) | 11 | 56 |
-| Grösster Verlustsprung in einem Intervall | 9 | 6 |
-| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 25 |
-| Unbeantworteter Schaden (Ereignisse) | 39 | 151 |
-| Aktionen pro Minute | 14 | 21 |
+| Austauschverhältnis (Feindverluste je 100 eigene) | 123 | 80 |
+| Gefechtsintervalle (mit Verlusten) | 10 | 90 |
+| Grösster Verlustsprung in einem Intervall | 9 | 7 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 116 | 71 |
+| Unbeantworteter Schaden (Ereignisse) | 35 | 208 |
+| Aktionen pro Minute | 15 | 25 |
 | Verschiedene Partieausgänge über die Menge | 1 | 2 |
 
 `-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
@@ -42,7 +42,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
+- Commit 3f7f5811d00b858a1e0e56b16c80804ed39b62e8
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

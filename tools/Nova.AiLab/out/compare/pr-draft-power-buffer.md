@@ -15,23 +15,23 @@ Kandidat `power-buffer` — geändert gegenüber `ms1-canonical`: powerReserve 0
 |---|---:|---:|
 | Siegrate | 50% | 0% |
 | Partien (S/N/U) | 1/1/0 | 0/2/0 |
-| Entscheidungstick (Mittel) | 6223 | 6279 |
-| Credits am Ende (Mittel) | 17730 | 8780 |
-| Armeegröße am Ende (Mittel) | 10 | 0 |
-| Verlorene Einheiten (Mittel) | 41 | 33 |
-| Intents gesendet | 313 | 134 |
+| Entscheidungstick (Mittel) | 5931 | 8126 |
+| Credits am Ende (Mittel) | 17100 | 17510 |
+| Armeegröße am Ende (Mittel) | 10 | 3 |
+| Verlorene Einheiten (Mittel) | 35 | 53 |
+| Intents gesendet | 308 | 389 |
 | Intents abgelehnt | 0 | 0 |
 
 ### Spielgefühl
 
 | Kennzahl | ms1-canonical | power-buffer |
 |---|---:|---:|
-| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 114 |
-| Gefechtsintervalle (mit Verlusten) | 11 | 8 |
-| Grösster Verlustsprung in einem Intervall | 9 | 8 |
-| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 6 |
-| Unbeantworteter Schaden (Ereignisse) | 39 | 34 |
-| Aktionen pro Minute | 14 | 6 |
+| Austauschverhältnis (Feindverluste je 100 eigene) | 123 | 137 |
+| Gefechtsintervalle (mit Verlusten) | 10 | 16 |
+| Grösster Verlustsprung in einem Intervall | 9 | 7 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 116 | 41 |
+| Unbeantworteter Schaden (Ereignisse) | 35 | 51 |
+| Aktionen pro Minute | 15 | 10 |
 | Verschiedene Partieausgänge über die Menge | 1 | 2 |
 
 `-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
@@ -42,7 +42,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
+- Commit 3f7f5811d00b858a1e0e56b16c80804ed39b62e8
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

@@ -35,6 +35,118 @@ beginnt.** Der Zweck ist nicht Buchhaltung, sondern zweierlei:
 
 ---
 
+## V005 · 2026-08-09 · Rückzug — **angenommen**, ohne die Hysterese, die der Plan wollte
+
+**Lauf:** `runs/` (letzter Eintrag) · **Status:** im Labor gemessen,
+**im laufenden Spiel ungesehen** ·
+**KI-Verhalten:** `r3.1D8DA20F` → **`r4.779A1B5B`** ·
+**Referenzpartie:** Tick **5.931**, Endzustand **`0x8E054C63DE80BDD6`**
+
+### Was genau geändert wurde
+
+Zwei Profilfelder (`RetreatHealthPercent: 60`, `RetreatDangerCells: 8`) und ein
+Zweig in `ResolveUnitAssignment`, der **vor** allem anderen steht:
+
+> Eine Einheit unter 60 % Leben, in deren Nähe (8 Zellen) ein **bewaffneter**
+> Feind sichtbar ist, läuft zum Sammelpunkt zurück — auch wenn sie längst
+> draussen ist. Zu Hause ist sie eine ganz normale wartende Einheit und zieht
+> mit der nächsten Welle wieder los.
+
+Ein zurückweichender Soldat bekommt kein Angriffsziel; die
+D-087-Auto-Acquisition schiesst weiter auf das, was ihn verfolgt.
+
+### Widerlegt — noch bevor eine Zeile lief
+
+> **Die Hysterese aus NEXT-STEPS §0 ist nicht baubar.** Sie verlangt Eintritt
+> bei 25 % und Austritt bei 60 % — das setzt voraus, dass eine Einheit heilt.
+> **In MS-1 heilt keine Einheit.** `ValidateRepair` verlangt als Ziel eine
+> fertiggestellte **Platzierung**, also ein Gebäude; die einzige Stelle im
+> ganzen Repo, die Einheitenleben erhöht, ist `EvolvedFactionSystem` — G2-Prototyp
+> mit Float-Gerüst, in keiner MS-1-Partie registriert. Ein Austrittswert wäre
+> nie erreicht worden: Verwundete hätten sich zu Hause gestapelt, die
+> Armeeobergrenze belegt und die Welle nie wieder voll werden lassen. Die
+> Dämpfung läuft deshalb über **Gefahr und Entfernung** statt über Leben.
+
+> **`SetRallyPoint` ist kein Sammelbefehl** (Befund
+> [F002](../findings/F002-rallypoint-ist-die-spawnzelle.md)). Er ist die
+> **Spawn-Zelle**: `TryFindSpawnCell` sucht ab der Rally-Zelle nach aussen, und
+> `ValidateSetRallyPoint` kennt **keine Entfernungsgrenze**. Der Rally-Punkt auf
+> den Sammelpunkt hätte den Nachschub zwölf Zellen weit **teleportiert** — in
+> einem Projekt, dessen KI ausdrücklich keine Abkürzung nimmt. **PR 3 aus
+> NEXT-STEPS wurde deshalb nicht gebaut**, und die Absicht dahinter ist seit
+> `r3` ohnehin erfüllt.
+
+### Besser
+
+Einseitig, `compare`, beide Fraktionsrollen. `retreat-off` ist dasselbe Binary
+mit `retreatHealthPercent: 0`:
+
+| Kennzahl | `retreat-off` | ausgeliefert (60 %) | |
+|---|---:|---:|---|
+| Austauschverhältnis | 93 | **123** | +32 % |
+| Verluste (Mittel) | 62 | **35** | −44 % |
+| Intervalle mit Verlusten | 20 | **10** | halbiert |
+| Entscheidungstick | 7.929 | **5.931** | −25 % |
+| Aktionen pro Minute | 18 | **15** | weniger Rauschen |
+
+Die Schwelle ist gemessen, nicht gewählt. Einseitig als Allianz, Austausch
+gegen die Referenz **ohne** Rückzug (Stand `r3`, vor der Korrektur unten):
+25 → 138, 40 → 184, 60 → **252**, 75 → 290, 90 → 209. Die 75 kauft ihren
+höheren Wert mit einer doppelt so langen Partie und doppelt so vielen eigenen
+Verlusten; bei 90 kippt die Kurve auf beiden Seiten.
+
+### Schlechter
+
+- **Die Partie zieht sich, wenn die Schwelle zu hoch steht.** Bei 75 % 14.475
+  statt 5.931 Ticks. Bei 60 % ist der Effekt klein, aber vorhanden.
+- **Die Reaktionslatenz steigt** (33 → 116 Ticks im Mittel). Das ist kein
+  Widerspruch, sondern eine Eigenschaft der Kennzahl: Rückzug erzeugt
+  *zusätzliche* späte Antworten auf Schaden, der vorher **gar keine** bekommen
+  hätte, und der Mittelwert läuft ihnen hinterher. Die ehrlichere Spalte ist
+  `unbeantwortet`: 59 → 35.
+- **Ein Späher, der einmal getroffen wurde, ist praktisch aus der Partie**,
+  solange die nächste Welle nicht voll ist. Ohne Heilung wird er nie wieder
+  gesund; er läuft nur nicht mehr sinnlos in den Tod.
+- **Gegen einen Menschen ungemessen.** Wer die KI mit einer einzelnen billigen
+  Einheit beschiesst, kann eine ganze Welle nach Hause schicken. Im Labor tritt
+  das nicht auf, weil keine Seite absichtlich ködert.
+
+### Korrektur am Wellencode, im selben Zug
+
+Der neue Test hat einen Fehler in **V004** gefunden: „angekommen" war als
+*innerhalb der Toleranz um den Sammelpunkt* geprüft, ohne zu fragen, ob die
+Einheit noch **läuft**. Eine zurückgerufene Einheit, die zufällig innerhalb von
+vier Zellen am Sammelpunkt vorbeimarschierte, bekam deshalb gar keinen Befehl
+und lief weiter aus dem Ring hinaus. Jetzt gilt „angekommen" nur für eine
+Einheit, die auch **steht**.
+
+Das verschiebt die Zahlen aus V004: Referenzpartie **6.223 → 5.931**,
+Endzustand `0x5243FDAD54967102` → `0x8E054C63DE80BDD6`. Die Aussage von V004
+bleibt: `wave-off` liegt in derselben Messung bei Austausch **82** gegen 123 und
+100 Verlusten gegen 35.
+
+### Unverändert
+
+- **Determinismus:** zweimal gefahren, Exit 0, beidseitig wie einseitig.
+- **Die Aus-Stellung ist bitgenau das Verhalten davor.**
+  `retreatHealthPercent: 0` liefert die `r3`-Hash-Kette.
+- `intentsRejected` bleibt **0**.
+- **561/561 SimRunner-Tests und 94/94 Labortests grün**; die vier
+  Baseline-Dateien sind nicht angefasst.
+
+### Offen
+
+- **Ködern.** Die offensichtliche Gegenstrategie eines Menschen, und sie ist
+  ungemessen. Ein Laborszenario dafür wäre: eine billige Einheit beschiesst die
+  Welle und zieht sich zurück.
+- **Die Reaktionslatenz braucht einen zweiten Blick.** Ein Mittelwert über
+  Ereignisse, deren Zahl sich mit der Änderung selbst ändert, ist schwer zu
+  lesen. Ein Median oder eine Verteilung wäre ehrlicher.
+- **Kein Spielbericht.** Die drei Fragen dafür stehen in
+  [`../PLAYTEST-CHECKLIST.md`](../PLAYTEST-CHECKLIST.md).
+
+---
+
 ## V004 · 2026-08-09 · Wellen — **angenommen**, und zwar erst in der fünften Fassung
 
 **Lauf:** `runs/20260809-0748-0b0c211c.md` · **Status:** im Labor gemessen,

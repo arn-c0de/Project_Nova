@@ -15,23 +15,23 @@ Kandidat `wave-10` — geändert gegenüber `ms1-canonical`: waveSize 12→10.
 |---|---:|---:|
 | Siegrate | 50% | 50% |
 | Partien (S/N/U) | 1/1/0 | 1/1/0 |
-| Entscheidungstick (Mittel) | 6223 | 7720 |
-| Credits am Ende (Mittel) | 17730 | 21330 |
-| Armeegröße am Ende (Mittel) | 10 | 6 |
-| Verlorene Einheiten (Mittel) | 41 | 61 |
-| Intents gesendet | 313 | 469 |
+| Entscheidungstick (Mittel) | 5931 | 15935 |
+| Credits am Ende (Mittel) | 17100 | 48080 |
+| Armeegröße am Ende (Mittel) | 10 | 7 |
+| Verlorene Einheiten (Mittel) | 35 | 152 |
+| Intents gesendet | 308 | 1097 |
 | Intents abgelehnt | 0 | 0 |
 
 ### Spielgefühl
 
 | Kennzahl | ms1-canonical | wave-10 |
 |---|---:|---:|
-| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 101 |
-| Gefechtsintervalle (mit Verlusten) | 11 | 19 |
-| Grösster Verlustsprung in einem Intervall | 9 | 7 |
-| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 20 |
-| Unbeantworteter Schaden (Ereignisse) | 39 | 59 |
-| Aktionen pro Minute | 14 | 17 |
+| Austauschverhältnis (Feindverluste je 100 eigene) | 123 | 104 |
+| Gefechtsintervalle (mit Verlusten) | 10 | 47 |
+| Grösster Verlustsprung in einem Intervall | 9 | 8 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 116 | 79 |
+| Unbeantworteter Schaden (Ereignisse) | 35 | 139 |
+| Aktionen pro Minute | 15 | 20 |
 | Verschiedene Partieausgänge über die Menge | 1 | 2 |
 
 `-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
@@ -42,7 +42,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
+- Commit 3f7f5811d00b858a1e0e56b16c80804ed39b62e8
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

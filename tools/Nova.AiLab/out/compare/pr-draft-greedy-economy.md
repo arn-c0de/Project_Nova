@@ -15,23 +15,23 @@ Kandidat `greedy-economy` — geändert gegenüber `ms1-canonical`: harvesters 2
 |---|---:|---:|
 | Siegrate | 50% | 50% |
 | Partien (S/N/U) | 1/1/0 | 1/1/0 |
-| Entscheidungstick (Mittel) | 6223 | 7450 |
-| Credits am Ende (Mittel) | 17730 | 39115 |
-| Armeegröße am Ende (Mittel) | 10 | 7 |
-| Verlorene Einheiten (Mittel) | 41 | 70 |
-| Intents gesendet | 313 | 648 |
+| Entscheidungstick (Mittel) | 5931 | 13065 |
+| Credits am Ende (Mittel) | 17100 | 80365 |
+| Armeegröße am Ende (Mittel) | 10 | 8 |
+| Verlorene Einheiten (Mittel) | 35 | 97 |
+| Intents gesendet | 308 | 1147 |
 | Intents abgelehnt | 0 | 0 |
 
 ### Spielgefühl
 
 | Kennzahl | ms1-canonical | greedy-economy |
 |---|---:|---:|
-| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 108 |
-| Gefechtsintervalle (mit Verlusten) | 11 | 17 |
-| Grösster Verlustsprung in einem Intervall | 9 | 8 |
-| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 13 |
-| Unbeantworteter Schaden (Ereignisse) | 39 | 67 |
-| Aktionen pro Minute | 14 | 25 |
+| Austauschverhältnis (Feindverluste je 100 eigene) | 123 | 154 |
+| Gefechtsintervalle (mit Verlusten) | 10 | 31 |
+| Grösster Verlustsprung in einem Intervall | 9 | 9 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 116 | 145 |
+| Unbeantworteter Schaden (Ereignisse) | 35 | 80 |
+| Aktionen pro Minute | 15 | 26 |
 | Verschiedene Partieausgänge über die Menge | 1 | 2 |
 
 `-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
@@ -42,7 +42,7 @@ Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
+- Commit 3f7f5811d00b858a1e0e56b16c80804ed39b62e8
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen
