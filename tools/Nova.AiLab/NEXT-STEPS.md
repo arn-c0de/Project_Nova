@@ -1,8 +1,18 @@
 # Nächste Schritte am KI-Verhalten — sortiert danach, was ein Spieler merkt
 
-**Stand:** KI-Verhalten `r2.A037B84D` · Commit `732ea98` ·
+**Stand:** KI-Verhalten **`r4.779A1B5B`** · Referenzpartie Tick **5.931**,
+Endzustand **`0x8E054C63DE80BDD6`** ·
 Messgrundlage: [`reports/latest.md`](reports/latest.md) ·
-Historie: [`reports/behavior-log.md`](reports/behavior-log.md)
+Historie: [`reports/behavior-log.md`](reports/behavior-log.md) ·
+Für die gespielte Partie: [`PLAYTEST-CHECKLIST.md`](PLAYTEST-CHECKLIST.md)
+
+> [!NOTE]
+> **Punkt 1 und Punkt 3 sind gebaut** (Journal V004 und V005), Punkt 5 ist
+> **gestrichen** (Befund F002: `SetRallyPoint` ist die Spawn-Zelle, kein
+> Sammelbefehl). Die Beschreibungen unten sind der Stand **vor** diesen
+> Änderungen und bleiben als Begründung stehen; was daraus wurde, steht in der
+> PR-Tabelle am Ende und im Journal. Gespielt ist nach wie vor nur `r2` —
+> **alles seither ist ungesehen.**
 
 Diese Liste ist **nicht** nach Aufwand oder nach Laborkennzahl sortiert, sondern
 danach, was in einer Partie *Mensch gegen KI* auffällt. Eine Verbesserung, die
@@ -449,16 +459,17 @@ welcher Folge man es baut, ohne zweimal dasselbe anzufassen: Zielen vor
 Marschieren, Sammelpunkt vor Rally-Punkt, Rückzug erst, wenn es einen Ort
 gibt, an den man sich zurückzieht.
 
-| # | Was | Punkt | Ort | Messgrösse, an der es hängt |
+| # | Was | Punkt | Ort | Stand |
 |---:|---|---|---|---|
-| 0 | Form: Absicht je Einheit, **verhaltensneutral** | §0 | `AI/` | Tick 8.715 und `0x5D8FB2D45FFD16B6` **unverändert** — ✅ gemessen, gebaut |
-| ~~1~~ | ~~Zielen unabhängig von der Schwelle~~ | 4 | — | **gebaut und zurückgenommen**, Journal V003; blockiert von Befund F001 |
-| 2 | Sammelpunkt und Wellengrösse | 1 | `AI/`, `AI.Data/` | Verlustkurve in Sprüngen statt Stufen; Verluste je zerstörtem Gegner |
-| 3 | Rally-Punkt der Kaserne auf den Sammelpunkt | 5 | `AI/` | Intents je 1.000 Ticks (sollen **sinken**), Zeit bis zum Wellenstart |
-| 4 | `Retreat` als Einheitenfilter mit Hysterese | 3 | `AI/`, `AI.Data/` | `unitsLost` gegen `healthLost` |
-| 5 | Zweites lohnendes Ziel (Harvester, Refinery) | 2 | `AI/` | Entscheidungstick, Ziele je Partie; 4-Slot-Lauf endet nicht mehr im Zeitlimit |
-| 6 | Annäherung über eine Route statt der Luftlinie | 2 | `AI/`, `Pathfinding/` | zweimal dieselbe Partie, zwei verschiedene Wege |
-| 7 | Abstandhalten **plus** Aufklärung | 6 | `Movement/`, `AI/` | `usableRangeOvershootCells`, kontaktlose Duelle (heute 100 von 576) |
+| 0 | Form: Absicht je Einheit, **verhaltensneutral** | §0 | `AI/` | ✅ **gebaut**, byte-identisch nachgewiesen |
+| ~~1~~ | ~~Zielen unabhängig von der Schwelle~~ | 4 | — | **zurückgenommen**, Journal V003; blockiert von Befund F001 |
+| 2 | Sammelpunkt und Wellengrösse | 1 | `AI/`, `AI.Data/` | ✅ **gebaut** (`r3`, Journal V004). Einseitig: Verluste 41 statt 175, Intervalle mit Verlusten 11 statt 64. `waveSize: 12` = ganze Armee, `1` schaltet ab |
+| ~~3~~ | ~~Rally-Punkt der Kaserne auf den Sammelpunkt~~ | 5 | — | **gestrichen**, Befund [F002](findings/F002-rallypoint-ist-die-spawnzelle.md): der Rally-Punkt ist die **Spawn-Zelle**, das wäre Teleportation. Die Absicht erfüllt seit `r3` die Wellenregel |
+| 4 | `Retreat` als Einheitenfilter | 3 | `AI/`, `AI.Data/` | ✅ **gebaut** (`r4`, Journal V005) — **ohne** Lebens-Hysterese: MS-1-Einheiten heilen nie. Einseitig: Verluste 35 statt 62, Austausch 123 statt 93 |
+| 5 | Zweites lohnendes Ziel (Harvester, Refinery) | 2 | `AI/` | offen — jetzt der nächste Punkt |
+| 6 | Annäherung über eine Route statt der Luftlinie | 2 | `AI/`, `Pathfinding/` | offen |
+| 7 | Abstandhalten **plus** Aufklärung | 6 | `Movement/`, `AI/` | offen |
+| neu | `DefendBase`, zweiter Anlauf | 3 | `AI/` | **wichtiger geworden**: seit `r4` greift die KI erst mit voller Armee an, ein früher Konter trifft eine wartende Armee. Jetzt mit Aus-Stellung und einseitig messen |
 
 Was Schritt 0 und der ausgefallene Schritt 1 zusammen gezeigt haben: **die
 Form ist billig, die Regel ist teuer.** Der Umbau war byte-identisch und in
@@ -472,7 +483,7 @@ Rally-Punkt derselbe Punkt ist wie der Sammelpunkt, und **7 als Paar**, weil
 „auf Reichweite stehenbleiben" ohne Aufklärung im Kontrolllauf über 2.000
 Ticks null Schaden angerichtet hat.
 
-Bei jedem PR ab 1: Referenz sichern, Determinismus zuerst (Exit 2 = Ende),
+Bei jedem PR ab 5: Referenz sichern, Determinismus zuerst (Exit 2 = Ende),
 Hash-Kette gegen die Referenz diffen (der **erste abweichende Tick** ist die
 wertvollste Zahl), beide Suiten fahren, `AiBehaviorId.Revision` bumpen,
 Journaleintrag mit Abschnitt „Schlechter". Der Abschnitt „Im laufenden Spiel
