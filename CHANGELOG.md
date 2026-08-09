@@ -18,6 +18,140 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
 > erzeugt; MS-0 und MS-1 bleiben offen.
 
 ### Geändert
+- **Angeschlagene KI-Einheiten drehen ab (Einheitenstrang, KI-Verhalten `r4`):**
+  Wer die KI angriff, merkte nichts davon — angeschlagene Einheiten kämpften bis
+  zum letzten Lebenspunkt. Eine Einheit unter 60 % Leben, in deren Nähe (8
+  Zellen) ein **bewaffneter** Feind sichtbar ist, läuft jetzt zum Sammelpunkt
+  zurück, auch wenn sie längst draussen ist; zu Hause ist sie eine normale
+  wartende Einheit und zieht mit der nächsten Welle wieder los. Ein unbewaffneter
+  Harvester am Zaun löst nichts aus — Überreaktion auf Belangloses ist der
+  Fehlermodus, an dem ein früherer Verteidigungszweig gescheitert ist.
+  **Bewusst ohne Lebens-Hysterese:** Eintritt bei 25 % und Austritt bei 60 %
+  setzt voraus, dass eine Einheit heilt. In MS-1 heilt keine — `ValidateRepair`
+  verlangt als Ziel eine fertiggestellte Platzierung, also ein Gebäude. Ein
+  Austrittswert wäre nie erreicht worden, Verwundete hätten sich zu Hause
+  gestapelt, die Armeeobergrenze belegt und die Welle nie wieder voll werden
+  lassen. Gedämpft wird über Gefahr und Entfernung statt über Leben.
+  **Einseitig gemessen** gegen dasselbe Binary mit `retreatHealthPercent: 0`:
+  Austauschverhältnis 131 statt 89. Die Regel **kostet dabei Tempo, nicht
+  Einheiten** — ohne sie entscheidet die Partie 2.000 Ticks früher und mit
+  geringfügig *weniger* eigenen Verlusten (56 statt 62). Das ist ein Handel, kein
+  reiner Gewinn, und er gehört genauso in den Eintrag wie der Gewinn. Die
+  Schwelle ist über fünf Stufen von 25 bis 90 gemessen und nicht gewählt; 75
+  liegt im Austausch höher (166), erkauft das aber mit 0 % Siegen und einer
+  Partie über 17.770 Ticks — eine Kennzahl allein hätte hier die schlechtere KI
+  gewählt.
+  **Was das kostet, offen gesagt:** Ein Spieler kann mit einer einzelnen billigen
+  Einheit eine ganze Welle nach Hause schicken. Im Labor tritt das nicht auf,
+  weil keine Seite absichtlich ködert; gegen einen Menschen ist es die
+  naheliegende Gegenstrategie und ungemessen. Wie bei den Wellen gilt: Der feste
+  Schwellwert ist eine Zwischenstufe — ob ein Rückzug richtig ist, hängt von der
+  Lage ab, und die soll die KI später selbst beurteilen.
+  565/565 SimRunner-Tests, Baseline-Dateien unberührt. **Gespielt und bestätigt,
+  in beiden Hälften:** „Angeschlagene drehen um und gehen in nächster Gruppe
+  wieder mit los auf Angriff." Die zweite Hälfte ist die, an der die Konstruktion
+  hing — ohne Heilung war die Sorge, dass Verwundete zu Hause versauern und die
+  Armeeobergrenze belegen. Sie tun es nicht. Das Ködern mit einer einzelnen
+  Einheit bleibt ungemessen und ungesehen.
+- **Die KI greift in Wellen an, statt einzeln nachzutröpfeln (Einheitenstrang,
+  KI-Verhalten `r3`):** Bisher lief jede fertige Einheit sofort allein quer über
+  die Karte — kein Angriff, sondern ein Förderband; man konnte sich mit drei
+  Einheiten an den Weg stellen und die halbe Partie lang einen nach dem anderen
+  abräumen. Nachschub sammelt sich jetzt an einem Sammelpunkt zwischen eigener
+  Basis und Feindgebiet, und die Armee marschiert erst bei voller Stärke. Wer
+  schon draussen ist, wird nie zurückgerufen: „draussen" heisst ausserhalb eines
+  Rings von 16 Zellen um das eigene HQ, gemessen am **HQ** und nicht am Ziel,
+  damit eine Einheit nicht zwischen draussen und wartend kippt, weil der Gegner
+  ein paar Zellen gelaufen ist. Der Sammelpunkt ist für die ganze Partie
+  derselbe — statisches Kartenwissen auf beiden Seiten, also kein
+  Befehlsrauschen. Eine wartende Einheit bekommt bewusst **kein** Angriffsziel
+  (ein `AttackTarget` wird nur vom Tod des Ziels frei, eine stehende Einheit
+  hielte also ein veraltetes und feuerte nicht mehr, während die
+  D-087-Automatik geschossen hätte); eine angekommene bekommt gar keinen Befehl,
+  sonst geht derselbe Marschbefehl jede Kadenz neu hinaus.
+  **Einseitig gemessen**, weil anders nicht messbar: Eine Coderegel steckt im
+  Binary und erreicht im Selbstspiel beide KIs zugleich, wo „später entschieden,
+  mehr Verluste" nicht von „zwei stärkeren Armeen" zu unterscheiden ist. Deshalb
+  trägt die Regel einen Profilwert mit **Aus-Stellung** — `waveSize: 1`
+  reproduziert das bisherige Verhalten bitgenau — und gemessen wurde dasselbe
+  Binary mit gegen ohne, in beiden Fraktionsrollen: Verluste 62 statt 143,
+  Austauschverhältnis 131 statt 84, Intervalle mit Verlusten 18 statt 59. Aus
+  dem Tröpfeln werden wenige Zusammenstösse.
+  `waveSize: 12` ist die Armeeobergrenze, und der Wert gehört dorthin oder auf
+  1, **nicht dazwischen**: Eine halbvolle Welle ist schlechter als gar keine
+  (`waveSize 6` liegt im Austausch bei 74 gegen 84 ohne Wellen) — sechs
+  Einheiten warten lange genug, um den Nachschub zu bremsen, und sind zu wenige,
+  um die Schlacht zu entscheiden.
+  **Das ist ausdrücklich kein Endzustand.** Heute ist „Welle oder Tröpfeln" eine
+  Einstellung, die für die ganze Partie gilt — und beide Verhaltensweisen haben
+  Lagen, in denen sie richtig sind: Nachschub einzeln nachschieben ist richtig,
+  wenn die eigene Armee im Gefecht steht und jede Einheit sofort zählt, oder
+  wenn der Gegner bereits vor der eigenen Basis steht. Sammeln ist richtig vor
+  dem ersten Vorstoss und nach einer verlorenen Welle. Ziel ist, dass die KI
+  **situationsabhängig entscheidet**, statt dass ein Profilwert es vorgibt; die
+  gemessene Kurve oben ist die Begründung dafür, dass es überhaupt eine
+  Entscheidung ist und keine Geschmacksfrage. Der Profilwert bleibt danach als
+  Aus-Stellung erhalten, weil ohne ihn keine einseitige Messung möglich wäre.
+  Voraus geht eine **verhaltensneutrale Formänderung**: Schritt (6) erteilt
+  keinen Armeebefehl mehr, sondern löst in Haltung, Zuweisung je Einheit und
+  gruppiertes Einreichen auf. Ohne sie ist „diese eine Einheit wartet" nicht
+  schwer zu formulieren, sondern nicht formulierbar. Nachweis ist keine
+  Testzusage, sondern eine Zahl: Entscheidungstick und Endzustand bleiben
+  identisch, der Bezeichner-Pin geht ohne Änderung durch. 564/564
+  SimRunner-Tests, Baseline-Dateien unberührt. **Gespielt und bestätigt:** „Kam
+  in Welle." Kein Fall, in dem etwas kaputt aussah. Die Fortsetzung hat der
+  Spieler dabei selbst benannt — automatischer Wechsel zum Tröpfeln, wenn die
+  Armee bereits auf dem Angriffsweg ist, als Unterstützung; das kommt in einem
+  eigenen PR.
+- **Die KI zielt nach Wirkung statt nach Listenreihenfolge (Einheitenstrang,
+  KI-Verhalten `r2`):** Die Zielwahl lautete „HQ, sonst das ERSTE sichtbare
+  Gebäude, sonst die ERSTE sichtbare Einheit". Diese Reihenfolge ist die des
+  Sichtbarkeitsscans, also der Entitätsindex — die Armee lief an einem Panzer
+  vorbei, um ein Lagerhaus zu beschiessen, weil kinetischer Schaden auf Medium
+  mit 50 % und auf Building mit 30 % landet und die alte Regel das nicht sehen
+  konnte. Stattdessen ein ganzzahliger Score aus vier Profilgewichten: gelandeter
+  Schaden gegen die Rüstungsklasse, Bedrohung durch das Ziel, fehlendes Leben,
+  minus mittlere Entfernung. Gleichstand bricht auf der niedrigeren rohen
+  Entity-Id, nie auf der Listenposition. Das feindliche HQ bleibt ein
+  Kurzschluss und ist bewusst **kein** Gewicht: sein Verlust entscheidet die
+  Partie (D-077), und eine Siegbedingung ist keine Vorliebe.
+  **Gemessen**, Referenzpartie gegen sich selbst: Entscheidung bei Tick 8.715
+  statt 12.975 (−33 %), Verluste 70/97 statt 113/137 — beide Seiten verlieren
+  weniger, obwohl beide dasselbe neue Zielverhalten fahren. Nicht für jedes
+  Profil eine Verbesserung: `greedy-economy` und `fast-cadence` entscheiden
+  später und verlieren mehr.
+  Neu dazu: **`AiBehaviorId`** beantwortet „welche KI ist das" in einem String,
+  den man von einem Screenshot ablesen kann — eine von Hand gebumpte Revision
+  für Coderegeln, ein Hash über alle Profilzahlen für die Werte. Ein Test nagelt
+  ihn zusammen mit dem Endzustand der kanonischen Partie fest, sodass eine
+  Verhaltensänderung ohne Bump rot wird. Die F3-Anzeige zeigt ihn und daneben
+  die **Kennung der Simulation** (Hash der Definitionstabelle plus die fünf
+  Schemaversionen) — die Werte, an denen ungleiche Testbuilds auseinandergehen.
+  Ohne Anzeige im Spiel ist die Forderung nach einer gesehenen Runde schwer zu
+  erfüllen. 562/562 SimRunner-Tests, Baseline-Dateien unberührt. **Gespielt — und
+  die Regel war dabei nicht erkennbar:** „Zielwahl nicht eindeutig erkennbar bis
+  dato". Wer in einer Schlacht mit zwölf Einheiten auf welches Ziel schiesst, ist
+  mit blossem Auge kaum auseinanderzuhalten. Sie ist gemessen und getestet, aber
+  nicht gesehen.
+- **KI-Profile als Datenschicht (`Nova.AI.Data`, Einheitenstrang):** Die
+  Stellschrauben der Skirmish-KI lagen an zwei Orten — als Konstruktor-Defaults
+  auf `AiFactionProfile` und als `const`-Felder in `SkirmishAiSystem`. Tunen
+  hiess damit Verhaltenscode editieren, und vier Werte (Kadenz, Suchradius,
+  beide Queue-Batches) waren von aussen gar nicht erreichbar. Sie liegen jetzt
+  vollständig in einem `AiProfile`. **Verhaltensneutral, und das ist der
+  Nachweis, nicht die Absicht:** Das ausgelieferte Profil `ms1-canonical` trägt
+  die bisherigen acht Zahlen wertgleich (Strommarge 0, Armee 12,
+  Angriffsschwelle 6, Harvester 2, Kadenz 20, Suchradius 8, Batches 2), die vier
+  Determinismus-Baselines bleiben grün, 561/561 SimRunner-Tests. Die Signatur
+  von `AiFactionProfile` und `SkirmishAiSystem` ist unverändert, damit
+  `MatchRunner` nicht angefasst werden muss. Zwei Vorarbeiten sind mit erledigt:
+  `AiFactionProfile` verglich bisher **nur den Fraktionsnamen**, sodass zwei
+  Profile mit gleichem Namen und verschiedenen Zahlen als gleich galten — was
+  erst beim Tunen auffällt, wo genau das der Regelfall ist; und `Nova.AI.Data`
+  steht auf `noEngineReferences: true`, ist also strukturell enginefrei statt
+  zufällig. Dazu zwei veraltete Behauptungen in der Klassendoku von
+  `SkirmishAiSystem`: GB-002 „kein Auto-Acquire" gilt seit D-087 nicht mehr, und
+  `SetRallyPoint` wird sehr wohl akzeptiert. Der Code galt, die Doku nicht.
 - **Die fertige Raffinerie stellt ihren ersten Sammler kostenlos hin.** Der
   Sammler kostet 700 AE und die Raffinerie ist seit D-077 sein einziger
   Produzent. Wer sich vor ihrer Fertigstellung unter 700 AE herunterbaut, hatte
