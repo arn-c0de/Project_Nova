@@ -46,6 +46,23 @@ namespace Nova.AiLab
 
         private readonly List<EntityId> _visibleScratch = new List<EntityId>(256);
 
+        // ---- reaction latency, tracked per TICK and per ENTITY -----------
+        //
+        // The metric sample cannot carry this: it asks how many ticks pass
+        // between a unit losing health and that unit being sent somewhere
+        // else, and both events live between two samples. So these arrays
+        // are a second, cheaper snapshot taken every tick — health, standing
+        // move order, identity — and nothing else.
+        private readonly ReactionTally[] _reactions;
+        private readonly bool[] _reactActive;
+        private readonly byte[] _reactOwner;
+        private readonly ushort[] _reactVersion;
+        private readonly int[] _reactHealth;
+        private readonly long[] _reactOrder;
+
+        /// <summary>Tick at which this entity last took damage without having been re-ordered since; -1 = nothing pending.</summary>
+        private readonly long[] _reactPendingTick;
+
         public TraceCollector(MultiSlotAiHost host)
         {
             _host = host ?? throw new ArgumentNullException(nameof(host));
@@ -61,15 +78,137 @@ namespace Nova.AiLab
             _lastVersion = new ushort[capacity];
             _lastHealth = new int[capacity];
 
+            _reactions = new ReactionTally[_slotCount];
+            for (int i = 0; i < _slotCount; i++) _reactions[i] = new ReactionTally();
+            _reactActive = new bool[capacity];
+            _reactOwner = new byte[capacity];
+            _reactVersion = new ushort[capacity];
+            _reactHealth = new int[capacity];
+            _reactOrder = new long[capacity];
+            _reactPendingTick = new long[capacity];
+
             SnapshotEntities();
+            SnapshotReactions();
+            for (int i = 0; i < capacity; i++) _reactPendingTick[i] = -1;
         }
 
-        /// <summary>Per-tick accumulation. Cheap by construction — one struct read per slot.</summary>
-        public void OnTick()
+        /// <summary>
+        /// The reaction bookkeeping this run accumulated, one entry per slot.
+        /// Call <see cref="FinishReactions"/> before reading it at the end of a
+        /// match, or the still-pending damage events go uncounted.
+        /// </summary>
+        public ReactionTally[] Reactions => _reactions;
+
+        /// <summary>Per-tick accumulation. One struct read per slot, plus the reaction pass.</summary>
+        public void OnTick(uint tick)
         {
             for (byte slot = 0; slot < _slotCount; slot++)
             {
                 if (_host.Economy.GetPlayerEconomy(slot).IsLowPower) _lowPowerTicks[slot]++;
+            }
+
+            TrackReactions(tick);
+        }
+
+        // ----------------------------------------------------------------
+        // Reaction latency: damage -> a NEW movement order for that unit
+        // ----------------------------------------------------------------
+
+        /// <summary>
+        /// Pairs "this entity lost health at tick T" with "this entity got a
+        /// different valid <c>TargetGridPos</c> at tick T'". T' - T is the
+        /// latency; a unit that dies or reaches the end of the match with an
+        /// open pair counts as UNANSWERED.
+        /// <para>
+        /// Only the move target is watched, and deliberately so. Attack
+        /// targets are written by the D-087 auto-acquisition without any AI
+        /// involvement, so counting them would credit the AI with the combat
+        /// system's reflexes. Arrival is not a re-order either: it clears the
+        /// target through <c>UnitState.Stop()</c>, which lands on the invalid
+        /// value and is skipped here.
+        /// </para>
+        /// <para>
+        /// Order matters inside the loop: a re-order is matched against
+        /// EARLIER damage before this tick's damage is recorded, so an order
+        /// and a hit in the same tick never produce a latency of 0 — an intent
+        /// is sealed a tick after it is submitted and cannot answer damage
+        /// that has not happened yet.
+        /// </para>
+        /// </summary>
+        private void TrackReactions(uint tick)
+        {
+            UnitState[] units = _host.Entities.RawUnits;
+            for (int i = 0; i < units.Length; i++)
+            {
+                ref readonly UnitState u = ref units[i];
+                bool sameUnit = _reactActive[i] && u.IsActive && u.Id.Version == _reactVersion[i];
+
+                if (!sameUnit)
+                {
+                    if (_reactActive[i] && _reactPendingTick[i] >= 0 && _reactOwner[i] < _slotCount)
+                    {
+                        _reactions[_reactOwner[i]].Unanswered++;
+                    }
+                    _reactPendingTick[i] = -1;
+                }
+                else if (u.PlayerId < _slotCount)
+                {
+                    long order = OrderKeyOf(in u);
+                    if (order >= 0 && order != _reactOrder[i] && _reactPendingTick[i] >= 0)
+                    {
+                        ReactionTally tally = _reactions[u.PlayerId];
+                        tally.Events++;
+                        tally.LatencySumTicks += tick - _reactPendingTick[i];
+                        _reactPendingTick[i] = -1;
+                    }
+                    else if (u.CurrentHealth < _reactHealth[i] && _reactPendingTick[i] < 0)
+                    {
+                        _reactPendingTick[i] = tick;
+                    }
+                }
+
+                _reactActive[i] = u.IsActive;
+                _reactOwner[i] = u.PlayerId;
+                _reactVersion[i] = u.Id.Version;
+                _reactHealth[i] = u.CurrentHealth;
+                _reactOrder[i] = OrderKeyOf(in u);
+            }
+        }
+
+        /// <summary>
+        /// Damage still waiting for an answer when the match ends is
+        /// unanswered — leaving it out would flatter a slot that simply ran
+        /// out of ticks before reacting.
+        /// </summary>
+        public void FinishReactions()
+        {
+            for (int i = 0; i < _reactPendingTick.Length; i++)
+            {
+                if (_reactPendingTick[i] < 0 || !_reactActive[i] || _reactOwner[i] >= _slotCount) continue;
+                _reactions[_reactOwner[i]].Unanswered++;
+                _reactPendingTick[i] = -1;
+            }
+        }
+
+        /// <summary>The standing move order as one comparable integer; -1 when the unit has none.</summary>
+        private static long OrderKeyOf(in UnitState unit)
+        {
+            return unit.TargetGridPos.IsValid
+                ? ((long)unit.TargetGridPos.Y << 16) | unit.TargetGridPos.X
+                : -1L;
+        }
+
+        private void SnapshotReactions()
+        {
+            UnitState[] units = _host.Entities.RawUnits;
+            for (int i = 0; i < units.Length; i++)
+            {
+                ref readonly UnitState u = ref units[i];
+                _reactActive[i] = u.IsActive;
+                _reactOwner[i] = u.PlayerId;
+                _reactVersion[i] = u.Id.Version;
+                _reactHealth[i] = u.CurrentHealth;
+                _reactOrder[i] = OrderKeyOf(in u);
             }
         }
 

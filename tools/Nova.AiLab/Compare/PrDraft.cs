@@ -82,6 +82,33 @@ namespace Nova.AiLab
             Row(md, "Intents abgelehnt", reference?.IntentsRejectedSum, candidate.IntentsRejectedSum, "");
             md.Append('\n');
 
+            // Die vier Spielgefühl-Spalten stehen in einer EIGENEN Tabelle,
+            // weil sie eine andere Frage beantworten als die oben: nicht wer
+            // gewinnt, sondern wie sich die Partie anfühlt. Eine Regel, die
+            // absichtlich wartet, sieht in der ersten Tabelle wie ein
+            // Rückschritt aus — genau so wurden V002 und V003 gelesen.
+            md.Append("### Spielgefühl\n\n");
+            md.Append("| Kennzahl | ").Append(referenceProfileId).Append(" | ")
+              .Append(candidate.ProfileId).Append(" |\n|---|---:|---:|\n");
+            Row(md, "Austauschverhältnis (Feindverluste je 100 eigene)",
+                reference?.AverageExchangeRatio, candidate.AverageExchangeRatio, "");
+            Row(md, "Gefechtsintervalle (mit Verlusten)",
+                reference?.AverageCombatIntervals, candidate.AverageCombatIntervals, "");
+            Row(md, "Grösster Verlustsprung in einem Intervall",
+                reference?.AverageLargestLossJump, candidate.AverageLargestLossJump, "");
+            Row(md, "Reaktionslatenz (Ticks Schaden → neuer Marschbefehl)",
+                reference?.AverageReactionLatency, candidate.AverageReactionLatency, "");
+            Row(md, "Unbeantworteter Schaden (Ereignisse)",
+                reference?.AverageUnansweredDamage, candidate.AverageUnansweredDamage, "");
+            Row(md, "Aktionen pro Minute", reference?.AverageActionsPerMinute, candidate.AverageActionsPerMinute, "");
+            Row(md, "Verschiedene Partieausgänge über die Menge",
+                reference?.ReplayValue, candidate.ReplayValue, "");
+            md.Append('\n');
+            md.Append("`-1` heisst \"in dieser Menge nicht messbar\" (keine eigenen Verluste bzw. keine ")
+              .Append("einzige Reaktion), nicht `0`.\n")
+              .Append("Das Austauschverhältnis ist **nur einseitig** aussagekräftig — jeder Kandidat hier ")
+              .Append("spielt gegen die Referenz, genau diese Anordnung.\n\n");
+
             md.Append("Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:\n\n");
             md.Append("- Spec-Version ").Append(set.SpecVersion)
               .Append(", Profil-Schema ").Append(set.ProfileSchemaVersion).Append('\n');

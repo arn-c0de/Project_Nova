@@ -161,6 +161,12 @@ namespace Nova.AiLab
                 result.DecidedMatches++;
             }
 
+            // Replay value: how many DIFFERENT matches this candidate played
+            // across the whole set. One entry means the seeds and the seatings
+            // all ended the same way — the emptiness of the seed axis, in a
+            // column instead of a footnote.
+            result.RecordEnding($"{run.Outcome}|{run.DecidedTick}|0x{run.FinalStateHash:X16}");
+
             if (run.Trace.Count == 0) return;
             SlotMetrics last = run.Trace[run.Trace.Count - 1].Slots[candidateSlot];
             result.CreditsAtEndSum += last.Credits;
@@ -168,6 +174,29 @@ namespace Nova.AiLab
             result.UnitsLostSum += last.UnitsLost;
             result.IntentsSubmittedSum += last.IntentsSubmitted;
             result.IntentsRejectedSum += last.IntentsRejected;
+
+            for (int i = 0; i < run.Feel.Count; i++)
+            {
+                FeelMetrics feel = run.Feel[i];
+                if (feel.Slot != candidateSlot) continue;
+
+                // The two -1 fields are "not measurable in this match", not
+                // zero, so they are averaged over their own sample count.
+                if (feel.ExchangeRatioPercent >= 0)
+                {
+                    result.ExchangeRatioSum += feel.ExchangeRatioPercent;
+                    result.ExchangeRatioSamples++;
+                }
+                if (feel.MeanReactionLatencyTicks >= 0)
+                {
+                    result.ReactionLatencySum += feel.MeanReactionLatencyTicks;
+                    result.ReactionLatencySamples++;
+                }
+                result.CombatIntervalsSum += feel.CombatIntervals;
+                result.LargestLossJumpSum += feel.LargestLossJump;
+                result.UnansweredDamageSum += feel.UnansweredDamageEvents;
+                result.ActionsPerMinuteSum += feel.ActionsPerMinute;
+            }
         }
     }
 }

@@ -49,6 +49,13 @@ namespace Nova.AiLab
         /// <summary>Empty unless <see cref="MatchSpec.ViewIntervalTicks"/> is set.</summary>
         public List<ViewFrame> View = new List<ViewFrame>();
 
+        /// <summary>
+        /// The game-feel columns (NEXT-STEPS.md section 7), one entry per slot.
+        /// Empty without a trace: three of the four are per-interval or
+        /// per-tick derivations, and zeros would read as measurements.
+        /// </summary>
+        public List<FeelMetrics> Feel = new List<FeelMetrics>();
+
         /// <summary>Wall-clock cost of this run — throughput bookkeeping, never an input to a result.</summary>
         public long ElapsedMilliseconds;
 
@@ -117,7 +124,7 @@ namespace Nova.AiLab
                 uint tick = host.Kernel.CurrentTick.Value;
                 if (traced)
                 {
-                    collector.OnTick();
+                    collector.OnTick(tick);
                     if (tick % (uint)spec.TraceIntervalTicks == 0) result.Trace.Add(collector.Sample(tick));
                 }
                 if (viewed && tick % (uint)spec.ViewIntervalTicks == 0)
@@ -140,6 +147,15 @@ namespace Nova.AiLab
             result.DecidedTick = host.Victory.DecidedTick;
             result.FinalTick = host.Kernel.CurrentTick.Value;
             result.FinalStateHash = host.Kernel.CalculateStateHash();
+
+            if (traced)
+            {
+                // Damage still unanswered when the match ends belongs in the
+                // tally before it is read, not after.
+                collector.FinishReactions();
+                result.Feel = FeelMetrics.Compute(
+                    result.Trace, collector.Reactions, result.FinalTick, host.SlotCount);
+            }
 
             watch.Stop();
             result.ElapsedMilliseconds = watch.ElapsedMilliseconds;

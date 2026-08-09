@@ -28,6 +28,36 @@ namespace Nova.AiLab
         public long IntentsSubmittedSum;
         public long IntentsRejectedSum;
 
+        // ---- game feel (NEXT-STEPS.md section 7) ------------------------
+        //
+        // Four columns that describe HOW a match went, next to the ones that
+        // say who won. They are summed here and averaged below; they are
+        // never combined with each other, and nothing sorts by them
+        // (decision 11).
+
+        /// <summary>Exchange ratio summed over the matches that HAD losses — the others carry no ratio.</summary>
+        public long ExchangeRatioSum;
+        public int ExchangeRatioSamples;
+
+        public long CombatIntervalsSum;
+        public long LargestLossJumpSum;
+
+        /// <summary>Reaction latency summed over the matches in which the slot answered at least once.</summary>
+        public long ReactionLatencySum;
+        public int ReactionLatencySamples;
+
+        public long UnansweredDamageSum;
+        public long ActionsPerMinuteSum;
+
+        /// <summary>
+        /// Distinct match endings this candidate produced, as
+        /// <c>outcome|decidedTick|endStateHash</c>. The replay-value column
+        /// (NEXT-STEPS section 7) is simply how many entries this list has:
+        /// one means every seed and both seatings played the same match to the
+        /// same end, which is the state of the world today.
+        /// </summary>
+        public List<string> DistinctEndings = new List<string>();
+
         /// <summary>Directory of one run kept for inspection — the link into the view window.</summary>
         public string SampleRunDirectory;
 
@@ -36,6 +66,28 @@ namespace Nova.AiLab
         public long AverageCredits => Matches > 0 ? CreditsAtEndSum / Matches : 0;
         public long AverageArmySize => Matches > 0 ? ArmySizeAtEndSum / Matches : 0;
         public long AverageUnitsLost => Matches > 0 ? UnitsLostSum / Matches : 0;
+
+        /// <summary>Enemy entities lost per 100 own; -1 when no match in the set produced a ratio.</summary>
+        public long AverageExchangeRatio => ExchangeRatioSamples > 0 ? ExchangeRatioSum / ExchangeRatioSamples : -1;
+
+        public long AverageCombatIntervals => Matches > 0 ? CombatIntervalsSum / Matches : 0;
+        public long AverageLargestLossJump => Matches > 0 ? LargestLossJumpSum / Matches : 0;
+
+        /// <summary>Mean ticks from damage to a new movement order; -1 when the candidate never answered.</summary>
+        public long AverageReactionLatency => ReactionLatencySamples > 0 ? ReactionLatencySum / ReactionLatencySamples : -1;
+
+        public long AverageUnansweredDamage => Matches > 0 ? UnansweredDamageSum / Matches : 0;
+        public long AverageActionsPerMinute => Matches > 0 ? ActionsPerMinuteSum / Matches : 0;
+
+        /// <summary>How many different endings the candidate produced over the whole set.</summary>
+        public int ReplayValue => DistinctEndings.Count;
+
+        /// <summary>Records one ending, keeping the list distinct and in first-seen order.</summary>
+        public void RecordEnding(string ending)
+        {
+            if (DistinctEndings.Contains(ending)) return;
+            DistinctEndings.Add(ending);
+        }
     }
 
     /// <summary>
@@ -154,6 +206,16 @@ namespace Nova.AiLab
                     .Append(", \"averageUnitsLost\": ").Append(c.AverageUnitsLost)
                     .Append(", \"intentsSubmitted\": ").Append(c.IntentsSubmittedSum)
                     .Append(", \"intentsRejected\": ").Append(c.IntentsRejectedSum)
+                    // The four feel columns travel with the numbers they sit
+                    // beside; a result set that carries only strength cannot
+                    // be re-read later for rhythm.
+                    .Append(", \"exchangeRatioPercent\": ").Append(c.AverageExchangeRatio)
+                    .Append(", \"combatIntervals\": ").Append(c.AverageCombatIntervals)
+                    .Append(", \"largestLossJump\": ").Append(c.AverageLargestLossJump)
+                    .Append(", \"reactionLatencyTicks\": ").Append(c.AverageReactionLatency)
+                    .Append(", \"unansweredDamage\": ").Append(c.AverageUnansweredDamage)
+                    .Append(", \"actionsPerMinute\": ").Append(c.AverageActionsPerMinute)
+                    .Append(", \"replayValue\": ").Append(c.ReplayValue)
                     .Append(", \"changes\": \"").Append(string.Join("; ", c.DifferencesFromReference))
                     .Append("\" }");
                 if (i < Candidates.Count - 1) json.Append(',');

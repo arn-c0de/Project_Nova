@@ -105,6 +105,60 @@ namespace Nova.AiLab
 
             html.Append("</tbody></table>\n");
 
+            // ---- second table: how the match FELT, not who won ----
+            //
+            // Deliberately a SEPARATE table rather than six more columns on
+            // the first one. These read against a different question, and a
+            // twenty-column table is a table nobody reads — readability is the
+            // product here, because there is no ranking to fall back on.
+            html.Append("<h2>game feel</h2>\n")
+                .Append("<div class=\"note\">Strength and speed are above. These columns ask how the match ")
+                .Append("PLAYED: did the army gather and strike, or trickle; did anything happen when it ")
+                .Append("was shot at; did it act at a human rate; did the set produce more than one match. ")
+                .Append("<b>The exchange ratio only means something one-sided</b> — every candidate here ")
+                .Append("plays the reference, which is exactly that setting.</div>\n");
+
+            html.Append("<table>\n<thead><tr>")
+                .Append("<th>candidate</th>")
+                .Append("<th>exchange /100</th><th>combat intervals</th><th>largest jump</th>")
+                .Append("<th>reaction ticks</th><th>unanswered</th><th>APM</th><th>endings</th>")
+                .Append("</tr></thead>\n<tbody>\n");
+
+            foreach (CandidateResult c in set.Candidates)
+            {
+                bool isReference = ReferenceEquals(c, reference);
+                html.Append(isReference ? "<tr class=\"ref\">" : "<tr>");
+                html.Append("<td class=\"name\">").Append(Escape(c.ProfileId))
+                    .Append(isReference ? " <span class=\"tag\">reference</span>" : "").Append("</td>");
+
+                Cell(html, c.AverageExchangeRatio, reference?.AverageExchangeRatio, isReference);
+                Cell(html, c.AverageCombatIntervals, reference?.AverageCombatIntervals, isReference);
+                Cell(html, c.AverageLargestLossJump, reference?.AverageLargestLossJump, isReference);
+                Cell(html, c.AverageReactionLatency, reference?.AverageReactionLatency, isReference);
+                Cell(html, c.AverageUnansweredDamage, reference?.AverageUnansweredDamage, isReference);
+                Cell(html, c.AverageActionsPerMinute, reference?.AverageActionsPerMinute, isReference);
+                Cell(html, c.ReplayValue, reference?.ReplayValue, isReference);
+
+                html.Append("</tr>\n");
+            }
+
+            html.Append("</tbody></table>\n");
+
+            html.Append("<section class=\"legend\">")
+                .Append("<p><b>Reading the feel table.</b> <i>exchange /100</i> is enemy entities lost per ")
+                .Append("100 own, <i>-1</i> when the candidate lost nothing. <i>combat intervals</i> and ")
+                .Append("<i>largest jump</i> describe the shape of the loss curve: many intervals losing one ")
+                .Append("unit each is a trickle, few intervals losing many is a battle — the same total, a ")
+                .Append("very different match. <i>reaction ticks</i> is the mean delay between a unit ")
+                .Append("losing health and that unit being sent somewhere else, <i>-1</i> when it never ")
+                .Append("happened; <i>unanswered</i> counts the damage that got no answer at all. ")
+                .Append("<i>APM</i> is intents read as a human rate. <i>endings</i> is how many different ")
+                .Append("matches the whole set produced — 1 means the seeds change nothing.</p>")
+                .Append("<p><b>A staging rule is supposed to raise the deciding tick.</b> Waiting is the ")
+                .Append("point of it. Judged on the first table alone it looks like a regression, which is ")
+                .Append("how two earlier changes were read (journal V002, V003, methodology finding M001).</p>")
+                .Append("</section>\n");
+
             html.Append("<section class=\"legend\">")
                 .Append("<p><b>How to read this.</b> Colour marks DEVIATION from the reference row, not ")
                 .Append("goodness — more credits is not better than fewer, a faster decision is not better ")
@@ -190,6 +244,7 @@ namespace Nova.AiLab
          font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; }
   header { padding:12px 16px; border-bottom:1px solid #21262d; }
   h1 { font-size:15px; margin:0 0 3px; font-weight:600; }
+  h2 { font-size:13px; margin:26px 0 8px; font-weight:600; color:#e6edf3; }
   .sub { color:#8b949e; font-size:12px; }
   .warn { color:#d29922; font-size:12px; margin-top:6px; }
   .note { margin:12px 16px 0; padding:8px 12px; border-left:3px solid #d29922;

@@ -116,6 +116,17 @@ namespace Nova.AiLab
                 json.Append('\n');
             }
             json.Append("  ],\n");
+            // The four game-feel columns (NEXT-STEPS.md section 7). They sit
+            // BESIDE the outcome, never inside it: nothing here is summed into
+            // a verdict, and a missing trace leaves the array empty instead of
+            // filling it with zeros that would read as measurements.
+            json.Append("  \"feel\": [");
+            for (int i = 0; i < result.Feel.Count; i++)
+            {
+                if (i > 0) json.Append(", ");
+                result.Feel[i].AppendJson(json);
+            }
+            json.Append("],\n");
             json.Append("  \"evidence\": \"DIAGNOSIS — a lab run is never proof; ")
                 .Append("what was not seen in the running game is reported as unseen.\"\n");
             json.Append("}\n");
