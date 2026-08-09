@@ -1,0 +1,18 @@
+{"seed":"0xA17E57DE57","entries":[
+  {"tick":0,"stateHash":"0x383FBD94DA82B986"},
+  {"tick":500,"stateHash":"0xD31141F96FA9A6C8"},
+  {"tick":1000,"stateHash":"0x6C7E7EC0BA48D570"},
+  {"tick":1500,"stateHash":"0x8B7CF1F95046AFC7"},
+  {"tick":2000,"stateHash":"0x6B965A1FA3A6B293"},
+  {"tick":2500,"stateHash":"0x21B537F1F7B3D3D1"},
+  {"tick":3000,"stateHash":"0x3EC462AA5A5224FD"},
+  {"tick":3500,"stateHash":"0x2B6FA70F234ACF4E"},
+  {"tick":4000,"stateHash":"0x6870B2C07DF4657D"},
+  {"tick":4500,"stateHash":"0x5CD5E756FC16AE5C"},
+  {"tick":5000,"stateHash":"0x4C4B4743D77B2E67"},
+  {"tick":5500,"stateHash":"0x2DA4E109401B8EC2"},
+  {"tick":6000,"stateHash":"0xEA093E3F848FFBB1"},
+  {"tick":6500,"stateHash":"0x1A51F3DB8A2CEBE9"},
+  {"tick":7000,"stateHash":"0x828C03D4D8742C79"},
+  {"tick":7500,"stateHash":"0x507F5E16809C9945"}
+]}

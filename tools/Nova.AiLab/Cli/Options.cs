@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using Nova.AI;
+using Nova.AI.Data;
 
 namespace Nova.AiLab
 {
@@ -20,6 +22,18 @@ namespace Nova.AiLab
         public int UnitsPerSide = DuelTable.DefaultUnitsPerSide;
         public int GroupSize = 8;
         public string AgainstFile;
+
+        /// <summary>Binds a named lab profile to one slot; an unknown id names the known ones instead of failing mutely.</summary>
+        private static void ApplyProfile(SlotSpec slot, string profileId)
+        {
+            string id = profileId == "canonical" ? SlotSpec.CanonicalProfileId : profileId;
+            if (!LabProfiles.TryGet(id, out AiProfile profile))
+            {
+                throw new ArgumentException($"profile '{profileId}' is unknown — known ids: {LabProfiles.KnownIds()}");
+            }
+            slot.Profile = new AiFactionProfile(slot.Faction.ToString(), profile);
+            slot.ProfileId = profile.ProfileId;
+        }
 
         public static Options Parse(string[] args, string mode)
         {
@@ -47,6 +61,7 @@ namespace Nova.AiLab
                 : new MatchSpec();
 
             int? slots = null;
+            string profileAll = null, profileSlot0 = null, profileSlot1 = null;
             foreach (KeyValuePair<string, string> flag in flags)
             {
                 switch (flag.Key)
@@ -66,12 +81,27 @@ namespace Nova.AiLab
                     case "--units": options.UnitsPerSide = ParseInt(flag.Value, flag.Key); break;
                     case "--group": options.GroupSize = ParseInt(flag.Value, flag.Key); break;
                     case "--against": options.AgainstFile = flag.Value; break;
+                    case "--profile": profileAll = flag.Value; break;
+                    case "--profile0": profileSlot0 = flag.Value; break;
+                    case "--profile1": profileSlot1 = flag.Value; break;
                     case "--out": options.OutputDirectory = flag.Value; break;
                     default: throw new ArgumentException($"unknown option '{flag.Key}'");
                 }
             }
 
             if (slots.HasValue) options.Spec.Slots = MatchSpec.DefaultSlots(slots.Value);
+
+            // A named profile per slot, so ONE-SIDED runs need no spec file.
+            // That matters more than convenience: a rule that lives in C#
+            // reaches both AIs of a self-play match, and "with" against
+            // "without" is the only arrangement that can tell a better rule
+            // from two stronger armies (behaviour journal M001).
+            if (profileAll != null)
+            {
+                for (int i = 0; i < options.Spec.Slots.Length; i++) ApplyProfile(options.Spec.Slots[i], profileAll);
+            }
+            if (profileSlot0 != null && options.Spec.Slots.Length > 0) ApplyProfile(options.Spec.Slots[0], profileSlot0);
+            if (profileSlot1 != null && options.Spec.Slots.Length > 1) ApplyProfile(options.Spec.Slots[1], profileSlot1);
 
             // Watching needs frames; 20 ticks = 2 s of simulated time, the
             // AI's own decision cadence, so every frame can differ.

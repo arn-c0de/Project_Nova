@@ -135,6 +135,23 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   dafür auf Sprint 16, weil er simulationsverändernd ist.
 
 ### Geändert
+- **KI greift in Wellen an statt einzeln nachzutröpfeln (Einheitenstrang,
+  KI-Verhalten `r3`):** Die Skirmish-KI schickt neu gebaute Einheiten nicht mehr
+  sofort einzeln quer über die Karte, sondern sammelt sie an einem Sammelpunkt
+  zwischen eigener Basis und Feindgebiet und marschiert erst mit voller Armee.
+  Wer schon draussen ist, wird nie zurückgerufen; wer wartet, bekommt bewusst
+  **kein** ausdrückliches Angriffsziel (ein Angriffsbefehl lässt sich nicht
+  zurücknehmen, Befund F001 — eine stehende Einheit hielte ein veraltetes Ziel
+  und feuerte nicht mehr). Drei neue Ganzzahlfelder im Profil (`waveSize`,
+  `stagingDistanceCells`, `stagingToleranceCells`); `waveSize: 1` schaltet die
+  Regel ab und reproduziert das bisherige Verhalten bitgenau. **Einseitig
+  gemessen** — ein Profil mit Wellen gegen dasselbe Binary ohne Wellen, in
+  beiden Fraktionsrollen: Verluste 41 statt 175, Austauschverhältnis 105 statt
+  78, Intervalle mit Verlusten 11 statt 64 (aus dem Tröpfeln werden wenige
+  Zusammenstösse), Aktionen pro Minute 14 statt 21. Determinismus geprüft,
+  560/560 SimRunner-Tests grün, die vier Baseline-Dateien bleiben grün und sind
+  nicht angefasst. **Im laufenden Spiel nicht geprüft** — der Linux-Build steht
+  aus; Messwerte in `tools/Nova.AiLab/reports/behavior-log.md`, Eintrag V004.
 - **Governance-Tier 2 (D-091):** Externe Beiträge erfolgen nur aus Forks;
   `@cubetribe` (Dennis Westermann) und `@travelhawk` (Michael Falk) bleiben die
   einzigen Accounts mit Merge-Zugang zu `main`. `integrity` läuft auf jedem PR;

@@ -13,21 +13,36 @@ Kandidat `late-push` — geändert gegenüber `ms1-canonical`: armySize 12→20,
 
 | Kennzahl | ms1-canonical | late-push |
 |---|---:|---:|
-| Siegrate | 50% | 100% |
-| Partien (S/N/U) | 1/1/0 | 2/0/0 |
-| Entscheidungstick (Mittel) | 8715 | 8228 |
-| Credits am Ende (Mittel) | 23405 | 21990 |
-| Armeegröße am Ende (Mittel) | 5 | 11 |
-| Verlorene Einheiten (Mittel) | 81 | 72 |
-| Intents gesendet | 706 | 714 |
+| Siegrate | 50% | 50% |
+| Partien (S/N/U) | 1/1/0 | 1/1/0 |
+| Entscheidungstick (Mittel) | 6223 | 8734 |
+| Credits am Ende (Mittel) | 17730 | 23270 |
+| Armeegröße am Ende (Mittel) | 10 | 9 |
+| Verlorene Einheiten (Mittel) | 41 | 84 |
+| Intents gesendet | 313 | 788 |
 | Intents abgelehnt | 0 | 0 |
+
+### Spielgefühl
+
+| Kennzahl | ms1-canonical | late-push |
+|---|---:|---:|
+| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 104 |
+| Gefechtsintervalle (mit Verlusten) | 11 | 21 |
+| Grösster Verlustsprung in einem Intervall | 9 | 9 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 20 |
+| Unbeantworteter Schaden (Ereignisse) | 39 | 81 |
+| Aktionen pro Minute | 14 | 26 |
+| Verschiedene Partieausgänge über die Menge | 1 | 2 |
+
+`-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
+Das Austauschverhältnis ist **nur einseitig** aussagekräftig — jeder Kandidat hier spielt gegen die Referenz, genau diese Anordnung.
 
 Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 206d8bc5eb3d0d03896964c7d778702aa5f1b258
+- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

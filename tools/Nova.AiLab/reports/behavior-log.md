@@ -35,6 +35,148 @@ beginnt.** Der Zweck ist nicht Buchhaltung, sondern zweierlei:
 
 ---
 
+## V004 · 2026-08-09 · Wellen — **angenommen**, und zwar erst in der fünften Fassung
+
+**Lauf:** `runs/20260809-0748-0b0c211c.md` · **Status:** im Labor gemessen,
+**im laufenden Spiel ungesehen** (Linux-Build steht aus) ·
+**KI-Verhalten:** `r2.A037B84D` → **`r3.1D8DA20F`** ·
+**Basis:** V003-Stand (`0x5D8FB2D45FFD16B6`, Tick 8.715)
+
+Der erste Eintrag, der **einseitig** gemessen wurde — die Abhilfe aus
+[M001](#m001--2026-08-09-methodenbefund--v002-und-v003-wurden-im-selbstspiel-beurteilt),
+zum ersten Mal angewandt. Und der erste, bei dem eine Verhaltensregel im
+ausgelieferten Profil landet.
+
+### Was genau geändert wurde
+
+| Ort | Änderung |
+|---|---|
+| `AI.Data/AiProfile.cs` | drei Ganzzahlfelder: `WaveSize`, `StagingDistanceCells`, `StagingToleranceCells` |
+| `AI.Data/AiProfiles.cs` | `ms1-canonical` bekommt `waveSize 12, staging 12, tolerance 4`; `legacy-defaults` bleibt bei `waveSize 1` (Wellen gab es dort nicht) |
+| `AI/SkirmishAiSystem.cs` | `ArmyPosture` trägt Sammelzelle und `WaveReady`; `ResolveUnitAssignment` entscheidet je Einheit zwischen marschieren, hinlaufen und stillhalten |
+| `AI.Data/AiBehaviorId.cs` | `Revision` 2 → 3, Historienzeile |
+
+Die Regel in einem Satz: **Wer schon draussen ist, marschiert weiter; wer noch
+drinnen ist, wartet, bis die Armee voll ist.** „Draussen" heisst ausserhalb
+eines Rings von `stagingDistance + tolerance` = 16 Zellen um das eigene HQ —
+gemessen am **HQ**, nicht am Ziel, damit eine Einheit nicht zwischen „draussen"
+und „wartend" kippt, weil der Gegner ein paar Zellen gelaufen ist. Die
+Sammelzelle liegt 12 Zellen vom HQ auf der Geraden zum Feindgebiet und ist für
+die ganze Partie dieselbe: beides statisches Kartenwissen, also kein
+Befehlsrauschen.
+
+`waveSize 12` **ist** die Armeeobergrenze. Das ist die Regel als eine Zahl:
+angreifen mit voller Armee, nie stückweise nachschieben. Da die Obergrenze alle
+lebenden Einheiten zählt, heisst das praktisch: die nächste Welle startet, wenn
+die vorige aufgerieben ist.
+
+### Besser
+
+Einseitig gemessen, `compare`-Lauf, beide Fraktionsrollen, Seed `0xA17E57DE57`.
+Der Kandidat `wave-off` (`waveSize 1`) ist dasselbe Binary **ohne** die Regel:
+
+| Kennzahl | `wave-off` | ausgeliefert (`waveSize 12`) | |
+|---|---:|---:|---|
+| Verluste (Mittel je Partie) | 175 | **41** | −77 % |
+| Austauschverhältnis (Feindverluste je 100 eigene) | 78 | **105** | +35 % |
+| Intervalle mit Verlusten | 64 | **11** | die Verlustkurve wird zu Sprüngen |
+| Aktionen pro Minute | 21 | **14** | weniger Befehlsrauschen, nicht mehr |
+| Siegquote gegen die jeweils andere Fassung | 0 % | — | 0/1/1 |
+
+Die dritte Zeile ist die, um derentwillen die Kennzahl überhaupt gebaut wurde:
+**aus 64 Intervallen mit Verlusten werden 11.** Das ist genau der Unterschied,
+den NEXT-STEPS §1 als „Förderband statt Angriff" beschreibt, und keine der
+bisherigen Spalten konnte ihn sehen.
+
+Die Referenzpartie entscheidet ausserdem **früher**, nicht später: Tick
+**6.223** statt 8.715, Endzustand `0x5243FDAD54967102`. Das widerspricht der
+Erwartung in NEXT-STEPS §7 („Wellen werden den Entscheidungstick erhöhen — die
+Armee wartet ja") und ist als Widerlegung unten festgehalten.
+
+### Schlechter
+
+- **Die KI ist in der Aufbauphase wehrlos gegen einen frühen Angriff.** Sie
+  greift erst mit zwölf Einheiten an; wer mit drei Einheiten früh kommt, findet
+  eine Armee, die im Ring um die eigene Basis wartet — sie verteidigt sich
+  (Auto-Acquisition), aber sie kontert nicht. Im Labor tritt das nicht auf, weil
+  beide Seiten dieselbe Öffnung fahren. **Gegen einen Menschen ist das die
+  offensichtliche Gegenstrategie**, und sie ist ungemessen.
+- **Wartende Einheiten zielen nicht.** Bewusst so (Befund F001), aber es heisst:
+  in der Wartephase schiesst die Armee nach Entfernung statt nach Gefahr — die
+  Lücke aus V001, jetzt an der Wellengrösse statt an der Angriffsschwelle.
+- **`SkirmishAi_ShootsTheDangerousTarget…` musste umgestellt werden.** Der Test
+  prüft die Zielformel und wurde vom Wellentor verdeckt; er fährt jetzt
+  ausdrücklich mit `waveSize 1`. Das ist ehrlich, aber es heisst auch: die
+  Zielformel ist im ausgelieferten Profil **während der Wartephase ungetestet**.
+- **Ein Rand bleibt offen:** eine Einheit, deren Welle aufgerieben wurde und die
+  noch innerhalb des Rings steht, wird zum Sammelpunkt zurückgerufen. Das Fenster
+  ist schmal (die ersten 16 Zellen des Marsches) und wurde nicht gesondert
+  gemessen.
+
+### Unverändert
+
+- **Determinismus:** jede Fassung zweimal gefahren, Exit 0 — beidseitig und
+  einseitig.
+- **Die Aus-Stellung ist bitgenau das alte Verhalten.** `--profile wave-off`
+  liefert Tick 8.715 und `0x5D8FB2D45FFD16B6`, Hash-Kette byte-identisch zur
+  Referenz von vorher. Das ist der Nachweis, dass der Code ohne die Regel
+  denselben Pfad nimmt und nicht bloss dasselbe Ergebnis ausrechnet.
+- `intentsRejected` bleibt **0**.
+- Duell-Arena und Bewegungsszenarien byte-identisch (sie fahren kein KI-System).
+- **560/560 SimRunner-Tests und 94/94 Labortests grün**, die vier
+  Baseline-Dateien inbegriffen und nicht angefasst.
+
+### Widerlegt
+
+> **„Wellen erhöhen den Entscheidungstick." Nein.** NEXT-STEPS §7 hat das als
+> sicher angenommen und daraus abgeleitet, dass der PR ohne die
+> Gefechtsdichte-Spalte durchfallen müsste. Gemessen: 8.715 → **6.223**. Warten
+> kostet Zeit am Anfang und spart mehr davon in der Mitte, weil eine volle Welle
+> nicht aufgerieben wird. Die Spalte war trotzdem nötig — nur nicht aus dem
+> Grund, der vorher aufgeschrieben war.
+
+> **Ein Sammelpunkt weiter vorn ist nicht besser, sondern schlechter.** Bei
+> `stagingDistance 70` (zwei Drittel des Weges) liegt das Austauschverhältnis bei
+> 83 statt 105 (`wave-6-far`). Der Grund ist beim Zusehen offensichtlich: Wer
+> weit vorn sammelt, hat den gefährlichen Teil des Weges **allein** gemacht.
+> Sammeln gehört nach Hause.
+
+> **Die Wellengrösse wirkt monoton, und das Optimum liegt am Rand.** Einseitig
+> über fünf Grössen gemessen (Kandidat als Slot 0, Austauschverhältnis gegen die
+> Referenz 138): 4 → 133, 6 → 147, 8 → 153, 10 → 200, 12 → **222**. Wer hier
+> „einen mittleren Wert wählen" will, wählt gegen die Messung.
+
+> **Eine Toleranz um die Sammelzelle taugt NICHT als Wellenzähler.** Die erste
+> Fassung zählte nur Einheiten innerhalb von vier Zellen um den Sammelpunkt. Die
+> Formationsverteilung streut zwölf Einheiten weiter als das, die Zahl erreichte
+> die Wellengrösse nie, und die Armee pendelte **11.000 Ticks lang** zwischen
+> Basis und Sammelpunkt, während eine einzelne feindliche Einheit ihr HQ
+> abtrug — 0 eigene Verluste, 127 gegnerische, und trotzdem verloren. Gefunden
+> hat das nicht ein Test, sondern der aufgezeichnete Lauf: fünf Zeilen
+> Einheitenpositionen über die Zeit.
+
+> **Ankommen erzeugt Rauschen, wenn man es nicht abfängt.** `UnitState.Stop()`
+> löscht bei Ankunft `TargetGridPos`, womit die Doppelbefehl-Unterdrückung nicht
+> mehr greift und dieselbe Marschzelle jede Kadenz neu befohlen wird: gemessen
+> 40 statt 23 Aktionen pro Minute **für stillstehende Einheiten**. Eine
+> angekommene Einheit bekommt jetzt gar keinen Befehl. Das ist derselbe
+> Fehlermodus wie bei `DefendBase` (V002, +23 % Intents) — er entsteht hier
+> nicht aus Zielwechseln, sondern aus einem gelöschten Feld.
+
+### Offen
+
+- **Die frühe Gegenstrategie.** Ein Angriff vor der zwölften Einheit trifft eine
+  wartende Armee. Das gehört in die nächste gespielte Partie und ist der Grund,
+  warum `DefendBase` (NEXT-STEPS §3) durch diese Änderung **wichtiger** wird,
+  nicht unwichtiger.
+- **Kein Spielbericht.** Wie bei V001: was nicht gespielt wurde, steht als
+  ungesehen im PR.
+- Die Kopplung `waveSize == TargetArmySize` ist im Test festgehalten, aber sie
+  ist eine Setzung. Ob eine Welle unterhalb der Obergrenze mit einer **grösseren**
+  Obergrenze besser wäre, ist ungemessen.
+
+---
+
 ## M001 · 2026-08-09 · **Methodenbefund** — V002 und V003 wurden im Selbstspiel beurteilt
 
 **Status:** kein Lauf, eine Feststellung über den Messaufbau ·

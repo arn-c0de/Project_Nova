@@ -15,19 +15,34 @@ Kandidat `fast-cadence` — geändert gegenüber `ms1-canonical`: cadence 20→1
 |---|---:|---:|
 | Siegrate | 50% | 50% |
 | Partien (S/N/U) | 1/1/0 | 1/1/0 |
-| Entscheidungstick (Mittel) | 8715 | 12948 |
-| Credits am Ende (Mittel) | 23405 | 36875 |
-| Armeegröße am Ende (Mittel) | 5 | 5 |
-| Verlorene Einheiten (Mittel) | 81 | 132 |
-| Intents gesendet | 706 | 1696 |
+| Entscheidungstick (Mittel) | 6223 | 7033 |
+| Credits am Ende (Mittel) | 17730 | 19745 |
+| Armeegröße am Ende (Mittel) | 10 | 6 |
+| Verlorene Einheiten (Mittel) | 41 | 52 |
+| Intents gesendet | 313 | 738 |
 | Intents abgelehnt | 0 | 0 |
+
+### Spielgefühl
+
+| Kennzahl | ms1-canonical | fast-cadence |
+|---|---:|---:|
+| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 103 |
+| Gefechtsintervalle (mit Verlusten) | 11 | 17 |
+| Grösster Verlustsprung in einem Intervall | 9 | 8 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 28 |
+| Unbeantworteter Schaden (Ereignisse) | 39 | 45 |
+| Aktionen pro Minute | 14 | 31 |
+| Verschiedene Partieausgänge über die Menge | 1 | 2 |
+
+`-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
+Das Austauschverhältnis ist **nur einseitig** aussagekräftig — jeder Kandidat hier spielt gegen die Referenz, genau diese Anordnung.
 
 Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 206d8bc5eb3d0d03896964c7d778702aa5f1b258
+- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

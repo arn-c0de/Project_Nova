@@ -27,6 +27,9 @@ namespace Nova.AiLab
             "  --hash-every <n>       state hash every n ticks (default 0 = end state only)\n" +
             "  --view-every <n>       view frame every n ticks (default 0 = off)\n" +
             "  --fog                  record the fog layer with each view frame\n" +
+            "  --profile <id>         named lab profile for every AI slot (see compare for the ids)\n" +
+            "  --profile0 <id>        named lab profile for slot 0 only — with --profile1 this is a\n" +
+            "  --profile1 <id>        ONE-SIDED match: with the new behaviour against without it\n" +
             "\n" +
             "match:\n" +
             "  --repeat <n>           run the same spec n times and compare the hash chains\n" +

@@ -1,0 +1,25 @@
+{
+  "specVersion": 1,
+  "seed": "0x6656D5210FB2CE85",
+  "slotCount": 2,
+  "aiSlotCount": 2,
+  "tickBudget": 27000,
+  "outcome": "DrawTimeLimit",
+  "winnerSlot": 255,
+  "decidedTick": 27000,
+  "finalTick": 27000,
+  "finalStateHash": "0xEB111BAA903C2C04",
+  "definitionsHash64": "0x6326FA3E56CFF5A3",
+  "aiBehaviorId": "r3.1D8DA20F",
+  "traceIntervalTicks": 100,
+  "hashIntervalTicks": 500,
+  "traceSamples": 271,
+  "hashChainEntries": 55,
+  "elapsedMilliseconds": 882,
+  "slots": [
+    { "slot": 0, "faction": "alliance", "controller": "ai", "profile": "wave-off" },
+    { "slot": 1, "faction": "legion", "controller": "ai", "profile": "ms1-canonical" }
+  ],
+  "feel": [{"slot":0,"exchangeRatioPercent":113,"combatIntervals":91,"quietIntervals":179,"largestLossJump":6,"meanReactionLatencyTicks":33,"reactionEvents":157,"unansweredDamageEvents":248,"actionsPerMinute":19}, {"slot":1,"exchangeRatioPercent":88,"combatIntervals":96,"quietIntervals":174,"largestLossJump":7,"meanReactionLatencyTicks":20,"reactionEvents":308,"unansweredDamageEvents":233,"actionsPerMinute":24}],
+  "evidence": "DIAGNOSIS — a lab run is never proof; what was not seen in the running game is reported as unseen."
+}

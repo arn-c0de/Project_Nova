@@ -15,19 +15,34 @@ Kandidat `power-buffer` — geändert gegenüber `ms1-canonical`: powerReserve 0
 |---|---:|---:|
 | Siegrate | 50% | 0% |
 | Partien (S/N/U) | 1/1/0 | 0/2/0 |
-| Entscheidungstick (Mittel) | 8715 | 3648 |
-| Credits am Ende (Mittel) | 23405 | 5565 |
-| Armeegröße am Ende (Mittel) | 5 | 6 |
-| Verlorene Einheiten (Mittel) | 81 | 20 |
-| Intents gesendet | 706 | 158 |
+| Entscheidungstick (Mittel) | 6223 | 6279 |
+| Credits am Ende (Mittel) | 17730 | 8780 |
+| Armeegröße am Ende (Mittel) | 10 | 0 |
+| Verlorene Einheiten (Mittel) | 41 | 33 |
+| Intents gesendet | 313 | 134 |
 | Intents abgelehnt | 0 | 0 |
+
+### Spielgefühl
+
+| Kennzahl | ms1-canonical | power-buffer |
+|---|---:|---:|
+| Austauschverhältnis (Feindverluste je 100 eigene) | 105 | 114 |
+| Gefechtsintervalle (mit Verlusten) | 11 | 8 |
+| Grösster Verlustsprung in einem Intervall | 9 | 8 |
+| Reaktionslatenz (Ticks Schaden → neuer Marschbefehl) | 26 | 6 |
+| Unbeantworteter Schaden (Ereignisse) | 39 | 34 |
+| Aktionen pro Minute | 14 | 6 |
+| Verschiedene Partieausgänge über die Menge | 1 | 2 |
+
+`-1` heisst "in dieser Menge nicht messbar" (keine eigenen Verluste bzw. keine einzige Reaktion), nicht `0`.
+Das Austauschverhältnis ist **nur einseitig** aussagekräftig — jeder Kandidat hier spielt gegen die Referenz, genau diese Anordnung.
 
 Bedingungen des Laufs — ohne sie ist keine Zahl oben reproduzierbar:
 
 - Spec-Version 1, Profil-Schema 1
 - Tickbudget 27000, 2 Slots, jeder Kandidat in **beiden** Fraktionsrollen
 - `ComputeDefinitionsHash64()` = 0x6326FA3E56CFF5A3
-- Commit 206d8bc5eb3d0d03896964c7d778702aa5f1b258
+- Commit 0b0c211c55a16e0fbe20c420337a0b8e5ad2d754
 - Seeds: `0x6656D5210FB2CE85`
 
 ## Im laufenden Spiel gesehen

@@ -52,6 +52,36 @@ namespace Nova.AiLab
             // Decides twice as often. Costs decision ticks, reacts sooner —
             // and this value was UNREACHABLE before E6, because it was a const.
             Derive("fast-cadence", decisionTickInterval: 10),
+
+            // ---- waves ----
+            //
+            // Everything above differs from the reference in numbers the
+            // shipped behaviour already reads. These differ in a value that
+            // switches a CODE PATH on or off, and that is the point (finding
+            // M001): the same binary plays with waves against without, in one
+            // run, one-sided.
+            //
+            // THE OFF SETTING IS A CANDIDATE, not a footnote. Since the
+            // shipped profile carries waveSize 12, `wave-off` is the only way
+            // left to measure the rule against its own absence — and a
+            // behaviour that can no longer be switched off can no longer be
+            // judged.
+            Derive("wave-off", waveSize: 1),
+
+            // Two sizes below the shipped one. Measured one-sided over 4, 6,
+            // 8, 10 and 12, every column improved monotonically with the size
+            // — these two keep the trend visible without carrying five rows
+            // that say the same thing. 12 is not a candidate: it IS the
+            // reference now.
+            Derive("wave-6", waveSize: 6),
+            Derive("wave-10", waveSize: 10),
+
+            // The staging point moved FORWARD, to two thirds of the way to the
+            // enemy start area (the canonical map seats the two bases 112
+            // cells apart). Measured worse than gathering at home, which was
+            // the opposite of the expectation: units that gather far out have
+            // already made the dangerous part of the walk alone.
+            Derive("wave-6-far", waveSize: 6, stagingDistanceCells: 70, stagingToleranceCells: 6),
         };
 
         public static bool TryGet(string profileId, out AiProfile profile)
@@ -91,7 +121,10 @@ namespace Nova.AiLab
             int? targetDamageWeight = null,
             int? targetThreatWeight = null,
             int? targetFinishWeight = null,
-            int? targetDistanceWeight = null)
+            int? targetDistanceWeight = null,
+            int? waveSize = null,
+            int? stagingDistanceCells = null,
+            int? stagingToleranceCells = null)
         {
             AiProfile b = Reference;
             return new AiProfile(
@@ -107,7 +140,10 @@ namespace Nova.AiLab
                 targetDamageWeight: targetDamageWeight ?? b.TargetDamageWeight,
                 targetThreatWeight: targetThreatWeight ?? b.TargetThreatWeight,
                 targetFinishWeight: targetFinishWeight ?? b.TargetFinishWeight,
-                targetDistanceWeight: targetDistanceWeight ?? b.TargetDistanceWeight);
+                targetDistanceWeight: targetDistanceWeight ?? b.TargetDistanceWeight,
+                waveSize: waveSize ?? b.WaveSize,
+                stagingDistanceCells: stagingDistanceCells ?? b.StagingDistanceCells,
+                stagingToleranceCells: stagingToleranceCells ?? b.StagingToleranceCells);
         }
 
         /// <summary>Which values a candidate changed against the reference, for the report.</summary>
@@ -142,6 +178,12 @@ namespace Nova.AiLab
                 diffs.Add($"targetFinish {r.TargetFinishWeight}→{candidate.TargetFinishWeight}");
             if (candidate.TargetDistanceWeight != r.TargetDistanceWeight)
                 diffs.Add($"targetDist {r.TargetDistanceWeight}→{candidate.TargetDistanceWeight}");
+            if (candidate.WaveSize != r.WaveSize)
+                diffs.Add($"waveSize {r.WaveSize}→{candidate.WaveSize}");
+            if (candidate.StagingDistanceCells != r.StagingDistanceCells)
+                diffs.Add($"staging {r.StagingDistanceCells}→{candidate.StagingDistanceCells}");
+            if (candidate.StagingToleranceCells != r.StagingToleranceCells)
+                diffs.Add($"stagingTol {r.StagingToleranceCells}→{candidate.StagingToleranceCells}");
             return diffs;
         }
     }
