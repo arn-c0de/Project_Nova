@@ -18,6 +18,39 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
 > erzeugt; MS-0 und MS-1 bleiben offen.
 
 ### Geändert
+- **Die KI reagiert, statt nur zu bauen (Einheitenstrang, KI-Verhalten `r4`):**
+  Vier Schritte, jeder einzeln gemessen. **(1)** Die Stellschrauben der
+  Skirmish-KI liegen nicht mehr verstreut in Konstruktor-Defaults und
+  `const`-Feldern der Verhaltenslogik, sondern vollständig in einem `AiProfile`
+  unter `Nova.AI.Data` — verhaltensneutral, das ausgelieferte Profil trägt die
+  bisherigen Zahlen wertgleich. **(2)** Die Zielwahl ist ein ganzzahliger Score
+  (Gegentabelle, Bedrohung, fehlendes Leben, Entfernung) statt der Reihenfolge
+  der Sichtbarkeitsliste: die Armee lief bisher an einem Panzer vorbei, um ein
+  Lagerhaus zu beschiessen. Entscheidung 33 % früher, beide Seiten verlieren
+  weniger. **(3)** Die Armee greift in **Wellen** an, statt jede neue Einheit
+  einzeln quer über die Karte zu schicken — Nachschub sammelt sich zwischen
+  eigener Basis und Feindgebiet, wer draussen ist wird nie zurückgerufen.
+  **(4)** Eine Einheit unter 60 % Leben mit einem **bewaffneten** Feind in der
+  Nähe dreht ab, statt bis zum letzten Lebenspunkt zu kämpfen; zu Hause zieht
+  sie mit der nächsten Welle wieder los. Ein unbewaffneter Harvester am Zaun
+  löst nichts aus.
+  Beide Verhaltensregeln tragen einen Profilwert mit **Aus-Stellung**
+  (`waveSize: 1`, `retreatHealthPercent: 0`), der das jeweils vorherige
+  Verhalten bitgenau reproduziert — und genau deshalb konnten sie **einseitig**
+  gemessen werden, dasselbe Binary mit gegen ohne, in beiden Fraktionsrollen:
+  Wellen bringen Verluste 41 statt 175 und Intervalle mit Verlusten 11 statt 64,
+  Rückzug Verluste 35 statt 62 bei Austauschverhältnis 123 statt 93. Ohne
+  Aus-Stellung erreicht eine Coderegel im Selbstspiel beide Seiten, und „später
+  entschieden, mehr Verluste" ist dort nicht von „zwei stärkeren Armeen" zu
+  unterscheiden. Die Rückzugsschwelle ist über fünf Werte gemessen und nicht
+  gewählt; eine Lebens-Hysterese ist bewusst **nicht** gebaut, weil
+  MS-1-Einheiten nie heilen (`Repair` verlangt ein Gebäude als Ziel) und ein
+  Austrittswert nie erreicht würde.
+  Neu ausserdem: `AiBehaviorId` beantwortet „welche KI ist das" in einem String,
+  den die F3-Anzeige zeigt und ein Test gegen den Endzustand der kanonischen
+  Partie festnagelt. **Im laufenden Spiel nicht geprüft** — der Linux-Build
+  stand zum Zeitpunkt der Messungen aus; alle Zahlen stammen aus
+  headless-Läufen und sind Diagnose, kein Nachweis.
 - **Die fertige Raffinerie stellt ihren ersten Sammler kostenlos hin.** Der
   Sammler kostet 700 AE und die Raffinerie ist seit D-077 sein einziger
   Produzent. Wer sich vor ihrer Fertigstellung unter 700 AE herunterbaut, hatte
