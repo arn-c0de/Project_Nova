@@ -30,6 +30,21 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   spielerisch abgenommen und kein Meilenstein-Nachweis
 
 ### Hinzugefügt
+- **Der Standoff-Ring bekommt seinen Profilwert, und sonst nichts (Verhalten
+  `r11`):** `AiProfile.EngagementStandoffPercent` sagt, wie viel der **eigenen**
+  Waffenreichweite ein Fernkämpfer zwischen sich und sein Ziel legen soll —
+  ein Anteil und keine Kachelzahl, damit der Wert für Rekrut und Werfer
+  dasselbe bedeutet. **Ausgeliefert wird 0, die Aus-Stellung, und niemand liest
+  den Wert:** die Bewegungshälfte ist noch nicht geschrieben. Entsprechend
+  entscheidet die KI unverändert, und der Pin der kanonischen Partie bleibt bei
+  Tick 2.761 / `0xF68C050A84B900F4` stehen. Bewegt hat sich nur die Kennung,
+  `r10.E75CB19D` → **`r11.E750CBB3`**, weil das Feld in den Profilhash gehört —
+  ohne das drucken zwei Laborkandidaten, die sich genau darin unterscheiden,
+  dieselbe Kennung, und eine Messreihe über sie liest sich wie ein Profil,
+  zweimal gemessen. Die Revision zieht mit, weil eine Kennung, die sich unter
+  unveränderter Revisionsnummer ändert, das eine ist, was sie nie tun darf.
+  753 Tests grün, die vier Determinismus-Baselines unberührt. **Im laufenden
+  Spiel gesehen: nichts — es gibt nichts zu sehen, das ist der Punkt.**
 - **Das feindliche Hauptquartier ist ein Gewicht statt eines Kurzschlusses
   (Verhalten `r10`):** Bisher brach die Zielwahl ab, sobald ein gegnerisches HQ
   sichtbar wurde — V001 hatte das begründet („eine Siegbedingung ist keine

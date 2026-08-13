@@ -83,7 +83,8 @@ namespace Nova.AI
                 waveStrengthPoints: shipped.WaveStrengthPoints,
                 defendHomeCells: shipped.DefendHomeCells,
                 reinforceMinStrengthPercent: shipped.ReinforceMinStrengthPercent,
-                targetHqWeight: shipped.TargetHqWeight);
+                targetHqWeight: shipped.TargetHqWeight,
+                engagementStandoffPercent: shipped.EngagementStandoffPercent);
         }
 
         /// <summary>Binds a faction name to a fully specified profile — the tuning path.</summary>

@@ -329,6 +329,31 @@ namespace Nova.AI.Data
         /// </summary>
         public int TargetHqWeight { get; }
 
+        /// <summary>
+        /// How much of its OWN weapon range a ranged unit tries to keep between
+        /// itself and what it shoots at, as a percentage. <b>0 is the off
+        /// setting</b> — walk up to the target and stand there, which is how
+        /// the AI has always fought.
+        /// <para>
+        /// IT IS A SHARE OF THE RANGE, NOT A CELL COUNT, because the value has
+        /// to mean the same thing for a recruit and for a launcher. 100 stops
+        /// exactly on the boundary <c>CombatSystem.IsInRange</c> checks, so the
+        /// first nudge of the separation step pushes the unit back out of it;
+        /// above 100 it stands out of range altogether. Both are reachable on
+        /// purpose — an axis that only measures where the answer is pleasant is
+        /// not an axis.
+        /// </para>
+        /// <para>
+        /// NOTHING READS THIS VALUE YET. The knob is the data half of the
+        /// standoff work (behaviour revision 11): it exists so the lab can name
+        /// and vary the setting, and so the profile hash tells two settings
+        /// apart, while the movement half is still being written. Shipping 0
+        /// means the behaviour is unchanged and the canonical match is
+        /// byte-identical — which is the claim the pinned outcome makes.
+        /// </para>
+        /// </summary>
+        public int EngagementStandoffPercent { get; }
+
         public AiProfile(
             string profileId,
             ushort decisionTickInterval,
@@ -351,7 +376,8 @@ namespace Nova.AI.Data
             int waveStrengthPoints,
             int defendHomeCells,
             int reinforceMinStrengthPercent,
-            int targetHqWeight)
+            int targetHqWeight,
+            int engagementStandoffPercent)
         {
             ProfileId = profileId ?? string.Empty;
             DecisionTickInterval = decisionTickInterval;
@@ -375,6 +401,7 @@ namespace Nova.AI.Data
             DefendHomeCells = defendHomeCells;
             ReinforceMinStrengthPercent = reinforceMinStrengthPercent;
             TargetHqWeight = targetHqWeight;
+            EngagementStandoffPercent = engagementStandoffPercent;
         }
 
         /// <summary>
@@ -410,7 +437,8 @@ namespace Nova.AI.Data
             && WaveStrengthPoints == other.WaveStrengthPoints
             && DefendHomeCells == other.DefendHomeCells
             && ReinforceMinStrengthPercent == other.ReinforceMinStrengthPercent
-            && TargetHqWeight == other.TargetHqWeight;
+            && TargetHqWeight == other.TargetHqWeight
+            && EngagementStandoffPercent == other.EngagementStandoffPercent;
 
         public override bool Equals(object obj) => obj is AiProfile other && Equals(other);
 
@@ -440,6 +468,7 @@ namespace Nova.AI.Data
                 hash = (hash * 397) ^ DefendHomeCells;
                 hash = (hash * 397) ^ ReinforceMinStrengthPercent;
                 hash = (hash * 397) ^ TargetHqWeight;
+                hash = (hash * 397) ^ EngagementStandoffPercent;
                 return hash;
             }
         }

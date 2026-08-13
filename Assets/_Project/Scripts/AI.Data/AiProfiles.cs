@@ -242,7 +242,13 @@ namespace Nova.AI.Data
             // setting because it never lives to see the enemy HQ in this match,
             // so the measurement rests on one seat. And the curve must not be
             // interpolated: 75 and 150 are both worse than 100.
-            targetHqWeight: 100);
+            targetHqWeight: 100,
+            // THE KNOB EXISTS, THE BEHAVIOUR DOES NOT YET. Nothing reads this
+            // value at revision 11 — the movement half of the standoff is still
+            // being written — so the shipped setting is the off setting and the
+            // canonical match is unchanged. Whoever ships the behaviour moves
+            // this number, in the commit that also moves the pinned outcome.
+            engagementStandoffPercent: 0);
 
         /// <summary>
         /// The old <c>AiFactionProfile</c> constructor defaults (power margin
@@ -283,6 +289,9 @@ namespace Nova.AI.Data
             reinforceMinStrengthPercent: 0,
             // And no legacy headquarters weight — it was a short circuit, which
             // is what 0 means.
-            targetHqWeight: 0);
+            targetHqWeight: 0,
+            // And no legacy standoff either — units walked up to what they
+            // shot at, which is what 0 means.
+            engagementStandoffPercent: 0);
     }
 }

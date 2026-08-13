@@ -224,8 +224,20 @@ namespace Nova.AI.Data
         /// is one match.
         /// </para>
         /// </para>
+        /// <para>
+        /// r11 adds <c>engagementStandoffPercent</c> to the profile and NOTHING
+        /// ELSE. No system reads it yet — the movement half of the standoff is
+        /// still being written — so the shipped value is 0, the behaviour is
+        /// unchanged and the pinned canonical outcome does not move. The
+        /// revision is bumped anyway, because the profile hash moved the moment
+        /// the field joined <see cref="ComputeProfileHash"/>, and an identifier
+        /// that changes under an unchanged revision number is the one thing the
+        /// identifier must never do. What it buys before the behaviour lands:
+        /// the lab can name the setting and vary it, instead of two settings
+        /// printing the same identifier.
+        /// </para>
         /// </summary>
-        public const int Revision = 10;
+        public const int Revision = 11;
 
         /// <summary>
         /// Hash over every value of the shipped profile. Domain-separated like
@@ -279,6 +291,7 @@ namespace Nova.AI.Data
             writer.WriteInt32(profile.DefendHomeCells);
             writer.WriteInt32(profile.ReinforceMinStrengthPercent);
             writer.WriteInt32(profile.TargetHqWeight);
+            writer.WriteInt32(profile.EngagementStandoffPercent);
             return writer.Digest();
         }
     }

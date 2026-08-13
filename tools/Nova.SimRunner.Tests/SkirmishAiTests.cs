@@ -171,7 +171,8 @@ namespace Nova.SimRunner.Tests
                 // pulls gatherers home is a rule of the same generation.
                 defendHomeCells: 0,
                 reinforceMinStrengthPercent: 0,
-                targetHqWeight: 0);
+                targetHqWeight: 0,
+                engagementStandoffPercent: 0);
         }
 
         private static AiHost BuildAiHost(
@@ -575,7 +576,16 @@ namespace Nova.SimRunner.Tests
             // because the enemy headquarters stopped short-circuiting the target
             // score, and the profile hash because the rule ships with the weight
             // that replaces it (targetHqWeight, 0 = the old short circuit).
-            Assert.That(AiBehaviorId.Value, Is.EqualTo("r10.E75CB19D"),
+            // r11 IS THE THINNEST CASE OF ALL, and it is written down rather
+            // than waved through: the profile grew engagementStandoffPercent
+            // and no system reads it. No decision changes, the canonical
+            // outcome does not move, and the shipped value is the off setting
+            // (0). What DOES move is the profile hash, the moment the field
+            // joins ComputeProfileHash — so the revision moves with it, because
+            // an identifier that changes under an unchanged revision is the one
+            // thing this string must never do. The movement half comes in its
+            // own change, with its own measurement.
+            Assert.That(AiBehaviorId.Value, Is.EqualTo("r11.E750CBB3"),
                 "the AI identifier changed — bump the revision and write the journal entry");
         }
 
@@ -882,7 +892,8 @@ namespace Nova.SimRunner.Tests
                 // a second explanation for a wave that does not.
                 defendHomeCells: 0,
                 reinforceMinStrengthPercent: 0,
-                targetHqWeight: 0);
+                targetHqWeight: 0,
+                engagementStandoffPercent: 0);
 
             AiHost host = BuildMatch(Seed, probe);
             int ring = probe.StagingDistanceCells + probe.StagingToleranceCells;
@@ -1008,7 +1019,8 @@ namespace Nova.SimRunner.Tests
                 // reason for a wave to launch later than it did.
                 defendHomeCells: 0,
                 reinforceMinStrengthPercent: 0,
-                targetHqWeight: 0);
+                targetHqWeight: 0,
+                engagementStandoffPercent: 0);
         }
 
         /// <summary>

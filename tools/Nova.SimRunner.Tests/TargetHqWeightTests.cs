@@ -162,7 +162,8 @@ namespace Nova.SimRunner.Tests
                 waveStrengthPoints: s.WaveStrengthPoints,
                 defendHomeCells: s.DefendHomeCells,
                 reinforceMinStrengthPercent: s.ReinforceMinStrengthPercent,
-                targetHqWeight: weight);
+                targetHqWeight: weight,
+                engagementStandoffPercent: s.EngagementStandoffPercent);
         }
 
         /// <summary>

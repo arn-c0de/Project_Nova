@@ -261,7 +261,8 @@ namespace Nova.SimRunner.Tests
                 waveStrengthPoints: 900,
                 defendHomeCells: 14,
                 reinforceMinStrengthPercent: 33,
-                targetHqWeight: 250);
+                targetHqWeight: 250,
+                engagementStandoffPercent: 65);
 
             var bound = new AiFactionProfile("Legion", tuned);
 
