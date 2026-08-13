@@ -67,10 +67,17 @@ namespace Nova.SimRunner.Tests
         /// instead, which measures the rule directly rather than through an
         /// outcome.
         /// </para>
-        /// Previous values: 0xF68C050A84B900F4 (revisions 10 and 11),
+        /// <para>
+        /// MOVED AGAIN WITHOUT THE AI MOVING, which is the other case this pin
+        /// is built to tell apart: <c>AiBehaviorId</c> is still r12.CA58924C, so
+        /// the simulation moved and not the AI. Engaged units of the same player
+        /// now hold more than contact distance (<c>MovementSystem</c>).
+        /// </para>
+        /// Previous values: 0xD9CA162B0AB0CF94 (revision 12, before the spacing
+        /// rule), 0xF68C050A84B900F4 (revisions 10 and 11),
         /// 0x10B83E94F86F2E55 (Sprint 16.9 / D-104, D-107).
         /// </summary>
-        private const string PinnedEndState = "0xD9CA162B0AB0CF94";
+        private const string PinnedEndState = "0x6076751C4B770E04";
 
         [Test]
         public void CanonicalAiMatch_DecidesOnThePinnedTick_WithThePinnedEndState()

@@ -21,7 +21,11 @@ namespace Nova.Simulation.Movement
     /// </para>
     /// <para>
     /// Separation steering runs for ALL active mobile units, moving or
-    /// standing. A moving unit combines flow and separation into its heading;
+    /// standing, and keeps a wider distance between two units of the same
+    /// player that are both ENGAGED (<see cref="UnitState.AttackTarget"/>) than
+    /// between two that are merely travelling — see
+    /// <c>EngagedSpacing</c> for why the two cases want different answers.
+    /// A moving unit combines flow and separation into its heading;
     /// a standing unit applies a damped, capped, dead-zoned positional
     /// correction only (no heading, no rotation change), so arrived units
     /// unstack without vibrating. Units never enter impassable cells —
@@ -84,6 +88,40 @@ namespace Nova.Simulation.Movement
         /// the Q16.16 rounding of the prototype's 1e-4 float threshold).
         /// </summary>
         private static readonly SimFixed MinSteeringLengthSquared = SimFixed.FromRaw(7);
+
+        /// <summary>
+        /// Extra personal space between two ENGAGED units of the same player
+        /// (0.5 m, exact in Q16.16): on top of the two radii, so a fighting
+        /// pair holds 1.5 m instead of the 1.0 m of bare contact.
+        /// <para>
+        /// WHY ENGAGEMENT AND NOT ALWAYS. Contact spacing is the right answer
+        /// while a group travels — a column that walks 50 % wider takes 50 %
+        /// longer through every gap, and the flow field routes it through gaps
+        /// on purpose. It is the wrong answer the moment the group stops and
+        /// shoots: every armed unit in MS-1 is a ranged one, so a firing line
+        /// packed at contact distance is a blob whose rear rank has nothing to
+        /// contribute but a body to shoot at. <c>AttackTarget</c> is the state
+        /// that tells the two apart, and it is already there.
+        /// </para>
+        /// <para>
+        /// SAME PLAYER, AND THAT IS A DETERMINISM ARGUMENT AS MUCH AS A DESIGN
+        /// ONE. The test has to be symmetric: both units compute the pair's
+        /// minimum distance independently, in different iterations of the same
+        /// sweep, and an asymmetric rule would have them disagree about how far
+        /// apart they belong — one pushing while the other does not, forever.
+        /// "Both engaged and both mine" is symmetric by construction. Pushing
+        /// an ENEMY further away would also be repulsion across the battle
+        /// line, which is not spacing, it is a force field.
+        /// </para>
+        /// <para>
+        /// <b><see cref="SimFixed.Zero"/> is the off value</b> and restores the
+        /// previous behaviour exactly. It is a constant rather than a profile
+        /// field because it applies to both players — the AI profile tunes the
+        /// AI, and a rule that only loosened the AI's formation would be a
+        /// handicap, not a movement rule.
+        /// </para>
+        /// </summary>
+        private static readonly SimFixed EngagedSpacing = SimFixed.FromRaw(SimFixed.OneRaw / 2);
 
         private readonly EntityManager _entityManager;
         private readonly PathfindingSystem _pathfindingSystem;
@@ -216,6 +254,17 @@ namespace Nova.Simulation.Movement
                                 ref readonly UnitState other = ref units[otherIndex];
                                 SimFixed distSq = unit.Transform.DistanceToSquared(in other.Transform);
                                 SimFixed minDist = unit.Radius + other.Radius;
+
+                                // A firing line, not a blob: two units of the
+                                // same player that are BOTH engaged keep more
+                                // than contact distance. Symmetric on purpose —
+                                // see EngagedSpacing.
+                                if (unit.AttackTarget.IsValid
+                                    && other.AttackTarget.IsValid
+                                    && unit.PlayerId == other.PlayerId)
+                                {
+                                    minDist += EngagedSpacing;
+                                }
 
                                 if (distSq == SimFixed.Zero)
                                 {

@@ -114,8 +114,10 @@ namespace Nova.SimRunner.Tests
             {
                 Assert.That(decided, Is.EqualTo(2761u),
                     "with the stand-off off the canonical match must be decided on the revision-10 tick");
-                Assert.That($"0x{host.Kernel.CalculateStateHash():X16}", Is.EqualTo("0xF68C050A84B900F4"),
-                    "with the stand-off off the canonical match must end in the revision-10 state");
+                Assert.That($"0x{host.Kernel.CalculateStateHash():X16}", Is.EqualTo("0xEFBDF4186B39EE31"),
+                    "with the stand-off off the canonical match must end in its pinned state; "
+                    + "previous value 0xF68C050A84B900F4, moved by the engaged-spacing rule in "
+                    + "MovementSystem and not by the AI");
             });
         }
 

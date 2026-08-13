@@ -172,6 +172,49 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   sie belegt keine Verbesserung.
 
 ### Geändert
+- **Kämpfende Einheiten halten Abstand voneinander, marschierende nicht** —
+  die zweite Hälfte von B3 („kein gegenseitiges Blockieren"). Die
+  Trennsteuerung in `MovementSystem` hielt bisher immer denselben Abstand:
+  Radius plus Radius, also 1,0 m, blanke Tuchfühlung. Für eine Kolonne ist das
+  richtig — wer 50 % breiter läuft, braucht durch jede Lücke 50 % länger, und
+  das Flow-Field schickt Gruppen absichtlich durch Lücken. Für eine
+  Schützenlinie ist es falsch: jede bewaffnete Einheit in MS-1 ist eine
+  Fernkämpferin, und eine auf Tuchfühlung gepackte Linie ist ein Klumpen,
+  dessen hintere Reihe nichts beiträgt ausser einem Körper zum Draufschiessen.
+
+  Zwei Einheiten **desselben Spielers**, die **beide** ein Angriffsziel tragen,
+  halten jetzt 1,5 m statt 1,0 m. `UnitState.AttackTarget` unterscheidet die
+  beiden Fälle und liegt ohnehin schon da.
+
+  **Symmetrisch, und das ist ein Determinismus-Argument.** Jede Einheit
+  errechnet den Mindestabstand des Paars für sich, in einer anderen Iteration
+  desselben Durchlaufs. Eine Regel, die für eine der beiden greift und für die
+  andere nicht, hätte eine Einheit, die sich von einer Nachbarin wegdrückt, die
+  weder ausweicht noch folgt — ein einseitiges Driften, das auf zwei Rechnern
+  identisch wäre und deshalb an keiner Determinismusprüfung auflaufen würde.
+  „Beide kämpfen und beide gehören mir" ist symmetrisch von Bauart. Einen
+  **Feind** weiter wegzudrücken wäre ausserdem keine Formation, sondern ein
+  Kraftfeld.
+
+  **Die vier Determinismus-Baselines bleiben grün, und zwar nicht, weil die
+  Änderung folgenlos wäre.** Die Baseline-Szenarien bringen nie zwei eigene
+  Einheiten gleichzeitig ins Gefecht — dort kämpft Spieler gegen Spieler, und
+  für ein gegnerisches Paar greift die Regel bewusst nicht. Der Nachweis, dass
+  sie überhaupt feuert, sind die vier Fälle in `EngagedSpacingTests`, nicht die
+  grüne Baseline.
+
+  **Diese Regel hat den Anlass für die zweite Schwelle in `r12` geliefert**,
+  und das gehört hierher statt in eine Fussnote: eine Trennkraft, die jeden
+  Tick nachdrückt, schob angekommene Einheiten aus ihrem Standoff-Ring, worauf
+  die KI sie jede Kadenz zurückbeorderte. Gemessen im Labor: **956 Intents je
+  kanonischer Partie gegen 245** mit der Hysterese. Wer diese Regel wieder
+  ausbaut, nimmt der Hysterese ihren Anlass, nicht ihre Berechtigung.
+
+  Bewegt hat sich der Endzustand (`0xD9CA162B0AB0CF94` → `0x6076751C4B770E04`)
+  bei **unverändertem** Entscheidungstick 2.763 und **unveränderter**
+  KI-Kennung `r12.CA58924C` — also der Fall „die Simulation hat sich bewegt,
+  nicht die KI", den der Pin ausdrücklich unterscheiden soll. Aus-Wert ist
+  `SimFixed.Zero`.
 - **Die KI hält auf Waffenreichweite an, statt in den Feind zu laufen
   (`r11` → `r12`)** — die Hälfte, die `r11` als fehlend benannt hat. Dort kam
   der Schalter `engagementStandoffPercent` mit Aus-Wert 0 und dem Satz „wer das
