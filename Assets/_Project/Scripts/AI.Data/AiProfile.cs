@@ -222,6 +222,52 @@ namespace Nova.AI.Data
         /// </summary>
         public int DefendHomeCells { get; }
 
+        // ---- reinforcement doctrine ----
+
+        /// <summary>
+        /// Percentage OF <see cref="WaveStrengthPoints"/> that the wave already
+        /// outside has to still be worth before a unit waiting in the staging
+        /// ring marches after it on its own. <b>0 means off</b>, and the rule
+        /// is read only while <see cref="WaveStrengthPoints"/> is positive —
+        /// it is a statement about points, and the count path has none.
+        /// <para>
+        /// THREE SITUATIONS, ONE COMPARISON. Nothing outside (first strike) is
+        /// the wave gate's own business and stays untouched. An intact wave
+        /// outside — at or above this percentage — releases every gathering
+        /// unit immediately, because a single unit walking after a fight that
+        /// is still going is reinforcement. A BROKEN wave outside — below it —
+        /// releases nobody: what is left out there is a remnant, and a unit
+        /// sent after it is the conveyor belt the wave rule was built against
+        /// (behaviour revision 3).
+        /// </para>
+        /// <para>
+        /// WHAT IT REPLACES IS AN ACCIDENT, NOT A RULE. Since r5 the wave
+        /// threshold is capped by what production can still deliver, and with
+        /// the army at its cap that ceiling collapses onto what already stands
+        /// in the ring — so every replacement marches off alone, whatever the
+        /// state of the wave it is walking after. That is half of this rule
+        /// with no condition under it; here the condition is written down and
+        /// can be switched off.
+        /// </para>
+        /// <para>
+        /// A LEVEL, NOT A RATE. The wish behind it says "the attack collapses";
+        /// a collapse is a rate, and a rate needs two points in time, which is
+        /// memory this AI does not have and is not getting. What is compared
+        /// is a level, and the two coincide in practice — a wave that breaks
+        /// falls through the level within a few cadences — but they are not the
+        /// same statement and this is the place that says so.
+        /// </para>
+        /// <para>
+        /// 50 reads as "reinforcements follow while the wave outside is still
+        /// worth half a full one". A high value (80) makes the rule almost the
+        /// old behaviour, a low one (20) feeds units into a lost fight. The
+        /// curve is measured, not guessed — and a middle value is not
+        /// automatically a compromise (journal V006, where <c>waveSize 6</c>
+        /// came out below both edges).
+        /// </para>
+        /// </summary>
+        public int ReinforceMinStrengthPercent { get; }
+
         // ---- target scoring ----
         //
         // Four weights over ONE integer score, no scalar quality function:
@@ -246,6 +292,43 @@ namespace Nova.AI.Data
         /// <summary>Penalty per cell of average Chebyshev distance between the army and the target.</summary>
         public int TargetDistanceWeight { get; }
 
+        /// <summary>
+        /// What a visible enemy headquarters is worth ON TOP of its ordinary
+        /// score. <b>0 means the short circuit</b> — the headquarters is taken
+        /// the moment it is seen, whatever else stands there, which is how the
+        /// AI has always played it.
+        /// <para>
+        /// WHY THE OFF SETTING IS 0 AND NOT "A VERY LARGE NUMBER". The plan asked
+        /// for a weight so high it outvotes everything, and that is a weaker
+        /// promise than it sounds: "outvotes everything" depends on the grid
+        /// size, the damage table and the distance penalty, so it is an argument
+        /// that has to be re-checked every time one of those moves. 0 as an
+        /// explicit sentinel makes the old path the SAME CODE it always was, and
+        /// the unchanged canonical match proves it instead of an estimate. A
+        /// large value is still available to anybody who wants the continuous
+        /// axis — it just is not what the off switch rests on.
+        /// </para>
+        /// <para>
+        /// WHY IT IS A WEIGHT AT ALL. Losing the headquarters decides the match
+        /// (D-077), so V001 called it a win condition rather than a preference
+        /// and let it short-circuit. That is right as a rule and wrong as
+        /// behaviour: the enemy start area is where the headquarters stands, so
+        /// the short circuit and the fallback destination point at the same
+        /// place, and the army walks the same line onto the same building every
+        /// single match. A player learns that in two games and parks on the
+        /// line. The weight keeps the preference and lets a defended
+        /// headquarters lose to a soft, valuable, undefended target — a
+        /// harvester, a refinery — which the score has always been able to rate
+        /// and never got the chance to.
+        /// </para>
+        /// <para>
+        /// THE SCALE IS THE SCORE'S. The other four weights multiply terms that
+        /// land in the low hundreds, so a value in the hundreds competes and a
+        /// value in the tens of thousands does not.
+        /// </para>
+        /// </summary>
+        public int TargetHqWeight { get; }
+
         public AiProfile(
             string profileId,
             ushort decisionTickInterval,
@@ -266,7 +349,9 @@ namespace Nova.AI.Data
             int retreatHealthPercent,
             int retreatDangerCells,
             int waveStrengthPoints,
-            int defendHomeCells)
+            int defendHomeCells,
+            int reinforceMinStrengthPercent,
+            int targetHqWeight)
         {
             ProfileId = profileId ?? string.Empty;
             DecisionTickInterval = decisionTickInterval;
@@ -288,6 +373,8 @@ namespace Nova.AI.Data
             RetreatDangerCells = retreatDangerCells;
             WaveStrengthPoints = waveStrengthPoints;
             DefendHomeCells = defendHomeCells;
+            ReinforceMinStrengthPercent = reinforceMinStrengthPercent;
+            TargetHqWeight = targetHqWeight;
         }
 
         /// <summary>
@@ -321,7 +408,9 @@ namespace Nova.AI.Data
             && RetreatHealthPercent == other.RetreatHealthPercent
             && RetreatDangerCells == other.RetreatDangerCells
             && WaveStrengthPoints == other.WaveStrengthPoints
-            && DefendHomeCells == other.DefendHomeCells;
+            && DefendHomeCells == other.DefendHomeCells
+            && ReinforceMinStrengthPercent == other.ReinforceMinStrengthPercent
+            && TargetHqWeight == other.TargetHqWeight;
 
         public override bool Equals(object obj) => obj is AiProfile other && Equals(other);
 
@@ -349,6 +438,8 @@ namespace Nova.AI.Data
                 hash = (hash * 397) ^ RetreatDangerCells;
                 hash = (hash * 397) ^ WaveStrengthPoints;
                 hash = (hash * 397) ^ DefendHomeCells;
+                hash = (hash * 397) ^ ReinforceMinStrengthPercent;
+                hash = (hash * 397) ^ TargetHqWeight;
                 return hash;
             }
         }

@@ -30,6 +30,98 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   spielerisch abgenommen und kein Meilenstein-Nachweis
 
 ### Hinzugefügt
+- **Das feindliche Hauptquartier ist ein Gewicht statt eines Kurzschlusses
+  (Verhalten `r10`):** Bisher brach die Zielwahl ab, sobald ein gegnerisches HQ
+  sichtbar wurde — V001 hatte das begründet („eine Siegbedingung ist keine
+  Vorliebe", D-077), und als Regel stimmt das. Als Verhalten nicht, aus einem
+  Grund, der an der Karte hängt und nicht an der Begründung: die
+  Ausweich-Marschzelle ist das feindliche Startgebiet, und dort steht das HQ.
+  Beide Wege zeigten auf dasselbe Gebäude, also lief die Armee jede Partie
+  dieselbe Linie auf dasselbe Ziel, und ein Spieler lernt das in zwei Partien
+  und stellt sich hin. Das neue Profilfeld `targetHqWeight` (ausgeliefert
+  **100**, **0 ist der alte Kurzschluss**) addiert die Vorliebe auf den
+  gewöhnlichen Score, statt ihn zu ersetzen: ein **verteidigtes** HQ kann jetzt
+  gegen ein weiches, wertvolles, unbewachtes Ziel abseits verlieren — Harvester
+  und Refinery, die der Score seit V001 bewerten kann und nie zu sehen bekam.
+- **Die Zahl, an der das gemessen wird, ist nicht die Verlustspalte, sondern die
+  Zahl verschiedener Zielarten je Partie** — faktisch 1, seit es die Zielwahl
+  gibt. Einseitig gemessen auf dem Allianz-Sitz: **3 → 5 Zielarten**, Refinery
+  und Harvester kommen erstmals vor, die Partie entscheidet bei Tick **4.767
+  statt 7.381** (35 % früher) mit **14 statt 33** eigenen Verlusten und **42,4
+  statt 43,2** Intents je 1.000 Ticks. Die Kurve ist monoton und der Preis liegt
+  unten: kleine Gewichte (1–75) heben die Zielarten auf 5–7, verlängern die
+  Partie aber auf das 1,4- bis 1,9-fache und treiben die Intents auf 53–58 —
+  das ist der V002-Fehlermodus, und deshalb liefert keiner dieser Werte aus. Ab
+  150 fallen die Nebenziele wieder weg, ab 250 gewinnt das HQ wieder immer.
+- **Gegengeprüft auf einer zweiten echten Achse,** weil die Seed-Achse des
+  Labors leer ist und ein guter Wert auf einer Achse eine Einzelpartie ist: bei
+  Armeeobergrenze 16, 20 und 30, jeweils gegen **dieselbe** Obergrenze ohne
+  Gewicht, steigen die Zielarten jedes Mal (3 → 4, die Refinery jedes Mal
+  dabei), und die eigenen Verluste gehen 24 → 27, 147 → 50, 37 → 30. Drei von
+  vier Obergrenzen besser, eine minimal schlechter.
+- **Zwei ehrliche Grenzen:** Der Legion-Sitz ist auf fast jedem Wert unverändert,
+  weil er das gegnerische HQ in dieser Partie nie zu sehen bekommt — die Messung
+  ruht also im Wesentlichen auf einem Sitz. Und die Kurve darf nicht
+  interpoliert werden: 75 und 150 sind beide schlechter als 100.
+- Kennung `r9.800C26B0` → **`r10.E75CB19D`**, kanonische KI-Partie neu bei Tick
+  **2.761** und `0xF68C050A84B900F4` (vorher 2.726 / `0x10B83E94F86F2E55`) —
+  Ausgang bewegt **und** Kennung bewegt, also der Fall „die KI hat sich
+  geändert", den `CanonicalAiOutcomeTests` beschreibt: Revision gebumpt,
+  Journaleintrag geschrieben, Pin im selben Commit nachgezogen. `match --repeat 2`
+  läuft mit Exit 0 durch, die vier Determinismus-Baselines bleiben unberührt und
+  grün. **Im laufenden Spiel gesehen: nichts.** Das ist die sichtbarste Änderung
+  dieser Reihe und genau deshalb steht hier, dass sie ungespielt ist.
+- **Die Skirmish-KI hat eine Nachschub-Doktrin, und sie liegt ausgeschaltet bei
+  (Verhalten `r9`):** Das neue Goal `Reinforce` und das Profilfeld
+  `reinforceMinStrengthPercent` (ausgeliefert **0 = aus**) geben dem
+  Nachrücken erstmals eine Bedingung. Bisher war es ein Nebeneffekt: seit `r5`
+  wird der Wellenschwellwert auf das gekappt, was die Produktion noch liefern
+  kann, und sobald die Armee an ihrer Obergrenze steht, fällt diese Decke auf
+  das, was ohnehin im Ring steht — die Welle gilt als bereit, und jede einzelne
+  Ersatzeinheit marschiert los, gleich ob sie einem laufenden Gefecht oder einem
+  Rest hinterherläuft. Neu entscheidet die Kampfpunktsumme der Einheiten
+  **draußen**: mindestens der eingestellte Anteil der vollen Schwelle heißt
+  „die Welle steht noch", jede sammelnde Einheit folgt sofort und heißt im
+  Bericht `Reinforce`; darunter gilt die Welle als gebrochen, der Ring wird auf
+  die **volle** Schwelle festgehalten und niemand tröpfelt nach. Die Arithmetik
+  liegt als `ReinforcementDoctrine` in einem eigenen prüfbaren Typ, aus
+  demselben Grund wie `WaveStrengthGate`: die Zustände, auf die es ankommt —
+  genau die Schwelle, ein abschneidender Prozentsatz, ein Rest von einem Punkt —
+  kann eine Partie nicht herstellen.
+- **Warum die Regel ausgeschaltet ausgeliefert wird, und das ist ein Messergebnis
+  und keine Vorsicht:** Einseitig gemessen über elf Stellungen und beide
+  Fraktionssitze wollen die zwei Sitze verschiedene Werte, und ihre guten
+  Bereiche überschneiden sich in **einem einzigen Punkt**. Eigene Verluste
+  Allianz / Legion, aus ist 33 / 71: 25 → 43 / 93, 30 → 55 / 33, 35 → 35 / 33,
+  40 → 21 / 34, 45 → 21 / 83, 50 → 51 / 83, 70 → 28 / 83, 90 → 58 / 83. Die
+  Allianz verbessert sich bei 40–45 und 70–80, die Legion nur bei 30–40; 40 ist
+  die ganze Schnittmenge, und ein Schritt zur Seite verliert einen Sitz. Die
+  Seed-Achse des Labors ist leer, also kann kein weiteres Abtasten diesen Punkt
+  verbreitern — ihn zu nehmen hieße eine Einzelpartie treffen. **Und dort, wo
+  die Regel wirken soll, ist sie schlechter:** bei angehobener Obergrenze 30,
+  gemessen gegen dieselbe Obergrenze ohne Doktrin (Allianz 37 eigene Verluste),
+  liegt jede Stellung darüber — 30 → 102, 40 → 63, 50 → 101, 60 → 77, 70 → 102,
+  80 → 73 —, und bei 30, 70 und 80 **verliert** der Allianz-Sitz eine Partie,
+  die er ohne die Regel gewinnt. Was der Schritt trotzdem bringt: das Nachrücken
+  hat jetzt einen Namen, den das Panel zeichnet, und einen Schalter, den ein
+  Bericht variiert, statt ein unsichtbarer Nebeneffekt einer Schutzklausel zu
+  sein.
+- **Ein Befund über die Armeeobergrenze fällt dabei ab und ist als Test
+  festgehalten:** Bei der ausgelieferten Obergrenze 12 kann `Reinforce`
+  überhaupt nicht feuern. Die `r5`-Decke hat das Wellentor dort ohnehin schon
+  offen, also hat die freigebende Hälfte der Doktrin nichts freizugeben — nur
+  die zurückhaltende Hälfte wirkt. Wer die Zahlen dieser Obergrenze liest, liest
+  eine halbe Regel; `ReinforcementDoctrineTests` sagt das, statt es
+  wiederentdecken zu lassen. Dieselbe Form hat `r6` schon einmal getroffen.
+- Der ausgelieferte Pfad ist **bitgenau unverändert**: die kanonische
+  KI-gegen-KI-Partie entscheidet weiter bei Tick 7.381 mit Endzustand
+  `0x68A90A2C0FAB6EE2`, Hash-Kette und Trace sind byteidentisch, und
+  `match --repeat 2` stimmt auf jedem Hash überein. Die Kennung wandert
+  trotzdem auf `r9.800C26B0`, weil der Entscheidungscode sich geändert hat —
+  ein sechstes Goal in der Prioritätskette und eine neue Klausel am Wellentor.
+  **Im laufenden Spiel gesehen: nichts.** Es gibt nichts zu sehen, solange der
+  Wert auf 0 steht; sobald ihn jemand umstellt, ist das eine
+  verhaltensändernde Änderung mit eigener gespielter Abnahme.
 - **Die Welle der Skirmish-KI kann in Kampfstärke statt in Köpfen messen
   (Verhalten `r6`):** `CombatStrength` bewertet eine Einheit als
   `Schaden × Leben / Feuerintervall` — ganzzahlig, eine Division, eine

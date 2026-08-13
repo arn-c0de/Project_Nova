@@ -684,6 +684,24 @@ namespace Nova.AI
 
             /// <summary>What the ring has to hold before the wave marches, already capped by what production can still deliver.</summary>
             public long WaveThreshold;
+
+            /// <summary>
+            /// Summed combat points of the units OUTSIDE the ring — how much
+            /// the wave that already marched is still worth. Unlike the four
+            /// above this one IS read by a rule (the reinforcement doctrine),
+            /// and it is reported for the same reason the others are: "nobody
+            /// follows" explains nothing, "the wave outside is down to 380 of
+            /// the 600 it would need" says how far off it is.
+            /// </summary>
+            public long CommittedStrength;
+
+            /// <summary>
+            /// The wave outside is intact enough that a unit still in the ring
+            /// marches after it instead of waiting for the gate (r9). False
+            /// while the doctrine is off, which is what keeps that path
+            /// identical.
+            /// </summary>
+            public bool Reinforces;
         }
 
         /// <summary>
@@ -761,12 +779,18 @@ namespace Nova.AI
             int gathered = 0;
             int committed = 0;
             long gatheredStrength = 0;
+            long committedStrength = 0;
             for (int i = 0; i < combatUnits.Count; i++)
             {
                 UnitState unit = combatUnits[i];
                 if (IsCommittedToTheWave(in unit, hqCellX, hqCellY))
                 {
                     committed++;
+                    // Read by the reinforcement doctrine below and by nothing
+                    // else; with the doctrine off it is computed and dropped,
+                    // which is what keeps the off path a decision-for-decision
+                    // copy of r8 rather than "the same answer through new code".
+                    committedStrength += CombatStrength.Of(faction, unit.Role, unit.CurrentHealth);
                 }
                 else
                 {
@@ -801,6 +825,7 @@ namespace Nova.AI
             posture.Gathered = gathered;
             posture.Committed = committed;
             posture.GatheredStrength = gatheredStrength;
+            posture.CommittedStrength = committedStrength;
 
             if (wavePoints > 0 && producedStrength > 0)
             {
@@ -809,6 +834,8 @@ namespace Nova.AI
                     wavePoints, gatheredStrength, gathered, committed, producedStrength,
                     _profile.TargetArmySize, canProduce: barracksRaw != 0,
                     out posture.WaveThreshold);
+                ApplyReinforcementDoctrine(
+                    ref posture, wavePoints, producedStrength, canProduce: barracksRaw != 0);
                 return posture;
             }
 
@@ -867,6 +894,93 @@ namespace Nova.AI
         {
             int waveSize = _profile.Profile.WaveSize;
             return waveSize > _profile.TargetArmySize ? _profile.TargetArmySize : waveSize;
+        }
+
+        /// <summary>
+        /// THE REINFORCEMENT DOCTRINE (r9) — three situations, one comparison,
+        /// applied AFTER the wave gate has answered and only ever narrowing or
+        /// widening that answer for the units still in the ring.
+        /// <list type="table">
+        /// <item><term>nothing outside</term><description>the first strike. The
+        /// wave gate's business alone; this method returns having changed
+        /// nothing.</description></item>
+        /// <item><term>an intact wave outside</term><description>at or above
+        /// <see cref="AiProfile.ReinforceMinStrengthPercent"/> of the full
+        /// threshold: <see cref="ArmyPosture.Reinforces"/>, and everyone in the
+        /// ring walks after it under <see cref="GoalKind.Reinforce"/>. A single
+        /// unit joining a fight that is still going is reinforcement, not a
+        /// gift.</description></item>
+        /// <item><term>a broken wave outside</term><description>below it: the
+        /// ring is held to the FULL threshold instead of the reachability-capped
+        /// one, so nobody trickles after a remnant.</description></item>
+        /// </list>
+        /// <para>
+        /// WHAT CASE THREE ACTUALLY CHANGES, and it is worth being exact about
+        /// because the gate already looks like it does this. Since r5 the
+        /// threshold is capped at what production can still deliver, and with
+        /// the army standing at its cap that ceiling collapses onto the strength
+        /// already in the ring — the comparison becomes <c>x &gt;= x</c> and
+        /// every replacement marches the moment it exists, whatever it is
+        /// walking towards. That is a side effect of a guard, not a decision.
+        /// Case three replaces it with one.
+        /// </para>
+        /// <para>
+        /// THE CEILING IS RE-DERIVED WITH THE BROKEN WAVE WRITTEN OFF —
+        /// <c>committed: 0</c> in the call below — and that is the whole reason
+        /// this can hold anybody back at all. Left at the real figure the
+        /// ceiling would collapse again exactly where the rule needs to bite.
+        /// Written off, the ring is asked for what the army cap could hold if
+        /// the remnant were already gone, which is the number the wave is
+        /// actually gathering towards.
+        /// </para>
+        /// <para>
+        /// AND THAT IS THE RISK, NAMED RATHER THAN HIDDEN. A remnant that does
+        /// NOT die keeps its head against the army cap, so the ring can never
+        /// reach a threshold derived as if it had. That is the r4 blockade in
+        /// its second incarnation — eleven units waiting at the staging cell
+        /// until the time limit while one unit holds the front (journal V006),
+        /// the very failure the maintainer flagged when the wave rule first went
+        /// in. The guard against it is not a clause here, because every clause
+        /// that would fix it also removes the rule: it is
+        /// <see cref="AiProfile.ReinforceMinStrengthPercent"/> 0 and a
+        /// measurement. If the canonical match starts running into the time
+        /// limit, this rule is what did it, and the off setting is one profile
+        /// value away.
+        /// </para>
+        /// <para>
+        /// THE COUNT PATH NEVER REACHES HERE. The doctrine compares points, and
+        /// <c>waveStrengthPoints</c> 0 has none — the caller only calls while
+        /// the strength gate answered.
+        /// </para>
+        /// </summary>
+        private void ApplyReinforcementDoctrine(
+            ref ArmyPosture posture, int wavePoints, int producedStrength, bool canProduce)
+        {
+            ReinforcementStance stance = ReinforcementDoctrine.Resolve(
+                _profile.Profile.ReinforceMinStrengthPercent, wavePoints,
+                posture.CommittedStrength, out _);
+
+            switch (stance)
+            {
+                case ReinforcementStance.Reinforce:
+                    posture.Reinforces = true;
+                    return;
+
+                case ReinforcementStance.WaveBroken:
+                    posture.WaveThreshold = WaveStrengthGate.Threshold(
+                        wavePoints, posture.GatheredStrength, posture.Gathered,
+                        committed: 0, producedStrength, _profile.TargetArmySize, canProduce);
+                    posture.WaveReady = posture.GatheredStrength >= posture.WaveThreshold;
+                    return;
+
+                default:
+                    // Off and FirstStrike: the wave gate keeps its answer. Two
+                    // situations, one non-action, and they stay distinct in the
+                    // stance rather than collapsing into a bare early return —
+                    // a reader of a recording needs to know which of the two it
+                    // was looking at.
+                    return;
+            }
         }
 
         /// <summary>
@@ -1252,6 +1366,19 @@ namespace Nova.AI
             bool committed = IsCommittedToTheWave(in unit, hqCellX, hqCellY);
 
             if (posture.HomeThreatened && !committed) return GoalKind.DefendHome;
+
+            // Reinforce is asked BEFORE Attack and answers a narrower question:
+            // this unit is still in the ring, the gate is SHUT, and it marches
+            // anyway. Asked afterwards it could never win — the doctrine's own
+            // case (b) is what opens the march for it, and Attack would have
+            // taken it first and called it a wave launch. The two orders are
+            // identical; only the name tells a reader which rule sent the unit,
+            // which is the entire reason goals have names.
+            if (!retreats && !committed && !posture.WaveReady && posture.Reinforces)
+            {
+                return GoalKind.Reinforce;
+            }
+
             if (!retreats && IsFitToMarch(in posture, committed)) return GoalKind.Attack;
             if (arrived) return GoalKind.Hold;
             return GoalKind.Advance;
@@ -1356,6 +1483,14 @@ namespace Nova.AI
                     };
 
                 case GoalKind.Attack:
+                // Reinforce marches on exactly the same orders, and that is
+                // deliberate rather than lazy: a reinforcement that walked to
+                // some other cell would be a second front, and a wave rule
+                // whose reinforcements go elsewhere is not a wave rule. What
+                // differs between the two is which condition released the unit,
+                // and that lives in the goal, not in the assignment. Sharing
+                // the row also means the two can never drift apart.
+                case GoalKind.Reinforce:
                     return new UnitAssignment
                     {
                         EntityRaw = entityRaw,
@@ -1427,7 +1562,7 @@ namespace Nova.AI
                 posture.Engages, posture.TargetRaw, posture.MoveCellX, posture.MoveCellY,
                 posture.StagingCellX, posture.StagingCellY, posture.WaveReady, posture.WaveMode,
                 posture.Gathered, posture.Committed, posture.GatheredStrength, posture.WaveThreshold,
-                posture.HomeThreatened));
+                posture.HomeThreatened, posture.CommittedStrength, posture.Reinforces));
         }
 
         /// <summary>
@@ -1798,9 +1933,29 @@ namespace Nova.AI
         /// at 50 % and on Building at 30 %, which the old rule could not see.
         /// </para>
         /// <para>
-        /// The enemy HQ still short-circuits, and that is NOT a weight the
-        /// score could outvote: destroying it decides the match (D-077). A
-        /// win condition is not a preference.
+        /// THE ENEMY HQ IS A WEIGHT SINCE r10, AND THE SHORT CIRCUIT IS ITS OFF
+        /// SETTING. V001 argued that destroying the headquarters decides the
+        /// match (D-077), so it is a win condition and not a preference a score
+        /// could outvote — and took the first visible one on sight. The argument
+        /// is right about the rule and wrong about the behaviour, and the reason
+        /// is a coincidence of this map rather than anything in the reasoning:
+        /// the fallback march destination is the enemy start area, the enemy
+        /// start area is where the headquarters stands, so both roads lead to
+        /// the same building and the army walks the same line onto it every
+        /// match. A player learns that in two games and parks on the line
+        /// (behaviour journal B001).
+        /// <para>
+        /// As a weight the preference survives — a large one still beats
+        /// everything in practice — but a DEFENDED headquarters can now lose to
+        /// a soft, valuable, undefended target standing off to one side. The
+        /// score has been able to rate a harvester or a refinery since V001 and
+        /// never once got the chance, because this method returned before it
+        /// was asked.
+        /// </para>
+        /// <para>
+        /// <c>targetHqWeight</c> 0 keeps the <c>return</c> below, and it is the
+        /// same statement it always was.
+        /// </para>
         /// </para>
         /// <para>
         /// The score is per ARMY, not per unit, because one shared target is
@@ -1822,6 +1977,7 @@ namespace Nova.AI
             var visible = new List<EntityId>();
             _fogOfWar.GetVisibleEntities(_aiPlayerId, visible);
 
+            long hqWeight = _profile.Profile.TargetHqWeight;
             uint bestRaw = 0;
             long bestScore = 0;
             int bestX = 0, bestY = 0;
@@ -1846,14 +2002,23 @@ namespace Nova.AI
                 int x = GridCellOf(u.Transform.PositionX);
                 int y = GridCellOf(u.Transform.PositionY);
 
-                if (u.Role == UnitRole.HQ)
+                bool isHeadquarters = u.Role == UnitRole.HQ;
+                if (isHeadquarters && hqWeight <= 0)
                 {
                     cellX = x;
                     cellY = y;
-                    return raw; // win condition (D-077), not a preference
+                    return raw; // the off setting: win condition (D-077), taken on sight
                 }
 
+                // The bonus is ADDED to the ordinary score rather than replacing
+                // it, so a headquarters that is also near and also wounded reads
+                // as more valuable than one that is neither — the same way every
+                // other term of this score behaves. Replacing the score with the
+                // weight would make every headquarters equally attractive and
+                // throw away the distance term that keeps the army from crossing
+                // the map past a softer target.
                 long score = ScoreTarget(army, in u, x, y);
+                if (isHeadquarters) score += hqWeight;
                 if (bestRaw == 0 || score > bestScore || (score == bestScore && raw < bestRaw))
                 {
                     bestScore = score;

@@ -169,7 +169,9 @@ namespace Nova.SimRunner.Tests
                 // And the defence with them. This profile exists to reproduce
                 // the behaviour from BEFORE the wave rules, and a defence that
                 // pulls gatherers home is a rule of the same generation.
-                defendHomeCells: 0);
+                defendHomeCells: 0,
+                reinforceMinStrengthPercent: 0,
+                targetHqWeight: 0);
         }
 
         private static AiHost BuildAiHost(
@@ -554,7 +556,26 @@ namespace Nova.SimRunner.Tests
             // makes it measurable one-sided (defendHomeCells, 0 = off, M001).
             // A revision bump with an unmoved profile hash would have meant a
             // rule nobody can switch off.
-            Assert.That(AiBehaviorId.Value, Is.EqualTo("r8.1E6E7AE3"),
+            //
+            // r9 IS THE r6 CASE AGAIN, and deliberately so: identifier moved,
+            // canonical outcome unmoved. The reinforcement doctrine ships with
+            // its off setting (reinforceMinStrengthPercent 0), so the delivered
+            // AI decides exactly as r8 did — a lab run came out byte-identical
+            // in its hash chain and its trace. The revision still moves, because
+            // the decision code did: there is a sixth goal in the priority chain
+            // and a new clause on the wave gate, and two builds that disagree
+            // about which rules exist must not answer "which AI is this" with
+            // the same string. Why the value ships at 0 rather than at the
+            // setting that measured best is in the journal — the short version
+            // is that the two faction seats agree on exactly one percentage and
+            // disagree everywhere else, which is a coincidence and not a
+            // setting.
+            // r10 moves BOTH halves, which is the ordinary case and the one the
+            // split in CanonicalAiOutcomeTests was made to read: the revision
+            // because the enemy headquarters stopped short-circuiting the target
+            // score, and the profile hash because the rule ships with the weight
+            // that replaces it (targetHqWeight, 0 = the old short circuit).
+            Assert.That(AiBehaviorId.Value, Is.EqualTo("r10.E75CB19D"),
                 "the AI identifier changed — bump the revision and write the journal entry");
         }
 
@@ -859,7 +880,9 @@ namespace Nova.SimRunner.Tests
                 // Defence off for the same reason: this test is about a wave
                 // that must launch, and a rule that can hold units at home is
                 // a second explanation for a wave that does not.
-                defendHomeCells: 0);
+                defendHomeCells: 0,
+                reinforceMinStrengthPercent: 0,
+                targetHqWeight: 0);
 
             AiHost host = BuildMatch(Seed, probe);
             int ring = probe.StagingDistanceCells + probe.StagingToleranceCells;
@@ -983,7 +1006,9 @@ namespace Nova.SimRunner.Tests
                 // One variable per probe. The gate is what this measures; a
                 // defence that can pull gatherers home would be a second
                 // reason for a wave to launch later than it did.
-                defendHomeCells: 0);
+                defendHomeCells: 0,
+                reinforceMinStrengthPercent: 0,
+                targetHqWeight: 0);
         }
 
         /// <summary>

@@ -815,7 +815,9 @@ namespace Nova.SimRunner.Tests
                 retreatHealthPercent: s.RetreatHealthPercent,
                 retreatDangerCells: s.RetreatDangerCells,
                 waveStrengthPoints: s.WaveStrengthPoints,
-                defendHomeCells: 0);
+                defendHomeCells: 0,
+                reinforceMinStrengthPercent: 0,
+                targetHqWeight: 0);
         }
 
         /// <summary>

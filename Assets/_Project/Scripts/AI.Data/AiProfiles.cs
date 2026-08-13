@@ -166,7 +166,83 @@ namespace Nova.AI.Data
             // intents for it.
             //
             // 0 switches the rule off and restores r7 exactly (M001).
-            defendHomeCells: 10);
+            defendHomeCells: 10,
+            // Reinforcement doctrine (r9). 0 IS THE MEASURED ANSWER, not a
+            // placeholder and not caution — the rule was built, switched on and
+            // measured one-sided over eleven settings and both seatings, and no
+            // setting survived.
+            //
+            // AT THIS CAP ONLY HALF THE RULE EVEN RUNS. The r5 reachability
+            // ceiling has already collapsed the wave threshold onto what stands
+            // in the ring whenever the army is at its cap, so the gate is open
+            // and reinforcements march anyway; the half that RELEASES them has
+            // nothing to release, and what the numbers below measure is the half
+            // that HOLDS THEM BACK. ReinforcementDoctrineTests asserts that
+            // dormancy rather than leaving it to be rediscovered.
+            //
+            // The two seats want different values and their good ranges overlap
+            // in a single point. Own losses, one-sided, Alliance / Legion, off
+            // is 33 / 71: 25 -> 43 / 93, 30 -> 55 / 33, 35 -> 35 / 33,
+            // 40 -> 21 / 34, 45 -> 21 / 83, 50 -> 51 / 83, 60 -> 33 / 83,
+            // 70 -> 28 / 83, 90 -> 58 / 83. The Alliance improves at 40-45 and
+            // 70-80, the Legion only at 30-40, and 40 is the whole intersection.
+            // One step to either side loses a seat. The lab's seed axis is empty
+            // (no system draws from the kernel PRNG), so no further sampling can
+            // widen that point — taking it would be hitting a single match, the
+            // same mistake the army-cap curve made at 20 in V007.
+            //
+            // AND ABOVE THE CEILING, WHERE THE WHOLE RULE RUNS, IT IS WORSE ON
+            // EVERY SETTING. At a cap of 30 measured against the same cap
+            // without the doctrine (Alliance own losses 37): 30 -> 102,
+            // 40 -> 63, 50 -> 101, 60 -> 77, 70 -> 102, 80 -> 73 — and at 30,
+            // 70 and 80 the Alliance seat LOSES a match it wins without the
+            // rule. That is the state the strength strand is heading toward, so
+            // it is the number that decides.
+            //
+            // What the revision buys anyway: the trickle has a NAME and a
+            // SWITCH. Until now it was a side effect of the r5 guard, invisible
+            // in every report and impossible to turn off. It is now a goal the
+            // panel draws and a value the lab varies. Turning it on needs a new
+            // measurement, not an edit here.
+            reinforceMinStrengthPercent: 0,
+            // Headquarters weight (r10). 0 is the short circuit V001 shipped —
+            // take the enemy HQ the moment it is seen. 100 lets it compete
+            // instead, and 100 is where the curve stops costing anything.
+            //
+            // THE NUMBER THIS IS JUDGED ON IS NOT THE LOSS COLUMN. It is how
+            // many KINDS of target the AI attacks in a match, and it has been
+            // effectively one since V001: the HQ short-circuited, and when
+            // nothing was visible the march destination was the enemy start
+            // area, which on this map is where the HQ stands. Both roads led to
+            // the same building, so a player learns the line in two games and
+            // parks on it (journal B001). Measured one-sided on the Alliance
+            // seat, kinds go 3 -> 5 and the refinery and the harvesters become
+            // targets for the first time.
+            //
+            // THE CURVE IS MONOTONE AND THE PRICE IS AT THE BOTTOM. A small
+            // weight lets the HQ lose often, so the AI nibbles at outbuildings
+            // and the match drags: at 1 to 75 the kinds rise to 5-7 but the
+            // match runs 1,4 to 1,9 times as long and the intents per 1.000
+            // ticks go from 43,2 to 53-58. That is the V002 shape and it is the
+            // reason none of those ship. At 100: kinds 5, decided 4.767 instead
+            // of 7.381, own losses 14 instead of 33, intents 42,4 — below the
+            // off setting. Above it the outbuildings drop out again (150 and
+            // 200 attack two kinds, fewer than the short circuit), and from 250
+            // the HQ always wins and the match is byte-identical to 0.
+            //
+            // CROSS-CHECKED ON A SECOND REAL AXIS, because the lab's seed axis
+            // is empty and one good value on one axis is a single match. At
+            // army caps 16, 20 and 30, each against the SAME cap without the
+            // weight, the kinds rise every time (3 -> 4, the refinery joining
+            // in each) and own losses go 24 -> 27, 147 -> 50, 37 -> 30. Three
+            // of four caps better, one marginally worse, and the intents move
+            // only at cap 20.
+            //
+            // TWO HONEST LIMITS. The Legion seat is unchanged at almost every
+            // setting because it never lives to see the enemy HQ in this match,
+            // so the measurement rests on one seat. And the curve must not be
+            // interpolated: 75 and 150 are both worse than 100.
+            targetHqWeight: 100);
 
         /// <summary>
         /// The old <c>AiFactionProfile</c> constructor defaults (power margin
@@ -202,6 +278,11 @@ namespace Nova.AI.Data
             // wave counted heads. 0 is the off setting.
             waveStrengthPoints: 0,
             // And no legacy defence value either — there was no defence rule.
-            defendHomeCells: 0);
+            defendHomeCells: 0,
+            // Nor a legacy reinforcement doctrine. 0 is the off setting.
+            reinforceMinStrengthPercent: 0,
+            // And no legacy headquarters weight — it was a short circuit, which
+            // is what 0 means.
+            targetHqWeight: 0);
     }
 }

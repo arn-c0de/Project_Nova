@@ -43,18 +43,22 @@ namespace Nova.SimRunner.Tests
     [TestFixture]
     public sealed class CanonicalAiOutcomeTests
     {
-        /// <summary>Decided tick of the canonical AI match, last moved by: Sprint 16.9 / D-104 and D-107 placement geometry. Previous value: 2705 (Sprint 16.8).</summary>
-        private const uint PinnedDecidedTick = 2726u;
+        /// <summary>Decided tick of the canonical AI match, last moved by: the AI strand, behaviour revision 10 (the enemy HQ became a weight instead of a short circuit). Previous value: 2726 (Sprint 16.9 / D-104, D-107).</summary>
+        private const uint PinnedDecidedTick = 2761u;
 
         /// <summary>
-        /// End-state hash of the canonical AI match, last moved by: Sprint 16
-        /// package 16.9 / D-104 and D-107. The footprint placement rules and
-        /// corrected mirrored HQ geometry move the simulated match without
-        /// changing the AI implementation.
-        /// AiBehaviorId is r7.E34435F9.
-        /// Previous value: 0x28F2CC571BCE6B76 (Sprint 16.8).
+        /// End-state hash of the canonical AI match, last moved by: the AI
+        /// strand, behaviour revision 10. The enemy headquarters stopped
+        /// short-circuiting the target score and became a weight on it
+        /// (targetHqWeight 100), so a defended headquarters can now lose to a
+        /// softer target — the AI attacks five kinds of thing instead of three.
+        /// Identifier moved with it, which is the "the AI changed" case above:
+        /// revision bumped, journal entry V010 written, this pin updated in the
+        /// same commit.
+        /// AiBehaviorId is r10.E75CB19D.
+        /// Previous value: 0x10B83E94F86F2E55 (Sprint 16.9 / D-104, D-107).
         /// </summary>
-        private const string PinnedEndState = "0x10B83E94F86F2E55";
+        private const string PinnedEndState = "0xF68C050A84B900F4";
 
         [Test]
         public void CanonicalAiMatch_DecidesOnThePinnedTick_WithThePinnedEndState()

@@ -27,7 +27,12 @@ namespace Nova.AI.Data
     /// everything, or the pull-back could never reach the one unit it exists
     /// for; one that has arrived is an ordinary waiting unit again</item>
     /// <item><see cref="DefendHome"/> — the base burning outranks gathering for
-    /// a wave that will leave it burning</item>
+    /// a wave that will leave it marching away</item>
+    /// <item><see cref="Reinforce"/> — before <see cref="Attack"/>, and only so
+    /// that the two can be told apart: a unit that marches BECAUSE the wave
+    /// gate opened is attacking, one that marches WHILE the gate is shut is
+    /// reinforcing, and a panel that showed both as "attack" would hide the
+    /// only rule that distinguishes them</item>
     /// <item><see cref="Attack"/></item>
     /// <item><see cref="Hold"/></item>
     /// <item><see cref="Advance"/></item>
@@ -123,5 +128,36 @@ namespace Nova.AI.Data
         /// </para>
         /// </summary>
         DefendHome = 5,
+
+        /// <summary>
+        /// Marching after a wave that is still out there and still worth
+        /// something: the gate has NOT opened, and this unit leaves the ring
+        /// anyway because what it is walking towards is a fight in progress
+        /// rather than a remnant. Same orders as <see cref="Attack"/> — the
+        /// army's target and the army's destination — and a different name,
+        /// because the two answer different questions and only one of them
+        /// says "the wave launched".
+        /// <para>
+        /// THE CONDITION IS A LEVEL ON THE WAVE OUTSIDE, not on this unit: the
+        /// summed combat points of everything already out, against
+        /// <c>AiProfile.ReinforceMinStrengthPercent</c> of the full wave
+        /// threshold. Above it, reinforcement; below it, the wave outside
+        /// counts as broken and nobody follows — the ring gathers instead,
+        /// which is the half of the doctrine that changes what the AI does
+        /// today.
+        /// </para>
+        /// <para>
+        /// ONLY UNITS STILL INSIDE THE RING can be under it. Everything outside
+        /// is already marching under <see cref="Attack"/>, and asking again
+        /// would be the "call the wave back" move that r3 exists to prevent.
+        /// </para>
+        /// <para>
+        /// IT IS NOT A NEW WAY TO WALK. The march itself is what r5's
+        /// reachability cap already produces by accident whenever the army
+        /// stands at its cap; what is new is the condition under it and the
+        /// off switch over it.
+        /// </para>
+        /// </summary>
+        Reinforce = 6,
     }
 }

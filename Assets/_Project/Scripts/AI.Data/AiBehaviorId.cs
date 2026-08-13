@@ -156,8 +156,76 @@ namespace Nova.AI.Data
         /// 15-point margin covered the Barracks' 10-point draw and therefore
         /// retried an illegal placement forever once the all-of gate shipped.
         /// </para>
+        /// <para>
+        /// r9 gives the trickle a condition. Since r5 the wave threshold is
+        /// capped at what production can still deliver, and with the army
+        /// standing at its cap that ceiling collapses onto the strength already
+        /// in the ring — so every single replacement marched off alone,
+        /// whatever it was walking towards. That was a side effect of a guard,
+        /// never a decision, and it is half the reinforcement doctrine with
+        /// nothing under it. Now the summed strength of the units already
+        /// outside decides: at or above
+        /// <c>reinforceMinStrengthPercent</c> of the full threshold the wave out
+        /// there is intact and every gathering unit follows it under the new
+        /// <see cref="GoalKind.Reinforce"/>; below it the wave counts as broken
+        /// and the ring is held to the FULL threshold instead, so nobody
+        /// trickles after a remnant. Off setting:
+        /// <c>reinforceMinStrengthPercent</c> 0.
+        /// <para>
+        /// A LEVEL, NOT A RATE, and the difference is stated rather than
+        /// glossed: "the attack collapses" is a rate, a rate needs two points
+        /// in time, and this AI has no memory to hold the first one. What is
+        /// compared is a level, which a collapsing wave crosses within a few
+        /// cadences.
+        /// </para>
+        /// <para>
+        /// IT SHIPS OFF, and unlike r6 that is a verdict rather than a
+        /// dormancy. Measured one-sided over eleven settings and both seatings,
+        /// the two faction seats agree on exactly one percentage (40) and
+        /// disagree one step to either side; and at a raised army cap of 30 —
+        /// where the r5 ceiling stops binding and the whole rule finally runs —
+        /// every setting measured worse than the same cap without it, twice
+        /// turning a won match into a lost one. Numbers in
+        /// <c>AiProfiles.Ms1Canonical</c> and the journal. What the revision
+        /// buys regardless: the trickle now has a name a panel can draw and a
+        /// switch a report can vary, where before it was an invisible side
+        /// effect of the r5 guard.
+        /// </para>
+        /// <para>
+        /// THE KNOWN RISK IS THE r4 BLOCKADE IN A NEW COAT. Holding the ring to
+        /// the full threshold asks it for a strength the army cap cannot supply
+        /// while the remnant outside is still alive and still holding a head.
+        /// A remnant that refuses to die therefore stalls the next wave — the
+        /// V006 failure mode. There is no clause against it that does not also
+        /// remove the rule; the answer is the off setting and the measurement.
+        /// </para>
+        /// </para>
+        /// <para>
+        /// r10 turns the enemy headquarters from a short circuit into a weight.
+        /// V001 argued that losing it decides the match (D-077), so it is a win
+        /// condition rather than a preference, and took the first visible one on
+        /// sight. Right about the rule, wrong about the behaviour — and for a
+        /// reason that is a property of the map rather than of the argument: the
+        /// fallback march destination is the enemy start area, and the enemy
+        /// start area is where the headquarters stands, so both roads led to the
+        /// same building and the army walked the same line onto it every single
+        /// match (journal B001). <c>targetHqWeight</c> (shipped 100, <b>0 is the
+        /// short circuit</b>) adds the preference to the ordinary score instead,
+        /// so a defended headquarters can lose to a soft target standing off to
+        /// one side — which the score has been able to rate since V001 and never
+        /// once got the chance to, because the method returned first.
+        /// <para>
+        /// THE NUMBER IT IS JUDGED ON is how many kinds of target the AI
+        /// attacks, effectively one until now: measured one-sided it goes from
+        /// three to five, with the refinery and the harvesters joining. Own
+        /// losses fall from 33 to 14 and the match decides 35 % earlier, and
+        /// the same rise in kinds holds at army caps 16, 20 and 30 — the second
+        /// axis, because the lab's seed axis is empty and one value on one axis
+        /// is one match.
+        /// </para>
+        /// </para>
         /// </summary>
-        public const int Revision = 8;
+        public const int Revision = 10;
 
         /// <summary>
         /// Hash over every value of the shipped profile. Domain-separated like
@@ -209,6 +277,8 @@ namespace Nova.AI.Data
             writer.WriteInt32(profile.RetreatDangerCells);
             writer.WriteInt32(profile.WaveStrengthPoints);
             writer.WriteInt32(profile.DefendHomeCells);
+            writer.WriteInt32(profile.ReinforceMinStrengthPercent);
+            writer.WriteInt32(profile.TargetHqWeight);
             return writer.Digest();
         }
     }

@@ -79,12 +79,32 @@ namespace Nova.AI
         /// </summary>
         public readonly bool HomeThreatened;
 
+        /// <summary>
+        /// Summed combat points of the units already outside the ring — what
+        /// the wave that marched is still worth. The left-hand side of the
+        /// reinforcement doctrine, and the number that says how near the wave
+        /// outside is to counting as broken.
+        /// <para>
+        /// APPENDED, like every column before it.
+        /// </para>
+        /// </summary>
+        public readonly long CommittedStrength;
+
+        /// <summary>
+        /// The wave outside is intact enough that units still in the ring march
+        /// after it without waiting for the gate (r9). Always false while
+        /// <c>AiProfile.ReinforceMinStrengthPercent</c> is 0.
+        /// </summary>
+        public readonly bool Reinforces;
+
         public AiArmyGoal(
             bool engages, uint targetRaw, int moveCellX, int moveCellY,
             int stagingCellX, int stagingCellY, bool waveReady, WaveGateMode waveMode,
             int gathered, int committed, long gatheredStrength, long waveThreshold,
-            bool homeThreatened)
+            bool homeThreatened, long committedStrength, bool reinforces)
         {
+            CommittedStrength = committedStrength;
+            Reinforces = reinforces;
             HomeThreatened = homeThreatened;
             Engages = engages;
             TargetRaw = targetRaw;

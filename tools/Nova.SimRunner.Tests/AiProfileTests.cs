@@ -259,7 +259,9 @@ namespace Nova.SimRunner.Tests
                 waveSize: 5, stagingDistanceCells: 20, stagingToleranceCells: 3,
                 retreatHealthPercent: 30, retreatDangerCells: 6,
                 waveStrengthPoints: 900,
-                defendHomeCells: 14);
+                defendHomeCells: 14,
+                reinforceMinStrengthPercent: 33,
+                targetHqWeight: 250);
 
             var bound = new AiFactionProfile("Legion", tuned);
 
@@ -292,6 +294,74 @@ namespace Nova.SimRunner.Tests
                     $"AiProfile.{property.Name} is a double");
                 Assert.That(property.PropertyType, Is.Not.EqualTo(typeof(decimal)),
                     $"AiProfile.{property.Name} is a decimal");
+            }
+        }
+
+        /// <summary>
+        /// EVERY NUMBER IN THE PROFILE HAS TO REACH THE PROFILE HASH, and until
+        /// this test existed nothing said so.
+        /// <para>
+        /// The hash is what tells two profiles apart — in the HUD, in every lab
+        /// report and in the behaviour journal. A field that is added to the
+        /// type and forgotten in <c>AiBehaviorId.ComputeProfileHash</c> does not
+        /// fail: it makes two candidates that differ in exactly that value print
+        /// the SAME identifier, so a measurement series comparing them reads as
+        /// one profile measured twice. That is the worst kind of defect this
+        /// project can have, because the artefacts stay clean while the answer
+        /// is wrong — and it nearly happened to
+        /// <c>reinforceMinStrengthPercent</c>, which is why the test is here.
+        /// </para>
+        /// <para>
+        /// Written over reflection rather than as a list, because a list is the
+        /// same thing that was forgotten, one file further along.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void EveryProfileValueReachesTheProfileHash()
+        {
+            ConstructorInfo ctor = typeof(AiProfile).GetConstructors()[0];
+            ParameterInfo[] parameters = ctor.GetParameters();
+            AiProfile shipped = AiProfiles.Ms1Canonical;
+
+            object[] baseArgs = new object[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                PropertyInfo property = typeof(AiProfile).GetProperty(
+                    parameters[i].Name,
+                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                Assert.That(property, Is.Not.Null,
+                    $"constructor parameter '{parameters[i].Name}' has no property of that name — "
+                    + "the convention this test reads by is broken, not the hash");
+                baseArgs[i] = property.GetValue(shipped);
+            }
+
+            ulong baseHash = AiBehaviorId.ComputeProfileHash((AiProfile)ctor.Invoke(baseArgs));
+
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                object[] args = (object[])baseArgs.Clone();
+                args[i] = Nudge(args[i]);
+
+                ulong moved = AiBehaviorId.ComputeProfileHash((AiProfile)ctor.Invoke(args));
+
+                Assert.That(moved, Is.Not.EqualTo(baseHash),
+                    $"changing {parameters[i].Name} leaves the profile hash where it was — the field is "
+                    + "missing from AiBehaviorId.ComputeProfileHash, so two profiles that differ only in "
+                    + "it are indistinguishable in every report");
+            }
+        }
+
+        /// <summary>Any different value of the same type — what it is does not matter, only that it differs.</summary>
+        private static object Nudge(object value)
+        {
+            switch (value)
+            {
+                case string s: return s + "-nudged";
+                case ushort u: return (ushort)(u + 1);
+                case int n: return n + 1;
+                default:
+                    Assert.Fail($"AiProfile carries a {value?.GetType().Name ?? "null"} this test cannot vary");
+                    return value;
             }
         }
 
