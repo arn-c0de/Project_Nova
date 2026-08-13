@@ -236,8 +236,44 @@ namespace Nova.AI.Data
         /// the lab can name the setting and vary it, instead of two settings
         /// printing the same identifier.
         /// </para>
+        /// <para>
+        /// r12 IS THE HALF r11 NAMED AS MISSING. An attacking unit's march
+        /// destination is no longer the target's cell but a point on its OWN
+        /// stand-off ring around it, and the shipped value moves from 0 to 80.
+        /// Every armed unit in MS-1 is a ranged one and <c>CombatSystem</c> has
+        /// always fired at range; what was missing was a reason to halt, so a
+        /// wave closed until the separation steering ran out of room and fought
+        /// at contact distance — where a hitscan tracer has no length left to be
+        /// drawn at, and the game looks like it has melee, which no definition
+        /// gives it.
+        /// <para>
+        /// IT MOVES THE DESTINATION, NOT THE ORDER. Attack target, goal table,
+        /// wave gate, retreat rule and staging cell are untouched; the stand-off
+        /// cell is a third caller-computed fact handed to <c>ApplyGoal</c>, next
+        /// to the pursuer and the at-home flag, so the table stays the pure
+        /// function a forced goal depends on.
+        /// </para>
+        /// <para>
+        /// TWO THRESHOLDS, NOT ONE, and that is measured rather than tidy.
+        /// Getting into position and staying in it are different questions: an
+        /// arrived unit sits ON the ring, so anything that nudges it — the
+        /// formation spread, a neighbour's separation shove — takes it out by a
+        /// hair and buys a fresh order every cadence. A STANDING unit is
+        /// therefore left alone one cell further out, the same split
+        /// <c>IsAtTheStagingCell</c> draws through <c>IsMoving</c>. With one
+        /// threshold and an engaged-spacing rule pushing every tick the lab
+        /// measured 956 intents per canonical match; with two, 245.
+        /// </para>
+        /// <para>
+        /// WHAT THE LAB DOES NOT SAY: that 80 is the right number. Off is
+        /// clearly the worst setting that still makes sense (75 own losses
+        /// against 35 to 50 for everything between 25 and 100), but the curve
+        /// between them is jagged over a single seed and the seed axis is
+        /// empty. 80 rests on the margin argument above, not on a measurement.
+        /// </para>
+        /// </para>
         /// </summary>
-        public const int Revision = 11;
+        public const int Revision = 12;
 
         /// <summary>
         /// Hash over every value of the shipped profile. Domain-separated like

@@ -172,6 +172,67 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   sie belegt keine Verbesserung.
 
 ### Geändert
+- **Die KI hält auf Waffenreichweite an, statt in den Feind zu laufen
+  (`r11` → `r12`)** — die Hälfte, die `r11` als fehlend benannt hat. Dort kam
+  der Schalter `engagementStandoffPercent` mit Aus-Wert 0 und dem Satz „wer das
+  Verhalten liefert, bewegt diese Zahl, im selben Commit wie den Pin". Das ist
+  dieser Commit: 0 → **80**.
+
+  Kein Kampf-, sondern ein Bewegungsbefund. Jede bewaffnete Einheit in MS-1 ist
+  eine Fernkämpferin (Legion-Rekrut 6 Kacheln, Artillerie 18), und
+  `CombatSystem` hat die ganze Zeit auf Distanz geschossen. Was fehlte, war ein
+  Grund **anzuhalten**: das Marschziel eines Angreifers war die Zelle des
+  Feindes, also lief die Welle, bis die Trennkraft keinen Platz mehr fand.
+  Hitscan-Leuchtspuren werden zwischen Schütze und Ziel gezeichnet — auf
+  Tuchfühlung bleibt davon nichts, und das Spiel sieht aus, als hätte es
+  Nahkampf, den ihm keine Definition gibt.
+
+  **Was sich ändert, ist das Ziel, nicht der Befehl.** Angriffsziel,
+  Goal-Tabelle, Wellentor, Rückzugsregel und Sammelpunkt bleiben unangetastet.
+  Der Standoff-Punkt ist eine **dritte vom Aufrufer errechnete Tatsache** neben
+  Verfolger und Zuhause-Flagge, damit `ApplyGoal` die reine Funktion bleibt, auf
+  der ein erzwungenes Goal beruht.
+
+  **Der Ring zieht auch zurueck, nicht nur heran** — die Hälfte, ohne die die
+  Regel im laufenden Spiel unsichtbar bleibt. `MoveCell -1` heisst „kein neuer
+  Befehl", nicht „anhalten": eine Einheit, der man nichts sagt, führt ihren
+  alten Marschbefehl weiter aus. Und was sie üblicherweise ausführt, ist der
+  Marsch auf die feindliche **Startzone** — das Ziel, solange nichts sichtbar
+  ist. Sie trifft ihr Ziel also nicht auf Sichtweite und nähert sich dann
+  gesittet: eine Kadenz sind 20 Ticks, Infanterie legt darin acht Kacheln
+  zurück, und der Gegner, der bei zehn Kacheln auftauchte, steht bei zwei, wenn
+  das nächste Mal jemand fragt. **Innerhalb des Rings anzukommen ist der
+  Normalfall**, nicht der Sonderfall — also muss der Ring eine Einheit wieder
+  herausziehen können und nicht bloss dort anhalten, wo die Nachricht sie
+  erreicht hat. Gemessen über eine ganze Partie: geringste Annäherung an etwas
+  Feindliches **0,0 Kacheln ohne die Regel** — die Einheiten standen im selben
+  Feld — gegen **2,0 mit ihr**.
+
+  **Zwei Schwellen, nicht eine**, und das ist gemessen statt ordentlich.
+  Hinlaufen und Bleiben sind verschiedene Fragen: eine angekommene Einheit sitzt
+  **auf** dem Ring, also nimmt sie jeder Schubs um Haaresbreite heraus und
+  kostet einen Befehl pro Kadenz. Eine **stehende** Einheit gilt deshalb bis
+  eine Kachel weiter aussen als in Position — dieselbe Unterscheidung, die
+  `IsAtTheStagingCell` über `IsMoving` trifft, ohne Gedächtnis. Die Schleppe ist
+  auf `Reichweite − Standoff` gedeckelt, sonst hielte man eine Einheit auf einer
+  Distanz fest, die ihre eigene Waffe nicht erreicht.
+
+  **Ein Prozentsatz, keine Distanz**, weil die Einheiten keine gemeinsame
+  Reichweite haben: eine Kachelzahl stellte die Artillerie in die erste Reihe
+  oder hielte die Rekruten ausser Schussweite. Aus **einer** Zahl sortiert sich
+  eine gemischte Armee nach Waffe — Rekrut auf vier Kacheln, Artillerie auf
+  vierzehn — ohne Formationsregel; die Linienformation bleibt
+  Inhaberentscheidung (D-088).
+
+  **Was das Labor sagt und was nicht.** Aus ist eindeutig die schlechteste
+  sinnvolle Stellung: 75 eigene Verluste gegen 35 bis 50 bei jedem Wert
+  zwischen 25 und 100. Zur **80 selbst sagt die Reihe nichts** — sie ist die
+  Referenz, und die Kurve dazwischen ist über einen Seed zackig. Die 80 steht
+  auf dem Margenargument oben, nicht auf einer Messung.
+
+  Kanonische Partie 2.761 → 2.762 Ticks, Endzustand `0xF68C050A84B900F4` →
+  `0x7C55914FCF8C5749`, Kennung `r11.E750CBB3` → `r12.CA58924C`. Die vier
+  Determinismus-Baselines sind unberührt — sie fahren die Skirmish-KI nicht.
 - **Die Skirmish-KI benennt, was eine Einheit vorhat — und verteidigt damit
   ihre Basis (`GoalKind`, `r7` → `r8`)** — zwei Schritte, die zusammengehören
   und deshalb zusammen kommen: erst bekommt die Entscheidung eine **Form**,

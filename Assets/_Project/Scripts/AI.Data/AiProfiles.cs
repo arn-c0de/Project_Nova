@@ -243,12 +243,16 @@ namespace Nova.AI.Data
             // so the measurement rests on one seat. And the curve must not be
             // interpolated: 75 and 150 are both worse than 100.
             targetHqWeight: 100,
-            // THE KNOB EXISTS, THE BEHAVIOUR DOES NOT YET. Nothing reads this
-            // value at revision 11 — the movement half of the standoff is still
-            // being written — so the shipped setting is the off setting and the
-            // canonical match is unchanged. Whoever ships the behaviour moves
-            // this number, in the commit that also moves the pinned outcome.
-            engagementStandoffPercent: 0);
+            // r12 IS THE COMMIT r11 ASKED FOR: the behaviour landed, so the
+            // number moves, and the pinned outcome moves in the same commit.
+            //
+            // 80 percent of the unit's OWN weapon range, so one number sorts a
+            // mixed army by weapon — the Legion recruit halts at four cells,
+            // its artillery at fourteen. It leaves margin on purpose: at 100 a
+            // unit halts exactly on the boundary CombatSystem.IsInRange tests,
+            // and the first shove from the separation steering takes it back
+            // out of range. 0 remains the off setting and reproduces r11.
+            engagementStandoffPercent: 80);
 
         /// <summary>
         /// The old <c>AiFactionProfile</c> constructor defaults (power margin

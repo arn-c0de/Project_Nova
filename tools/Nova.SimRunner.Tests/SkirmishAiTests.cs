@@ -583,9 +583,11 @@ namespace Nova.SimRunner.Tests
             // (0). What DOES move is the profile hash, the moment the field
             // joins ComputeProfileHash — so the revision moves with it, because
             // an identifier that changes under an unchanged revision is the one
-            // thing this string must never do. The movement half comes in its
-            // own change, with its own measurement.
-            Assert.That(AiBehaviorId.Value, Is.EqualTo("r11.E750CBB3"),
+            // thing this string must never do. The movement half arrived in
+            // r12, which is why both halves of the string moved at once here:
+            // the revision because the behaviour landed, the hash because the
+            // shipped value went from 0 to 80.
+            Assert.That(AiBehaviorId.Value, Is.EqualTo("r12.CA58924C"),
                 "the AI identifier changed — bump the revision and write the journal entry");
         }
 

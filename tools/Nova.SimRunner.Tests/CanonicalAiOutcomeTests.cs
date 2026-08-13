@@ -43,22 +43,34 @@ namespace Nova.SimRunner.Tests
     [TestFixture]
     public sealed class CanonicalAiOutcomeTests
     {
-        /// <summary>Decided tick of the canonical AI match, last moved by: the AI strand, behaviour revision 10 (the enemy HQ became a weight instead of a short circuit). Previous value: 2726 (Sprint 16.9 / D-104, D-107).</summary>
-        private const uint PinnedDecidedTick = 2761u;
+        /// <summary>Decided tick of the canonical AI match, last moved by: the AI strand, behaviour revision 12 (the army halts on its weapon range instead of on its target). Previous values: 2761 (revision 10, the enemy HQ as a weight; revision 11 added the profile field and moved nothing), 2726 (Sprint 16.9 / D-104, D-107).</summary>
+        private const uint PinnedDecidedTick = 2763u;
 
         /// <summary>
         /// End-state hash of the canonical AI match, last moved by: the AI
-        /// strand, behaviour revision 10. The enemy headquarters stopped
-        /// short-circuiting the target score and became a weight on it
-        /// (targetHqWeight 100), so a defended headquarters can now lose to a
-        /// softer target — the AI attacks five kinds of thing instead of three.
-        /// Identifier moved with it, which is the "the AI changed" case above:
-        /// revision bumped, journal entry V010 written, this pin updated in the
-        /// same commit.
-        /// AiBehaviorId is r10.E75CB19D.
-        /// Previous value: 0x10B83E94F86F2E55 (Sprint 16.9 / D-104, D-107).
+        /// strand, behaviour revision 12 — the commit revision 11 asked for
+        /// when it shipped <c>engagementStandoffPercent</c> at its off value
+        /// and wrote "whoever ships the behaviour moves this number, in the
+        /// commit that also moves the pinned outcome". This is that commit: an
+        /// attacking unit is sent to a point on its OWN weapon range around the
+        /// army's target instead of onto the target's cell, and the shipped
+        /// value moves from 0 to 80. Identifier moved with it, which is the
+        /// "the AI changed" case above.
+        /// AiBehaviorId is r12.CA58924C.
+        /// <para>
+        /// THE TICK BARELY MOVED AND THE STATE DID — 2761 to 2763, but a
+        /// different hash. That combination is the honest report of this rule:
+        /// it changes where units stand and therefore who shoots whom first,
+        /// while the match is still decided by the same collapsing base at
+        /// roughly the same time. Anyone reading a one-tick shift as "almost
+        /// nothing happened" should look at <c>EngagementStandoffTests</c>
+        /// instead, which measures the rule directly rather than through an
+        /// outcome.
+        /// </para>
+        /// Previous values: 0xF68C050A84B900F4 (revisions 10 and 11),
+        /// 0x10B83E94F86F2E55 (Sprint 16.9 / D-104, D-107).
         /// </summary>
-        private const string PinnedEndState = "0xF68C050A84B900F4";
+        private const string PinnedEndState = "0xD9CA162B0AB0CF94";
 
         [Test]
         public void CanonicalAiMatch_DecidesOnThePinnedTick_WithThePinnedEndState()

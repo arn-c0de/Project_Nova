@@ -166,6 +166,26 @@ namespace Nova.SimRunner.Tests
         /// every other artifact, because the match plays on regardless.
         /// </para>
         /// </summary>
+        /// <summary>
+        /// The longest weapon range any unit definition carries, read from
+        /// <see cref="SimDefinitions"/> rather than copied as a literal: the
+        /// stand-off ring of r12 is a fraction of a unit's OWN range, so this
+        /// is the widest ring the effect table can legally produce. A literal
+        /// here would go stale the first time this strand tunes a range.
+        /// </summary>
+        private static int MaxWeaponRangeTiles
+        {
+            get
+            {
+                int max = 0;
+                foreach (SimUnitDefinition def in SimDefinitions.AllUnits)
+                {
+                    if (def.AttackRangeTiles > max) max = def.AttackRangeTiles;
+                }
+                return max;
+            }
+        }
+
         [Test]
         public void TheOrdersThatWentOutAreTheOnesTheReportedGoalProduces()
         {
@@ -183,9 +203,33 @@ namespace Nova.SimRunner.Tests
                 switch (unit.Goal)
                 {
                     case GoalKind.Attack:
-                        Assert.That(unit.MoveCellX, Is.EqualTo(army.MoveCellX), where);
-                        Assert.That(unit.MoveCellY, Is.EqualTo(army.MoveCellY), where);
+                        // The TARGET is still the army's, cell for cell — that
+                        // is the name-to-effect link this test exists for.
                         Assert.That(unit.AttackTargetRaw, Is.EqualTo(army.TargetRaw), where);
+
+                        // The DESTINATION is no longer the army's since r12: it
+                        // is a point on this unit's own stand-off ring around
+                        // the army's cell, or nothing at all once the unit is
+                        // inside that ring. What stays checkable against the
+                        // army decision — and what still catches an effect
+                        // drifting away from its name — is that the destination
+                        // lies within one weapon range of the army's cell. A
+                        // row that started sending attackers to the staging
+                        // cell or home would fail here exactly as before.
+                        if (unit.MoveCellX >= 0)
+                        {
+                            int offRing = Math.Max(
+                                Math.Abs(unit.MoveCellX - army.MoveCellX),
+                                Math.Abs(unit.MoveCellY - army.MoveCellY));
+                            Assert.That(offRing, Is.LessThanOrEqualTo(MaxWeaponRangeTiles),
+                                where + " — an attacker's destination must sit on a stand-off ring "
+                                + "around the army's cell, not somewhere else");
+                        }
+                        else
+                        {
+                            Assert.That(unit.MoveCellY, Is.EqualTo(-1),
+                                where + " — a unit inside its ring says nothing about movement, on both axes");
+                        }
                         break;
 
                     case GoalKind.Hold:

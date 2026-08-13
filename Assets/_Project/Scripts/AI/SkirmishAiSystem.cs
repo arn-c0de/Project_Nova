@@ -1305,7 +1305,15 @@ namespace Nova.AI
             // HasArrivedAtHome.
             bool atHome = HasArrivedAtHome(in unit, in posture);
 
-            UnitAssignment assignment = ApplyGoal(goal, entityRaw, in posture, pursuerRaw, atHome);
+            // Where an ATTACKING unit is actually sent — the third
+            // caller-computed fact, for exactly the reason the other two are
+            // ones: it depends on this unit (its weapon, its position) and the
+            // table must not grow a condition to find that out. Every goal but
+            // Attack and Reinforce ignores it. See ResolveEngagementCell.
+            ResolveEngagementCell(in unit, in posture, out int engageCellX, out int engageCellY);
+
+            UnitAssignment assignment = ApplyGoal(
+                goal, entityRaw, in posture, pursuerRaw, atHome, engageCellX, engageCellY);
 
             if (_goalObserver != null)
             {
@@ -1451,11 +1459,151 @@ namespace Nova.AI
         }
 
         /// <summary>
+        /// Where a marching unit is actually sent: a point on ITS OWN
+        /// stand-off ring around the army's target, instead of the target's
+        /// cell (<c>AiProfile.EngagementStandoffPercent</c>; <b>0 hands back
+        /// <c>posture.MoveCell</c> unchanged</b>).
+        /// <para>
+        /// WHY THE RING IS EUCLIDEAN. <c>CombatSystem.IsInRange</c> compares
+        /// centre distance against <c>range + target.Radius</c>, which is a
+        /// circle. Everything else in this class measures in Chebyshev cells,
+        /// and a Chebyshev ring of radius r reaches 1.41 r into its corners — a
+        /// unit parked on such a corner would stand outside the range it was
+        /// placed for and never fire a shot. So this one calculation is
+        /// Euclidean, through the canonical <see cref="SimTrig.Sqrt"/>, and it
+        /// says so here because it is the odd one out.
+        /// </para>
+        /// <para>
+        /// IN CELLS, NOT IN WORLD UNITS, and that is an overflow bound rather
+        /// than a preference. The map is 128 cells across, so a squared WORLD
+        /// distance reaches 2 · 128² = 32.768 and steps over the Q16.16 ceiling
+        /// of 32.767 — <see cref="SimFixed"/> would answer with the
+        /// deterministic checked fault it is built to be. Squared CELL distance
+        /// peaks at 2 · 127² = 32.258 and fits. The price is a quantisation of
+        /// up to one cell, which is why the shipped percentage leaves margin.
+        /// </para>
+        /// <para>
+        /// THE TARGET'S POSITION COMES FROM THE POSTURE, not from the entity
+        /// store. <c>posture.MoveCell</c> was resolved out of the COMMITTED
+        /// team view (<c>FindBestVisibleEnemyByScore</c>); reading the enemy's
+        /// transform directly would be a second, unfogged source for the same
+        /// fact and would break the read boundary this class documents at the
+        /// top.
+        /// </para>
+        /// <para>
+        /// A UNIT ALREADY INSIDE ITS RING IS TOLD NOTHING (cell -1), the same
+        /// silence <c>Hold</c> and an arrived defender get and for the same
+        /// reason: repeating a move order to a standing unit flips it back into
+        /// <c>IsMoving</c> every cadence and buys intent churn without a change
+        /// of behaviour (journal V002).
+        /// </para>
+        /// <para>
+        /// WHICH IS WHY THE BAND IS WIDER FOR A UNIT THAT HAS STOPPED. "Walk to
+        /// the ring" and "you are in position" cannot share a threshold: an
+        /// arrived unit sits ON the boundary, so any push at all — the formation
+        /// spread of <c>ApplyMove</c>, a neighbour's separation shove — takes it
+        /// out by a hair and buys a fresh order every cadence. Self-correcting
+        /// covers a one-off nudge; it does not cover a force that pushes again
+        /// every tick. See the hysteresis below for the measurement.
+        /// </para>
+        /// </summary>
+        private void ResolveEngagementCell(
+            in UnitState unit, in ArmyPosture posture, out int cellX, out int cellY)
+        {
+            cellX = posture.MoveCellX;
+            cellY = posture.MoveCellY;
+
+            int percent = _profile.Profile.EngagementStandoffPercent;
+            if (percent <= 0) return;
+
+            // No target means the destination is the enemy START AREA, not an
+            // enemy: there is nothing to keep a distance from, and keeping one
+            // anyway would stop the advance short of the half of the map it is
+            // aimed at.
+            if (posture.TargetRaw == 0) return;
+
+            // An unarmed role has no range to stand off at. Only combat units
+            // reach here, so this is a guard and not a case.
+            SimFixed range = WeaponProfiles.Get(_economy.GetSlotFaction(unit.PlayerId), unit.Role).AttackRange;
+            if (range <= SimFixed.Zero) return;
+
+            SimFixed standoff = range * SimFixed.FromInt(percent) / SimFixed.FromInt(100);
+            if (standoff <= SimFixed.Zero) return;
+
+            int deltaX = GridCellOf(unit.Transform.PositionX) - cellX;
+            int deltaY = GridCellOf(unit.Transform.PositionY) - cellY;
+            SimFixed distanceSquared = SimFixed.FromInt(deltaX * deltaX + deltaY * deltaY);
+
+            // ARRIVED AND IN POSITION: say nothing at all, the same silence
+            // Hold and an arrived defender get. The band is wider than the ring
+            // because getting into position and STAYING in it are different
+            // questions: a unit parked on the ring sits exactly on the
+            // boundary, so any push — the formation spread of ApplyMove, a
+            // neighbour's separation shove — takes it out by a hair and buys a
+            // fresh order every cadence. Measured: one threshold against an
+            // engaged-spacing rule pushing every tick cost 956 intents per
+            // canonical match, two cost 245.
+            //
+            // The band never exceeds what the percentage left over, or a
+            // standing unit would be held at a distance its own weapon cannot
+            // reach — the one failure this whole rule exists to prevent.
+            if (!unit.IsMoving)
+            {
+                SimFixed margin = range - standoff;
+                SimFixed hold = standoff + (margin < SimFixed.One ? margin : SimFixed.One);
+                if (distanceSquared <= hold * hold)
+                {
+                    cellX = -1;
+                    cellY = -1;
+                    return;
+                }
+            }
+
+            // STILL WALKING: go to the ring — forwards when outside it,
+            // BACKWARDS when inside.
+            //
+            // Backing off is the half that was missing while the game still
+            // showed units in contact. Cell -1 means "no new order", not
+            // "halt", so a unit told nothing keeps executing whatever it was
+            // doing. And what it is usually doing is marching on the enemy
+            // START AREA — the destination whenever nothing is visible — which
+            // means it does not meet its target at sight range and then close
+            // politely: a cadence is 20 ticks, infantry covers eight cells in
+            // them, and the target that appeared at ten cells is at two by the
+            // time anybody asks. Meeting the target already inside the ring is
+            // the normal case, so the ring has to be able to pull a unit back
+            // out, not merely stop it wherever the news reached it.
+            SimFixed distance = SimTrig.Sqrt(distanceSquared);
+            if (distance <= SimFixed.Zero)
+            {
+                // Standing exactly on the target: the approach direction is
+                // undefined, so back off toward the own headquarters. Static
+                // map knowledge, identical on every host, and the one direction
+                // that is never into the enemy.
+                deltaX = posture.HomeCellX - cellX;
+                deltaY = posture.HomeCellY - cellY;
+                distanceSquared = SimFixed.FromInt(deltaX * deltaX + deltaY * deltaY);
+                distance = SimTrig.Sqrt(distanceSquared);
+                if (distance <= SimFixed.Zero) return;
+            }
+
+            // |delta| <= distance, so |delta| * standoff / distance <= standoff:
+            // the product is bounded by the longest weapon range on the board
+            // and cannot leave the Q16.16 domain however close the unit stands.
+            // Truncation toward zero lands it at or INSIDE the ring, never a
+            // cell beyond, so the quantisation can only give back reach it has.
+            SimFixed scale = standoff / distance;
+            cellX = ClampToGrid(cellX + (SimFixed.FromInt(deltaX) * scale).ToInt());
+            cellY = ClampToGrid(cellY + (SimFixed.FromInt(deltaY) * scale).ToInt());
+        }
+
+        /// <summary>
         /// THE EFFECT OF A GOAL — one table, five rows, no conditions.
         /// <para>
-        /// Every row is a pure function of the goal, the posture and the two
-        /// facts the caller worked out (the pursuer, and whether a defender is
-        /// already home), which is what makes a forced goal safe: a panel that
+        /// Every row is a pure function of the goal, the posture and the three
+        /// facts the caller worked out (the pursuer, whether a defender is
+        /// already home, and the attacker's stand-off cell), which is what
+        /// makes a forced goal safe: a panel that
         /// names <c>Retreat</c> for a healthy unit gets the orders
         /// <c>Retreat</c> always produces, not a state the AI has no code for.
         /// </para>
@@ -1469,7 +1617,8 @@ namespace Nova.AI
         /// </para>
         /// </summary>
         private static UnitAssignment ApplyGoal(
-            GoalKind goal, uint entityRaw, in ArmyPosture posture, uint pursuerRaw, bool atHome)
+            GoalKind goal, uint entityRaw, in ArmyPosture posture, uint pursuerRaw, bool atHome,
+            int engageCellX, int engageCellY)
         {
             switch (goal)
             {
@@ -1495,8 +1644,12 @@ namespace Nova.AI
                     {
                         EntityRaw = entityRaw,
                         AttackTargetRaw = posture.TargetRaw,
-                        MoveCellX = posture.MoveCellX,
-                        MoveCellY = posture.MoveCellY,
+                        // r11: the army's target, but THIS unit's distance to
+                        // it. With the stand-off off the caller hands back
+                        // posture.MoveCell unchanged, so this row is the row it
+                        // always was.
+                        MoveCellX = engageCellX,
+                        MoveCellY = engageCellY,
                     };
 
                 case GoalKind.Hold:
