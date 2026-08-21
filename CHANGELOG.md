@@ -18,6 +18,49 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
 > erzeugt; MS-0 und MS-1 bleiben offen.
 
 ### Entschieden
+- **D-108 berichtigt und neu gefasst: jedes eigene Gebäude wird Bauanker.** Die
+  Erstfassung vom 2026-08-17 behauptete, der Code lasse *jedes* Gebäude als Anker
+  gelten, und wollte diesen Zustand nur aussprechen. Das war falsch:
+  `ConstructionSystem.IsInsideBuildInfluence` prüft seit D-104 auf **HQ, Lager
+  und Kraftwerk**, und D-104 Punkt 2 sagt das wörtlich. Der Fehler entstand, weil
+  der Docstring von `BuildInfluenceRadiusCells` und Issue #92 von einem „eigenen
+  Bauanker" sprechen, ohne die Rollenliste zu nennen, und die Implementierung vor
+  der Beschlussfassung nicht gelesen wurde. Gefunden hat ihn der ausführende
+  Agent beim Umsetzen von Paket 21.1, der angehalten und nachgefragt hat statt
+  den Widerspruch aufzulösen. Der Inhaber hat daraufhin **in Kenntnis der
+  tatsächlichen Lage neu entschieden**: nicht die Bestandsregel festschreiben,
+  sondern die Ankerliste öffnen. Damit ist D-108 eine Verhaltensänderung —
+  `RulesHash64`, Determinismus-Baselines und der gepinnte Ausgang der kanonischen
+  KI-Partie bewegen sich, es braucht einen eigenen Regel-PR, einen zweiten
+  Baseline-PR und ein mit dem Einheitenstrang abgestimmtes Merge-Fenster. Bewusst
+  in Kauf genommen: eine Kette billiger Gebäude kann sich damit über die Karte
+  schieben — in C&C etabliert und im Zusammenspiel mit 21.6/21.7 gewollt
+- **D-108: Territorium wächst kriechend an jedem eigenen Bauanker.** Die Frage
+  aus Testbericht T-01 (#92) — erweitert ein zweites HQ den Baubereich? — war im
+  Code längst beantwortet und nie ausgesprochen:
+  `ConstructionSystem.BuildInfluenceRadiusCells = 8` misst ab **einem eigenen
+  Bauanker**, nicht ab dem HQ, also erweitert jedes fertige Gebäude die Zone um
+  seinen eigenen Radius. Das bleibt so und ist ab jetzt gewollte Mechanik: es ist
+  das klassische C&C-Verhalten und koppelt Expansion genau so an die Wirtschaft,
+  wie die Verknappung aus D-102 es verlangt. Die gemeldete Enge wird
+  **nicht** über den Radius beantwortet, sondern zuerst gemessen — Sprint 21
+  Paket 21.1 liefert als Test, wie viele Gebäude bei
+  `MinimumBuildingDistanceCells` 2 gegen 1 gegen 0 in die Startzone passen, weil
+  dieser Wert Zellen *innerhalb* der Zone sperrt und die plausiblere Ursache ist
+- **D-109: Die Kartenmitte wird ein Gebiet mit schmalen Zufahrten.** Feld 5 liegt
+  bei (62, 62) und trägt mit 15.000 AE zwei Drittel mehr als jedes andere — die
+  Absicht „die Mitte ist wertvoll" war getroffen, nur nicht ausgespielt. Aus dem
+  einen Feld werden vier bis sechs, und das Gelände formt die Zufahrten.
+  Verbindliche Auflage: **Begehbarkeit und Optik stammen aus einer einzigen
+  Struktur.** Heute tun sie das nicht — `CostField` kann unbegehbare Zellen
+  (`ImpassableCost = 255`), aber es schreibt niemand hinein ausser
+  `ConstructionSystem` für Gebäude-Footprints, während `GlutrinneBlockoutView`
+  rund 84 Felsen streut und im eigenen Docstring zusichert, nie in den
+  Simulationszustand zu schreiben — die Felsen sind Deko und begehbar. Zwei
+  Quellen ergäben Einheiten, die durch Felsen laufen und an unsichtbaren Wänden
+  hängenbleiben. Die Umsetzung bleibt beim Maintainer-Strang:
+  `CostField.SetCost` ist bereits öffentlich und wird aus `Gameplay/Match/`
+  aufgerufen, `Simulation/Pathfinding/` wird nicht angefasst
 - **D-105: Dennis Westermann (`@cubetribe`) führt das Projekt allein.** Er ist
   alleiniger Projektinhaber, Maintainer, Tier-Entscheider und Mergeberechtigter;
   Michael Falk (`@travelhawk`) bleibt historischer Autor und
@@ -30,6 +73,62 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   spielerisch abgenommen und kein Meilenstein-Nachweis
 
 ### Hinzugefügt
+- **Restbestand der Vorkommen anklickbar und sichtbar (Paket 21.2, #86).**
+  Ein Linksklick auf ein Aetherium-Vorkommen (auch ein erschöpftes) zeigt in der
+  Befehlskarte Restbestand und Anfangsreserve („Aetherium-Vorkommen — 6.420 /
+  9.000 AE", erschöpfte Felder ausdrücklich im Titel markiert), und der
+  Kristallstand jedes Feldes folgt dem Bestand stufenweise bis zum abgedunkelten
+  Stumpf. Reine Präsentation: die Anfangsreserve wird aus der kanonischen
+  Kartenlage (`MatchBootstrap.FieldLayouts`) gelesen, der Simulationszustand
+  bleibt unverändert. Nachklang aus der ersten Spielabnahme: eine leere,
+  nicht-additive Ziehbox fällt jetzt auf den Feld-Pick am Boxzentrum zurück —
+  auf Trackpads ist ein „Klick" ein Mikro-Drag über die 8-px-Schwelle, und ohne
+  den Fallback las die Geste über einem Vorkommen nur „Auswahl leeren"
+- **Die Startzone ist gemessen statt geschätzt (Paket 21.1).**
+  `tools/Nova.SimRunner.Tests/BuildZoneCapacityTests.cs` beziffert in zwei Spuren,
+  wie viele Gebäude in die Bauzone des kanonischen HQ-Ankers passen: eine echte
+  Systemspur über `ValidatePlacement` und `PlaceCompletedBuilding`, und ein
+  Geometriemodell, das die Systemspur beim geltenden Wert zellgenau reproduzieren
+  muss, bevor seine Variantenzahlen zählen. Ergebnis: **15** Gebäude bei
+  `MinimumBuildingDistanceCells = 2`, **23** bei 1, und bei 0 ebenfalls 23 — weil
+  die Footprint-Belegung jede Konfiguration mit Abstand unter 1 ohnehin verbietet.
+  Der einzige wirksame Hebel wäre 2 → 1, und **beide Konstanten bleiben
+  unverändert**: die Zahl weist die im Testbericht gemeldete Enge nicht als
+  Abstandsproblem aus, und die 15 sind ohnehin nur eine untere Schranke für die
+  Anfangszone, weil jeder Anker die Grenze mitschiebt. Der Test pinnt alle drei
+  Konstanten und macht das Paket erneut auf, falls eine davon fällt. Zum selben
+  Paket: der Docstring von `BuildInfluenceRadiusCells` nennt jetzt die
+  Ankerrollen (HQ, Lager, Kraftwerk — D-104) statt nur „einen eigenen
+  Bauanker", damit die Mehrdeutigkeit hinter der D-108-Fehlprämisse nicht
+  weiter im Code steht; die korrigierte D-108-Regeländerung (jedes eigene
+  fertiggestellte Gebäude wird Anker) ist ein eigener PR und hier bewusst
+  noch nicht umgesetzt
+- **Sprint 21 festgeplant und als Großauftrag erteilt.** Aus dem Vorschlag zu den
+  Verknappungsfolgen wird nach den Inhaberentscheidungen D-108 und D-109 die
+  Sprintdatei `docs/production/hashkrieg/21_Sprint_Verknappungsfolgen.md` mit
+  sieben Paketen (Restbestand sichtbar, Baubereich sichtbar, Auswahl ehrlich,
+  Startmenge gerechnet, Kartendichte, zentrale Zone) und der gebündelte Auftrag
+  `AUFTRAG_Verknappungsfolgen.md`, der Sprint 21 und danach Sprint 18 in eine
+  verbindliche Reihenfolge bringt. Beide sind gegen `main` @ `3e10c48` geprüft.
+  Nebenbei berichtigt: `AUFTRAG_Grossblock.md` behauptete, `dotnet test` laufe
+  lokal nicht — es läuft mit dem im Repo mitgelieferten `.dotnet/` (8.0.318,
+  exakt die in `global.json` gepinnte Version) in rund 14 Sekunden
+- **Testbericht T-01 vom 10.08.2026 (Build `4053c15`) zerlegt — zehn Issues
+  (#85–#94) und ein Sprintvorschlag.** Der Bericht bewertet die mit #80
+  eingeführte AE-Verknappung und zeigt, dass diese eine Änderung acht weitere
+  Systeme betrifft, die noch auf der alten Annahme stehen. Kritisch ist #85:
+  `SkirmishAiSystem.TryGetOwnFieldCell` wählt das Erntefeld allein nach Distanz
+  und prüft `IsExhausted` nicht — der Spielerpfad in `RtsDeviceInput` filtert
+  bereits korrekt, der KI-Pfad wurde bei #80 nicht nachgezogen. Daraus entsteht
+  ein Livelock: `EconomySystem` räumt die Feldzuordnung des leeren Feldes, die
+  KI weist genau dadurch dasselbe Feld erneut zu, und die Wirtschaft der KI
+  steht. Neu abgelegt sind die anonymisierte Fassung des Berichts
+  (`docs/production/hashkrieg/Testberichte/2026-08-10_4053c15_T-01.md`, Kennung
+  `T-01` nach [Nutzerfeedback_Ablauf.md](docs/production/Nutzerfeedback_Ablauf.md))
+  und der Vorschlag zur Sprintbildung
+  (`docs/production/hashkrieg/20_Vorschlag_Verknappungsfolgen.md`), der die zehn
+  Befunde nach Schreibhoheit trennt und die Vertragsflächen ausweist. Kein
+  Sprint ist damit festgeplant
 - **Die Welle der Skirmish-KI kann in Kampfstärke statt in Köpfen messen
   (Verhalten `r6`):** `CombatStrength` bewertet eine Einheit als
   `Schaden × Leben / Feuerintervall` — ganzzahlig, eine Division, eine
@@ -65,6 +164,103 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   sie belegt keine Verbesserung.
 
 ### Geändert
+- **Die Skirmish-KI benennt, was eine Einheit vorhat — und verteidigt damit
+  ihre Basis (`GoalKind`, `r7` → `r8`)** — zwei Schritte, die zusammengehören
+  und deshalb zusammen kommen: erst bekommt die Entscheidung eine **Form**,
+  dann bekommt die Form ihre erste eigene **Regel**. Die Reihenfolge ist der
+  Punkt — wer zuerst eine Regel und dabei die Form ändert, kann hinterher
+  nicht sagen, welche der beiden gewirkt hat.
+
+  **Die Form, verhaltensneutral.** Der Armeeschritt entschied in einer
+  if-Kette, in der keine Verzweigung einen Namen hatte. Er wählt jetzt je
+  Einheit und Kadenz **ein** Goal aus einer festen Prioritätsliste und wendet
+  dessen Wirkung aus einer Tabelle an. Dieser Schritt für sich ist **keine**
+  Verhaltensänderung, und der Nachweis ist kein Test, sondern eine Zahl: die
+  kanonische Partie entscheidet auf demselben Tick mit demselben Endzustand,
+  die Artefakte eines Laborlaufs sind byte-identisch bis auf die gemessene
+  Laufzeit. Ein Goal ist **kein Zustand** — es wird je Kadenz neu abgeleitet
+  und nirgends gespeichert, die KI bleibt eine reine Funktion des committeten
+  Zustands, es entsteht kein Sidecar-Block. Dazu zwei optionale Nähte, die der
+  ausgelieferte Pfad nie füllt und die deshalb nichts kosten:
+  `IAiGoalObserver` lässt mitlesen, welches Goal eine Einheit bekommen hat und
+  mit welchen Zahlen die Bedingung entschieden hat, `IAiGoalOverride` erlaubt
+  es, einem Goal von aussen vorzugreifen — als **Eingabe** der Entscheidung,
+  nicht als gespeicherter Zustand. `MatchRunner` übergibt keine von beiden.
+
+  **Die Regel: `DefendHome`.** Eine Einheit, die am Sammelpunkt angekommen
+  ist, bekommt absichtlich **keinen** Befehl und hängt damit allein an der
+  D-087-Auto-Acquisition. Die reicht so weit wie die Waffe: sechs Zellen bei
+  der Legions-Infanterie, sieben beim Allianz-Schützen. Der Sammelpunkt liegt
+  **zwölf** Zellen vom eigenen HQ. Ein Angreifer an der Basis war damit
+  ausserhalb jeder Reichweite — die Wartenden haben ihn nicht ignoriert,
+  **sie haben ihn nicht gesehen**. Gemessen in der kanonischen Partie: das
+  Legions-HQ nimmt über **766 Ticks 327 Treffer**, während die eigenen
+  Einheiten im Median **13 Zellen** entfernt unter `Hold` stehen und **keine
+  einzige** angreift. Der Defekt ist so alt wie der Sammelpunkt (`r3`).
+  Neues Goal `DefendHome` mit dem Profilfeld `defendHomeCells` (ausgeliefert
+  **10**, **0 = aus**): wer noch **im Sammelring** steht, marschiert zum
+  eigenen HQ und zielt auf den nächsten sichtbaren bewaffneten Gegner. Wer
+  **draussen** ist, marschiert weiter — die `r3`-Regel „Einheiten draussen
+  werden nie zurückgerufen" bleibt, und die Welle wird **unterbrochen, nicht
+  freigegeben**. Das Ziel ist die **statische** HQ-Zelle und ausdrücklich
+  nicht der Gegner: genau daran ist `DefendBase` gescheitert (+23 % Intents,
+  schlechteres Spiel), weil ein bewegliches Ziel jede Kadenz einen neuen
+  Befehl für jede Einheit erzeugt.
+
+  **Zwei Korrekturen an `DefendHome`, bevor es ausgeliefert wird.** Beide
+  gefunden beim Prüfen der Begründung, nicht des Codes; beide bewegen
+  `ProfileHash` nicht, weil keine eine Zahl hinzufügt.
+
+  1. **Die statische Zielzelle allein trägt das Argument nicht.** Die
+     Re-Issue-Unterdrückung vergleicht den **stehenden** Befehl, und
+     `MovementSystem` **löscht** genau den bei der Ankunft
+     (`UnitState.Stop()`). Ein Verteidiger, der angekommen ist, hatte damit
+     nichts mehr zu vergleichen — die HQ-Zelle ging **jede Kadenz erneut
+     raus**, gemessen ein Move-Intent pro Kadenz für die Dauer der
+     Belagerung, mit acht stehenden Einheiten, die jedes Mal wieder in
+     `IsMoving` kippten. Das ist die `V002`-Form eine Nummer kleiner.
+     `DefendHome` schweigt jetzt selbst, sobald die Einheit daheim steht —
+     dieselbe Stille, die `Hold` am Sammelpunkt hat.
+  2. **Die Regel fragte, ob die Einheit gerade zurückzieht.** Diese Klausel
+     konnte nur Verwundete treffen, die **schon angekommen** waren —
+     Laufende nimmt `Retreat` eine Zeile früher. Ankommen **beendet** den
+     Rückzug aber nach der eigenen Regel der KI. Die Klausel hat also nichts
+     bewirkt ausser genau diese Einheiten an `Hold` zu geben: zwölf Zellen
+     draussen stehend, auf einen Verfolger zielend, den sie nicht erreichen,
+     während die Basis brennt, zu der sie zurückgelaufen waren.
+
+  **Was die Regel bringt und was sie kostet.** Der Verhaltensbezeichner bewegt
+  beide Hälften: die Revision, weil Entscheidungen sich ändern, und
+  `ProfileHash`, weil die Regel mit ihrer Aus-Stellung ausgeliefert wird.
+  `defendHomeCells: 0` auf beiden Sitzen ergibt **bitgenau** die Partie von
+  `r7` (Tick 3.213, `0xE002DD893916967B`) — der Aus-Pfad ist von den beiden
+  Korrekturen nicht berührt.
+
+  **Die Wirkungszahlen sind noch die von vor den Korrekturen und gelten
+  deshalb nicht mehr.** Gemessen wurde am unkorrigierten `DefendHome`:
+  Wehrlosigkeit im Beschussfenster **96 % → 60 %**, Partiedauer der Legion
+  **3.213 → 6.490** Ticks, eigene Verluste **18 → 60**, und sie gewinnt die
+  Partie trotzdem nicht. Beide Korrekturen ändern ausgegebene Befehle und
+  damit den Verlauf; die Zahlen werden **vor dem Merge neu gemessen** und
+  hier ersetzt. Sie stehen hier als das, was sie sind — die Grössenordnung
+  eines Vorläufers, kein Nachweis für den ausgelieferten Stand.
+
+  **Bekannte Lücke, nicht behoben:** unterhalb der Squad-Schwelle
+  (`attackSquadThreshold`, ausgeliefert 6) läuft der Armeeschritt gar nicht,
+  also verteidigt **niemand** — genau in dem Fenster, in dem die Basis am
+  schwächsten ist. Der Armeebericht meldet dabei `HomeThreatened: true`,
+  während nichts geschieht. Das zu ändern heisst, Einheiten unterhalb der
+  Schwelle überhaupt zu beurteilen, und das ist eine Verhaltensausweitung mit
+  eigener Messpflicht — sie gehört in einen eigenen PR, nicht in diesen.
+
+  **Am Player angesehen:** die Regel ist in der Laboraufnahme
+  `Nova.AiLab-goal-base-defense-r8-20260810` in Bewegung zu sehen — die
+  Wartenden lösen sich vom Sammelpunkt und marschieren zum eigenen HQ. Das ist
+  die Gegenaufnahme zu der, in der genau diese Einheiten weitersammeln, während
+  ihr Hauptquartier fällt. **Die Aufnahme zeigt den Stand vor den beiden
+  Korrekturen oben.**
+  **Im laufenden Spiel gesehen: nein.** Eine Aufzeichnung des Labors ist keine
+  gespielte Partie; alles oben ist gemessen, nicht gespielt.
 - **16.7/C1: Fünf endliche Aetheriumfelder schaffen Knappheit (D-102)** — die
   zwei praktisch endlosen Startfelder werden durch zwei symmetrische
   Startfelder und zwei Expansionen mit je 9.000 AE sowie ein umkämpftes
@@ -73,6 +269,32 @@ die Versionierung folgt (in der aktuellen Doku-Phase) dem Dokumentationsstand de
   bei 2 AE/Tick, bis eine gespielte Balance-Kalibrierung belastbare Werte gibt
 
 ### Behoben
+- **#85: Die KI erntet nicht länger endlos auf dem leeren Feld.** Aus dem
+  Betatest vom 10.08.2026: die KI kam nach Erschöpfung ihres Startvorkommens
+  wirtschaftlich zum Stillstand. Das war kein Strategiemangel, sondern ein
+  **Livelock aus einer fehlenden Prüfung** — `TryGetOwnFieldCell` wählte das
+  Erntefeld allein nach Distanz zum HQ und sah `IsExhausted` nicht an. Der
+  `EconomySystem` räumt beim leeren Feld `HarvestFieldId`, genau dieses Räumen
+  liess den Harvester in die Leerlaufliste der KI fallen, und die schickte ihn
+  auf dasselbe leere Feld zurück: jeden Entscheidungstick, bei Einkommen null,
+  während drei registrierte Felder mit zusammen 33.000 AE offenstanden. Die
+  Erntewahl überspringt erschöpfte Felder jetzt; ist keines mehr übrig, ruhen
+  Nachbestellung und Erntebefehle, **statt Kommandos ins Leere zu schicken**.
+  Der Spielerpfad filterte seit den endlichen Feldern (#80) bereits korrekt —
+  nachgezogen wurde nur eine der beiden Stellen. **Der Platzierungsanker filtert
+  bewusst weiterhin nicht:** er beantwortet „wo ist meine Basis", und ein
+  nachgebautes Refinery ans nächste Feld *mit* Reserve zu setzen hiesse auf
+  dieser Karte quer über das Feld — das ist eine strategische Entscheidung und
+  gehört nicht als Nebenwirkung in einen Livelock-Fix. **Die kanonische Partie
+  bleibt byte-identisch** (Entscheidung Tick 3.213, Endzustand
+  `0xE002DD893916967B`): dort erschöpft sich kein Feld, die Regel greift also
+  nicht — deshalb bleiben auch die vier Determinismus-Baselines grün.
+  **Im laufenden Spiel gesehen:** eine Partie auf diesem Stand gespielt — die
+  Harvester fahren nach dem Startvorkommen zu anderen Quellen, und es kommen
+  weiter neue Einheiten, bis alles zerstört ist. Der Bezeichner bleibt
+  `r7.E34435F9`: die kanonische Partie entscheidet unverändert, und `r8` ist
+  bereits an das Basisverteidigungs-Verhalten vergeben — zwei verschiedene
+  Stände dürfen sich keine Kennung teilen
 - **#45/#47/#48: Entscheidungspunkt und „Stoppen“ melden jetzt die Wahrheit (D-097):** Die Baubar zeigt dauerhaft die Strombilanz samt Low-Power-Folge, nennt beim Überfahren Bedarf beziehungsweise Erzeugung und leitet den ersten Blocker in der ausdrücklich festgelegten HUD-Priorität Voraussetzung, AE, freie Energie und Baustellenlimit her; diese Priorität ist nicht die globale Executor-Reihenfolge. Energie sperrt den Eintritt in den Platzierungsmodus bewusst nicht. Die Befehlskarte zeigt den Stromwert des gewählten Gebäudes, und ein angewandter Stop-Befehl räumt zusätzlich `AttackTarget` ab. Ein echtes Halte-Feuer bleibt ausserhalb dieses Pakets, weil D-087 im nächsten Combat-Tick wieder ein Ziel erfassen darf
 - **Low Power ist eine Waffe (C4, Sprint 16.6)** — bei Energiedefizit
   fällt Radar zuerst: `FogOfWarSystem.GetRadarSignatures` liefert nichts mehr

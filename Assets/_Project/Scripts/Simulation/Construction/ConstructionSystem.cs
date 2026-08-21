@@ -174,7 +174,15 @@ namespace Nova.Simulation.Construction
         /// <summary>Full rebuild-equivalent repair price as a percentage of the building's new price (D-104).</summary>
         public const int RepairCostPercent = 30;
 
-        /// <summary>Maximum footprint-aware Chebyshev distance from an own construction anchor (D-104).</summary>
+        /// <summary>
+        /// Maximum footprint-aware Chebyshev distance from an own construction
+        /// anchor (D-104). Under the corrected D-108 every own, living and
+        /// COMPLETED building is an anchor and pushes the build zone outward
+        /// by its own radius — construction sites never do (see
+        /// IsInsideBuildInfluence). Deliberately accepted (D-108): a chain of
+        /// cheap buildings can push the zone across the map; expansion is
+        /// meant to be coupled to the economy.
+        /// </summary>
         public const int BuildInfluenceRadiusCells = 8;
 
         /// <summary>Minimum footprint-aware Chebyshev distance between construction footprints (D-104).</summary>
@@ -1095,16 +1103,34 @@ namespace Nova.Simulation.Construction
             return true;
         }
 
-        private bool IsInsideBuildInfluence(byte playerSlot, int originX, int originY)
+        /// <summary>
+        /// Corrected D-108 anchor rule: EVERY own, living and completed
+        /// building extends the build zone by its own
+        /// <see cref="BuildInfluenceRadiusCells"/> — no role list. A
+        /// construction site is NOT an anchor even though it already carries
+        /// its definition role (16.3, #44), so the finished-only rule is
+        /// checked explicitly through <see cref="IsActiveSite"/>, the same
+        /// register the economy's power and capacity scans use. Deliberately
+        /// accepted (D-108): a chain of cheap buildings can push the build
+        /// zone across the map — that coupling of expansion to the economy
+        /// is the decided behavior, not a defect.
+        /// <para>
+        /// THIS METHOD IS THE RULE, and it is public so that the build-zone
+        /// overlay can ASK it per cell instead of re-deriving the radius or
+        /// the anchor list on its own. That is what let the anchor list open
+        /// (D-108) without the overlay being touched at all. Pure read, no
+        /// mutation — consumed by <see cref="ValidatePlacement"/>.
+        /// </para>
+        /// </summary>
+        public bool IsInsideBuildInfluence(byte playerSlot, int originX, int originY)
         {
             for (int i = 0; i < MaxBuildings; i++)
             {
                 ref readonly PlacementState placement = ref _buildings[i];
                 if (!placement.IsActive) continue;
-                if (!SimDefinitions.TryGetBuilding(placement.BuildingDefId, out SimBuildingDefinition def)) continue;
-                if (def.Role != UnitRole.HQ && def.Role != UnitRole.Storage && def.Role != UnitRole.Power) continue;
 
                 EntityId id = UnitCommandStateView.ToEntityId(placement.RawEntityId);
+                if (IsActiveSite(id)) continue; // finished only: a site never extends the zone
                 if (!_entityManager.TryGetUnit(id, out UnitState unit) || unit.PlayerId != playerSlot) continue;
                 if (FootprintDistance(originX, originY, placement.OriginX, placement.OriginY) <= BuildInfluenceRadiusCells)
                 {
@@ -1114,7 +1140,18 @@ namespace Nova.Simulation.Construction
             return false;
         }
 
-        private bool HasMinimumBuildingSpacing(int originX, int originY)
+        /// <summary>
+        /// The D-104 clearance read: true when a 3x3 footprint with its
+        /// origin at (originX, originY) keeps
+        /// <see cref="MinimumBuildingDistanceCells"/> from every site and
+        /// every completed placement (any owner). This is the check that
+        /// rejects cells INSIDE the build zone — the build-zone overlay
+        /// paints exactly the pair (IsInsideBuildInfluence,
+        /// HasMinimumBuildingSpacing) as its two distinguishable states.
+        /// Consumed by <see cref="ValidatePlacement"/>. Pure read, no
+        /// mutation.
+        /// </summary>
+        public bool HasMinimumBuildingSpacing(int originX, int originY)
         {
             for (int i = 0; i < MaxSites; i++)
             {

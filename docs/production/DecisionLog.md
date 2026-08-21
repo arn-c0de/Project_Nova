@@ -1,6 +1,6 @@
 # Decision Log
 
-**Version:** 1.39.0 | **Status:** aktiv (laufend) | **Verantwortungsbereich:** Game Director / Lead Technical Director / Project Owner | **Sprint:** 16
+**Version:** 1.41.0 | **Status:** aktiv (laufend) | **Verantwortungsbereich:** Game Director / Lead Technical Director / Project Owner | **Sprint:** 21
 
 ## Zweck
 
@@ -3429,6 +3429,160 @@ selbst.
 und Befehlsschemata bleiben unverändert. D-102 bleibt für Feldanzahl,
 Koordinaten, Reserven, Reihenfolge und Ernterate vollständig verbindlich.
 
+### D-108 | verbindlich | Sprint 21 (Jedes eigene Gebäude wird Bauanker)
+
+**Status:** Inhaberentscheidung vom 2026-08-17, **am 2026-08-18 in der Prämisse
+berichtigt und in der Sache neu gefasst.** Die Erstfassung schrieb eine Regel
+fest, die der Code nicht hat; die Berichtigung macht daraus eine bewusste
+Regeländerung. Der Verlauf steht unten unter „Berichtigung".
+
+**Kontext:** Testbericht T-01 (#92) fragt, wie der Spieler sein Territorium
+erweitert — ob ein zweites HQ die Bauzone vergrößert, ob es später eigene
+Erweiterungsgebäude gibt, ob Bauzonen sich überschneiden dürfen. Der Bericht
+meldet zugleich, der Platz sei „nach einigen Kraftwerken relativ schnell
+ausgeschöpft".
+
+**Was der Code heute tut** (`ConstructionSystem.IsInsideBuildInfluence`):
+
+```csharp
+if (def.Role != UnitRole.HQ && def.Role != UnitRole.Storage && def.Role != UnitRole.Power) continue;
+```
+
+Anker sind ausschließlich **HQ, Lager und Kraftwerk**. Kaserne, Fahrzeugfabrik,
+Raffinerie, Radar, Forschungslabor und Verteidigungsplattform erweitern die Zone
+nicht. Das deckt sich wörtlich mit D-104 Punkt 2: „Ein Neubau braucht ein
+eigenes, lebendes und fertiggestelltes HQ, Lager oder Kraftwerk in höchstens acht
+Zellen Abstand." Die Zone kriecht also bereits mit — aber nur über
+Infrastrukturbauten.
+
+**Die Messung** (Paket 21.1, `tools/Nova.SimRunner.Tests/BuildZoneCapacityTests.cs`)
+beziffert die Startzone des HQ-Ankers allein: **15** Gebäude bei
+`MinimumBuildingDistanceCells = 2`, **23** bei 1, und bei 0 ebenfalls 23, weil
+die Footprint-Belegung jede Konfiguration mit Abstand unter 1 ohnehin verbietet.
+Der einzige wirksame Hebel wäre 2 → 1. Die 15 sind dabei eine **untere Schranke
+für die Anfangszone**, keine Kapazitätsgrenze: da Kraftwerke Anker sind, schiebt
+jedes am Rand platzierte Kraftwerk die Grenze nach außen.
+
+**Alternativen:**
+
+1. Die bestehende Ankerliste (HQ, Lager, Kraftwerk) festschreiben und die
+   Sichtbarkeit über das Overlay aus Paket 21.4 herstellen.
+2. **Jedes eigene fertiggestellte Gebäude wird Bauanker.**
+3. Die Ankerliste unverändert lassen und stattdessen `MinimumBuildingDistanceCells`
+   von 2 auf 1 senken.
+
+**Entscheidung:** Alternative 2. **Jedes eigene, lebende und fertiggestellte
+Gebäude wird Bauanker** — die Rollenprüfung in `IsInsideBuildInfluence` entfällt.
+`BuildInfluenceRadiusCells` bleibt bei 8, `MinimumBuildingDistanceCells` bleibt
+bei **2**; der Wert wird ausdrücklich **nicht** angefasst, weil die Messung die
+gemeldete Enge nicht als Abstandsproblem bestätigt.
+
+**Begründung:** Das ist das klassische C&C-Verhalten und die einfachste Antwort
+auf die Frage des Berichts: Territorium wächst dort, wo gebaut wird, ohne einen
+eigenen Erweiterungsgebäudetyp erfinden zu müssen. Es koppelt Expansion an die
+Wirtschaft, wie es die Verknappung aus D-102 verlangt — wer ein entferntes Feld
+erschließen will, arbeitet sich baulich dorthin. Alternative 1 wäre billiger,
+lässt aber die Frage des Berichts unbeantwortet. Alternative 3 dreht an einem
+Wert, den die Messung nicht als Ursache ausweist, und kostet denselben
+Regelbruch.
+
+**Konsequenzen:**
+
+- Eingriff in `Simulation/Construction/ConstructionSystem.cs`. Maintainer-Strang,
+  aber **eine Verhaltensänderung**, kein Aussprechen: `RulesHash64` bewegt sich,
+  die Determinismus-Baselines werden rot, und der gepinnte Ausgang der
+  kanonischen KI-Partie (`CanonicalAiOutcomeTests`, Einheitenstrang) bewegt sich
+  mit. Eigener PR, Baseline in einem **zweiten** PR, und ein mit dem
+  Einheitenstrang abgestimmtes Merge-Fenster.
+- Der Docstring an `BuildInfluenceRadiusCells` beschreibt heute „from an own
+  construction anchor", ohne die Rollenliste zu nennen. Genau diese Auslassung
+  hat die falsche Erstfassung dieser Entscheidung erzeugt. Er wird zweimal
+  nachgezogen: zuerst auf den Ist-Zustand mit der Rollenliste, dann mit dieser
+  Regeländerung auf die neue Fassung.
+- **Bewusst in Kauf genommen:** ab jetzt kann sich ein Spieler mit einer Kette
+  billiger Gebäude über die Karte schieben, weil auch Kaserne und
+  Verteidigungsplattform ankern. Das ist in C&C etabliertes Verhalten und im
+  Zusammenspiel mit den Paketen 21.6 und 21.7 gewollt — es ist der Weg, auf dem
+  ein umkämpftes Feld überhaupt erschlossen wird.
+- `BuildInfluenceRadiusCells` und `MinimumBuildingDistanceCells` bleiben
+  unverändert; die Kapazitätsmessung aus 21.1 pinnt beide Konstanten und macht
+  Paket 21.1 erneut auf, falls eine davon später fällt.
+- D-104 Punkt 2 wird durch diese Entscheidung in der Ankerliste **ersetzt**;
+  seine übrigen Punkte (Footprint-Chebyshev, Feldabstände, Raffinerieintervall)
+  bleiben unberührt.
+
+**Berichtigung (2026-08-18):** Die Erstfassung dieser Entscheidung behauptete,
+der Code lasse bereits *jedes* eigene Gebäude als Anker gelten, und wollte diesen
+Zustand lediglich aussprechen. Das war falsch — die Rollenprüfung auf HQ, Lager
+und Kraftwerk stand seit D-104 im Code. Der Fehler entstand daraus, dass der
+Docstring von `BuildInfluenceRadiusCells` und Issue #92 von einem „eigenen
+Bauanker" sprechen, ohne die Rollenliste zu nennen, und die Implementierung vor
+der Beschlussfassung nicht gelesen wurde. Aufgefallen ist er dem ausführenden
+Agenten beim Umsetzen von Paket 21.1, der angehalten und nachgefragt hat, statt
+den Widerspruch aufzulösen — das ist der vorgesehene Weg und hat hier
+funktioniert. Der Inhaber hat die Entscheidung daraufhin **in Kenntnis der
+tatsächlichen Lage neu getroffen**: nicht die Bestandsregel festschreiben,
+sondern die Ankerliste bewusst öffnen.
+
+### D-109 | verbindlich | Sprint 21 (Die Kartenmitte wird ein Gebiet mit Chokepoints)
+
+**Status:** Inhaberentscheidung vom 2026-08-17.
+
+**Kontext:** Testbericht T-01 (#94) schlägt vor, im Zentrum eine größere
+abgeschlossene Zone mit vier bis sechs Aetheriumvorkommen anzulegen, von allen
+vier Seiten erreichbar, aber jeweils über schmale Zufahrten. Wer die Mitte
+kontrolliert, erhält einen wirtschaftlichen Vorteil und kann die Position
+befestigen — die Karte erzeugt damit einen Konfliktpunkt, ohne ihn
+vorzuschreiben. Die Absicht ist bereits getroffen und nur nicht ausgespielt:
+Feld 5 liegt bei (62, 62) und trägt mit 15.000 AE zwei Drittel mehr als jedes
+andere Feld. Ein einzelnes Feld ist aber kein Gebiet, und ohne Chokepoints ist
+es auch keine haltbare Position.
+
+Am Code geprüft (`main` @ `3e10c48`): `CostField` unterstützt unbegehbares
+Gelände vollständig (`OpenCost = 1`, `ImpassableCost = 255`, Zwischenwerte für
+schweren Grund), aber der Konstruktor füllt alles mit `OpenCost` und es schreibt
+**niemand** hinein außer `ConstructionSystem` für Gebäude-Footprints. Die Optik
+weiß davon nichts: `GlutrinneBlockoutView` streut rund 84 Felsen mit festem Seed
+und sichert im eigenen Docstring zu, nie in den Simulationszustand zu schreiben —
+die Felsen sind Deko und begehbar.
+
+**Alternativen:**
+
+1. Zone und Chokepoints bauen, mit einer autoritativen Geländequelle für
+   Simulation und Optik.
+2. Nur die Kartenlage ändern (vier bis sechs Felder gruppieren), auf Gelände
+   verzichten.
+3. Zurückstellen, bis die KI ein Gebiet bestreiten kann.
+
+**Entscheidung:** Alternative 1. Die Mitte wird ein Gebiet mit schmalen
+Zufahrten. Verbindliche Auflage: **Begehbarkeit und Optik stammen aus einer
+einzigen Struktur** — die kanonische Kartenlage in `MatchBootstrap` hält das
+Gelände so, wie sie heute schon die fünf Aetheriumfelder hält; die Simulation
+schreibt es über die bestehende öffentliche `CostField.SetCost`, die
+Blockout-View baut sich daraus. Zwei getrennte Quellen sind ausdrücklich
+untersagt.
+
+**Begründung:** Zwei Quellen ergeben Einheiten, die durch sichtbare Felsen
+laufen und an unsichtbaren Wänden hängenbleiben — ein Fehlerbild, das später
+niemand mehr der Kartenarbeit zuordnet. Alternative 2 nimmt dem Vorschlag genau
+das, was ihn trägt: ohne Chokepoints ist eine reiche Mitte kein Halteproblem,
+sondern nur ein größerer Wettlauf. Alternative 3 verschiebt die Kartenarbeit
+hinter fremde Sprintplanung, obwohl die Karte auch ohne kluge KI zwischen zwei
+Menschen gespielt wird.
+
+**Konsequenzen:** Die Umsetzung bleibt in der Schreibhoheit des
+Maintainer-Strangs: `Gameplay/Match/` und `Presentation/Maps/` werden
+bearbeitet, `Simulation/Pathfinding/` **nicht** — `CostField.SetCost` ist
+bereits öffentlich und wird von `Gameplay/Match/` aus aufgerufen, wie
+`PathfindingTestBootstrap` es vorführt. Die Symmetrieauflage aus D-107 gilt
+unverändert. Ein Erreichbarkeitstest über das `FlowField` gehört in
+`tools/Nova.SimRunner.Tests/`, damit eine spätere Kartenänderung keine Basis
+unbemerkt einsperrt. Die Änderung bewegt die Determinismus-Baselines **und** den
+gepinnten Ausgang der kanonischen KI-Partie, der dem Einheitenstrang gehört —
+sie braucht deshalb ein eigenes, mit dem Einheitenstrang abgestimmtes
+Merge-Fenster. Verteidigungsbalance an den Zufahrten und KI-Verhalten in der
+Mitte sind ausdrücklich nicht Teil dieser Entscheidung.
+
 ## Offene Punkte
 
 - Alle Sprint-4-Review-Befunde (105, davon 9 kritisch): 7 entscheidungsbedürftige kritische Befunde sind durch D-043–D-052 entschieden.
@@ -3509,6 +3663,8 @@ Koordinaten, Reserven, Reihenfolge und Ernterate vollständig verbindlich.
 
 | Version | Datum | Änderung | Autor |
 |---|---|---|---|
+| 1.41.0 | 2026-08-18 | **D-108 in der Prämisse berichtigt und in der Sache neu gefasst.** Die Erstfassung behauptete, der Code lasse bereits jedes Gebäude als Bauanker gelten, und wollte das nur aussprechen — tatsächlich prüft `IsInsideBuildInfluence` seit D-104 auf HQ, Lager und Kraftwerk. Der ausführende Agent hat den Widerspruch beim Umsetzen von Paket 21.1 gefunden und angehalten. Der Inhaber hat daraufhin in Kenntnis der Lage neu entschieden: die Ankerliste wird bewusst geöffnet, **jedes eigene fertiggestellte Gebäude wird Anker**. Damit ist D-108 eine Verhaltensänderung (`RulesHash64`, Baselines, kanonischer KI-Pin), keine Festschreibung. `MinimumBuildingDistanceCells` bleibt bei 2 — die Messung aus 21.1 (15/23/23) weist die gemeldete Enge nicht als Abstandsproblem aus | Dennis Westermann / Orchestrator |
+| 1.40.0 | 2026-08-17 | D-108 und D-109 aufgenommen (Sprint 21, aus Testbericht T-01): Territorium wächst **kriechend an jedem eigenen Bauanker** — die bestehende Regel wird festgeschrieben statt geändert, und die gemeldete Enge wird an `MinimumBuildingDistanceCells` gemessen, bevor ein Wert fällt. Die Kartenmitte wird ein Gebiet mit schmalen Zufahrten, mit der verbindlichen Auflage, dass Begehbarkeit und Optik aus **einer** Struktur stammen — heute streut `GlutrinneBlockoutView` begehbare Deko-Felsen, während niemand ausser `ConstructionSystem` in das `CostField` schreibt | Dennis Westermann / Orchestrator |
 | 1.39.0 | 2026-08-10 | D-107 aufgenommen: Die bestehende Glutrinne-Layoutachse spiegelt Punkte um 124 und 3×3-Footprint-Ursprünge abgeleitet um 122; der zweite HQ-Ursprung wird von `(120,120)` auf `(118,118)` korrigiert | Agent (unter Delegation) / Dennis Westermann |
 | 1.38.0 | 2026-08-10 | D-104 aufgenommen: footprintbasierte Chebyshev-Platzierung mit Einfluss-, Feld-, Gelände- und Gebäudeabständen, zustandslose kumulative Reparaturkosten von 30 Prozent, kanonisch dichte Reparaturreihenfolge und Rules-Revision V3 | Project Owner / Agent (unter Delegation) |
 | 1.37.0 | 2026-08-10 | D-103 aufgenommen: Bauvoraussetzungen werden eine fraktionsgleiche All-of-Maske über unveränderte `UnitRole`-Wirewerte; Hash-, Fail-Closed-, Plattformmodul- und KI-Handoff-Folgen festgeschrieben | Agent (unter Delegation) / Dennis Westermann |

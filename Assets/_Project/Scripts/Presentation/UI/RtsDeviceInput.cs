@@ -69,6 +69,21 @@ namespace Nova.Presentation.UI
     /// the Builder actually walks into reach.
     /// </para>
     /// <para>
+    /// MODAL GATE (sprint 21.8): while <see cref="ModalSurfaceLink.Open"/>
+    /// — published once per frame by PauseMenuHud, which aggregates every
+    /// modal surface (pause menu, result and network panels) — this
+    /// component's Update suspends ALL world gestures: no selection, no
+    /// orders, no hotkeys, no harvester escort into a stopped kernel, and no
+    /// click falling through a panel onto the unit behind it. The camera's
+    /// edge-pan strip is covered by re-publishing "pointer over HUD"
+    /// (<see cref="HudPointerLink"/>) instead of growing a second reader.
+    /// Any armed gesture (placement ghost, order pick) is disarmed when the
+    /// gate engages, so a modal never inherits one — and the ingress rebind
+    /// clears them too, so an armed ghost never survives into the next
+    /// match (#102). Pause/resume itself moved out of here: ESC/P and the
+    /// pause menu live in <see cref="PauseMenuHud"/>.
+    /// </para>
+    /// <para>
     /// World mapping (identical to UnitViewManager / FlowFieldDebugView /
     /// RtsCameraController): sim X -&gt; Unity x, sim Y -&gt; Unity z, ground
     /// plane at y = <see cref="_groundPlaneY"/> (0). Cell (gx, gy) covers the
@@ -98,6 +113,8 @@ namespace Nova.Presentation.UI
         [SerializeField] private float _dragThresholdPixels = 8f;
         [Tooltip("Click-select radius in world units (= cells).")]
         [SerializeField] private float _pickRadiusWorld = 1.5f;
+        [Tooltip("Click-select radius for Aetherium fields in world units (= cells). Wider than the unit pick radius because the marker is a seven-shard cluster; exhausted fields stay clickable for their readout (21.2, #86).")]
+        [SerializeField] private float _fieldPickRadiusWorld = 2f;
 
         [Header("Canonical Alliance definition ids (resolved to the local slot faction at runtime)")]
         [Tooltip("B: Power — Alliance defId 5, 450 AE, prerequisite-free.")]
@@ -166,6 +183,11 @@ namespace Nova.Presentation.UI
         private int _placementOriginY;
         private bool _placementValid;
 
+        // Build-zone overlay pin (O key, #91): pure view state read by
+        // BuildZoneOverlayView — placement mode shows the overlay regardless,
+        // the pin keeps it visible without a build intent.
+        private bool _buildZoneOverlayPinned;
+
         // Order target-pick mode state (command card): the armed order whose
         // target the next LMB world click resolves. Mutually exclusive with
         // placement mode (one gesture owns the next click).
@@ -212,6 +234,24 @@ namespace Nova.Presentation.UI
 
         /// <summary>True while a building placement ghost is armed (build bar click or building hotkey).</summary>
         public bool PlacementModeActive => _placementMode;
+
+        /// <summary>
+        /// True while the build-zone overlay is pinned visible by the O key
+        /// (placement mode shows it regardless). Read by
+        /// <see cref="BuildZoneOverlayView"/>; pure view state, no command
+        /// and no simulation read is involved in the toggle itself.
+        /// </summary>
+        public bool BuildZoneOverlayPinned => _buildZoneOverlayPinned;
+
+        /// <summary>
+        /// The frame (<see cref="Time.frameCount"/>) ESC last cancelled an
+        /// armed gesture here (placement ghost or order pick). PauseMenuHud
+        /// reads it to peel exactly one layer per press: this component runs
+        /// at -200, so its consumption is already stamped when the menu's
+        /// Update looks at the same ESC press — the gesture cancels first,
+        /// the menu opens on the NEXT press.
+        /// </summary>
+        public int LastGestureCancelFrame { get; private set; } = -1;
 
         /// <summary>Definition the armed placement ghost currently carries.</summary>
         public ushort PlacementDefId => _placementDefId;
@@ -404,7 +444,8 @@ namespace Nova.Presentation.UI
             _legend =
                 "LMB click/drag select | RMB move — with an own producer building selected: set its rally point | S stop | " +
                 "A attack enemy under cursor (else plain move; armed units auto-acquire visible in-range enemies, D-087) | " +
-                "H harvest nearest field | R return cargo | P pause/resume (local match only)\n" +
+                "H harvest nearest field | R return cargo | ESC/P pause menu (clock stops in local matches only)\n" +
+                "O build zone overlay on/off (shows on its own while a placement ghost is armed)\n" +
                 "Build (build bar below or hotkey — a ghost follows the cursor; LMB place | RMB/ESC cancel): " +
                 $"B {_buildingDefId} | Shift+B {_altBuildingDefId} | C {_storageDefId} | V {_vehicleFactoryDefId} | " +
                 $"T {_researchLabDefId} | G {_radarDefId} | F {_defensePlatformDefId} | Y {_refineryDefId}\n" +
@@ -412,7 +453,8 @@ namespace Nova.Presentation.UI
                 $"E {_scoutDefId} | Shift+E {_lightTankDefId} | D {_battleTankDefId} | Shift+D {_artilleryDefId}\n" +
                 "Command card (bottom right): LMB an order button, then LMB its target in the world (RMB/ESC cancels the pick)\n" +
                 "Groups: Ctrl+1..9 save selection, 1..9 recall | Shift+LMB/drag adds to the selection\n" +
-                "Camera: arrow keys / screen edge pan | wheel zoom | Z,X rotate | MMB drag rotate | Space reset rotation";
+                "Camera: arrow keys / screen edge pan | wheel zoom | Z,X rotate | MMB drag rotate | Space reset rotation\n" +
+                "Linksklick auf ein Vorkommen: Restbestand anzeigen";
         }
 
         private void Update()
@@ -420,8 +462,29 @@ namespace Nova.Presentation.UI
             if (!EnsureDispatcher()) return;
             if (_menu != null && _menu.IsMenuVisible) return; // the overlay owns every click
 
+            if (ModalSurfaceLink.Open)
+            {
+                // A modal surface (pause menu, result or network panel) owns
+                // the input: no selection, no orders, no hotkeys, no escort
+                // moves into a stopped kernel — and no click falling through
+                // the panel onto the world behind it. "Pointer over HUD" is
+                // published so the camera's edge-pan strip stops too, without
+                // a second reader. An in-flight drag or armed gesture dies
+                // here instead of resolving behind the panel.
+                HudPointerLink.Publish(true);
+                _dragActive = false;
+                if (_placementMode || _pendingOrder != PendingOrder.None)
+                {
+                    _placementMode = false;
+                    _pendingOrder = PendingOrder.None;
+                    _lastCommandStatus = "Gesture cancelled — a modal surface owns the input";
+                }
+                return;
+            }
+
             Vector2 mouse = Input.mousePosition;
             UpdatePlacementHover(mouse);
+            HandleBuildZoneOverlayToggle();
             UpdateHarvesterEscort();
             HudPointerLink.Publish(IsPointerOverHud(mouse));
             HandleSelection(mouse);
@@ -460,7 +523,16 @@ namespace Nova.Presentation.UI
                 _runner.Construction, _runner.Production);
             _dispatcher = new RtsIntentDispatcher(ingress, stateView);
             _boundIngress = ingress;
+            // ClearSelection also drops the selected field (21.2): a rebinding
+            // means a fresh match, and its ids belong to the old one.
             _selection.ClearSelection();
+            // Armed gestures are input state tied to the OLD match's world:
+            // an armed placement ghost or order pick must never survive the
+            // ingress rebind into the next round (#102 — the ghost used to
+            // stay armed through "Hauptmenü" → "Neues Spiel").
+            _placementMode = false;
+            _pendingOrder = PendingOrder.None;
+            _dragActive = false;
             return true;
         }
 
@@ -498,6 +570,22 @@ namespace Nova.Presentation.UI
         }
 
         /// <summary>
+        /// The O key pins the build-zone overlay on/off (#91). Handled here,
+        /// not in HandleOrders, so the toggle stays live while a placement
+        /// ghost or an order pick is armed — the overlay shows during
+        /// placement anyway, and the pin simply survives the placement. Pure
+        /// view state: no command, no simulation read.
+        /// </summary>
+        private void HandleBuildZoneOverlayToggle()
+        {
+            if (!Input.GetKeyDown(KeyCode.O)) return;
+            _buildZoneOverlayPinned = !_buildZoneOverlayPinned;
+            _lastCommandStatus = _buildZoneOverlayPinned
+                ? "Build zone overlay pinned on (O hides it again)"
+                : "Build zone overlay off";
+        }
+
+        /// <summary>
         /// Input flow while the ghost is armed: LMB places (through the
         /// dispatcher, at the hovered footprint origin), RMB or ESC cancels,
         /// the building hotkeys RE-TARGET the ghost to another role. All
@@ -505,8 +593,12 @@ namespace Nova.Presentation.UI
         /// </summary>
         private void HandlePlacementModeInput(Vector2 mouse, bool shift)
         {
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1))
+            bool escape = Input.GetKeyDown(KeyCode.Escape);
+            if (escape || Input.GetMouseButtonDown(1))
             {
+                // Stamp the ESC consumption: the pause menu peels one layer
+                // per press and must not open on this same press.
+                if (escape) LastGestureCancelFrame = Time.frameCount;
                 _placementMode = false;
                 _lastCommandStatus = "Placement cancelled";
                 return;
@@ -899,26 +991,11 @@ namespace Nova.Presentation.UI
 
             if (Input.GetKeyDown(KeyCode.R)) OrderReturnCargo();
 
-            // Pause/resume toggles the kernel clock only — simulation state is
-            // untouched, so this needs no command. StartMatch after PauseMatch
-            // simply restarts the tick pump.
-            if (Input.GetKeyDown(KeyCode.P))
-            {
-                if (_runner.IsRelayMatch)
-                {
-                    _lastCommandStatus = "Pause/resume is unavailable in a relay match";
-                }
-                else if (_runner.IsRunning)
-                {
-                    _runner.PauseMatch();
-                    _lastCommandStatus = "Match paused (P resumes)";
-                }
-                else
-                {
-                    _runner.StartMatch();
-                    _lastCommandStatus = "Match resumed";
-                }
-            }
+            // Pause/resume no longer lives here: ESC/P and the pause menu
+            // belong to PauseMenuHud, which pauses the kernel clock directly
+            // (no command involved). While its modal is up, the gate in
+            // Update keeps every hotkey above from firing into the stopped
+            // kernel.
 
             // Control groups 1-9 (sprint 09 §7): Ctrl/Cmd+Digit stores the
             // current selection, the bare digit recalls it.
@@ -1114,8 +1191,11 @@ namespace Nova.Presentation.UI
         /// </summary>
         private void HandleOrderPickInput(Vector2 mouse)
         {
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1))
+            bool escape = Input.GetKeyDown(KeyCode.Escape);
+            if (escape || Input.GetMouseButtonDown(1))
             {
+                // Same one-layer-per-press contract as the placement cancel.
+                if (escape) LastGestureCancelFrame = Time.frameCount;
                 _pendingOrder = PendingOrder.None;
                 _lastCommandStatus = "Order pick cancelled";
                 return;
@@ -1298,6 +1378,14 @@ namespace Nova.Presentation.UI
         /// Box select over the ground-projected AABB of all four drag corners.
         /// Four, not two: under a tilted camera the screen rectangle projects
         /// to a trapezoid, and two corners would clip the selection.
+        /// <para>
+        /// A non-additive box that catches NO units falls through to the field
+        /// pick at the box centre (21.2, #86): on a trackpad a plain "click" is
+        /// a micro-drag past the threshold, and without this fallback that
+        /// gesture over a field read as "clear selection" — the field readout
+        /// was unreachable in the T-02 play observation, while the same gesture
+        /// over a unit still selected it.
+        /// </para>
         /// </summary>
         private void SelectBox(Vector2 a, Vector2 b, bool additive)
         {
@@ -1315,30 +1403,61 @@ namespace Nova.Presentation.UI
             int count = additive
                 ? _selection.SelectBoxAdditive(_runner.Entities, _dispatcher.LocalSlot, minX, minY, maxX, maxY)
                 : _selection.SelectBox(_runner.Entities, _dispatcher.LocalSlot, minX, minY, maxX, maxY);
-            _lastCommandStatus = additive ? $"Box select (added): {count} unit(s) selected" : $"Box select: {count} unit(s)";
-            if (count > 0) AudioServiceLocator.Play2D(SoundEventId.UI_Select);
+            if (count > 0)
+            {
+                _lastCommandStatus = additive ? $"Box select (added): {count} unit(s) selected" : $"Box select: {count} unit(s)";
+                AudioServiceLocator.Play2D(SoundEventId.UI_Select);
+                return;
+            }
+
+            if (!additive)
+            {
+                var centre = new Vector3((minX + maxX) * 0.5f, 0f, (minY + maxY) * 0.5f);
+                if (TryPickField(centre, out ushort fieldId))
+                {
+                    _selection.SelectField(fieldId);
+                    _lastCommandStatus = $"Selected Aetherium field #{fieldId}";
+                    AudioServiceLocator.Play2D(SoundEventId.UI_Select);
+                    return;
+                }
+            }
+
+            _lastCommandStatus = additive ? "Box select (added): 0 unit(s) selected" : "Box select: 0 unit(s)";
         }
 
-        /// <summary>Click select: nearest own active unit within <see cref="_pickRadiusWorld"/>; additive with Shift, else replace (a plain click on empty ground clears).</summary>
+        /// <summary>Click select: nearest own active unit within <see cref="_pickRadiusWorld"/>, else — non-additive only — the field under the cursor within <see cref="_fieldPickRadiusWorld"/> for its reserve readout (21.2, #86); additive with Shift, else replace (a plain click on empty ground clears).</summary>
         private void SelectSingle(Vector2 screenPoint, bool additive)
         {
             if (_runner.Entities == null) return;
-            if (TryScreenPointToGround(screenPoint, out Vector3 world)
-                && TryPickUnit(world, ownedByLocalSlot: true, out EntityId picked))
+            if (TryScreenPointToGround(screenPoint, out Vector3 world))
             {
-                if (additive)
+                if (TryPickUnit(world, ownedByLocalSlot: true, out EntityId picked))
                 {
-                    bool added = _selection.AddSingle(picked);
-                    _lastCommandStatus = $"Added entity {picked.Index} ({_selection.SelectedCount} selected)";
-                    if (added) AudioServiceLocator.Play2D(SoundEventId.UI_Select);
+                    if (additive)
+                    {
+                        bool added = _selection.AddSingle(picked);
+                        _lastCommandStatus = $"Added entity {picked.Index} ({_selection.SelectedCount} selected)";
+                        if (added) AudioServiceLocator.Play2D(SoundEventId.UI_Select);
+                    }
+                    else
+                    {
+                        _selection.SelectSingle(picked);
+                        _lastCommandStatus = $"Selected entity {picked.Index}";
+                        AudioServiceLocator.Play2D(SoundEventId.UI_Select);
+                    }
+                    return;
                 }
-                else
+
+                // The field pick sits BEHIND the unit pick: a harvester
+                // standing on its field stays selectable. Additive clicks
+                // never pick a field — a field cannot join a unit selection.
+                if (!additive && TryPickField(world, out ushort fieldId))
                 {
-                    _selection.SelectSingle(picked);
-                    _lastCommandStatus = $"Selected entity {picked.Index}";
+                    _selection.SelectField(fieldId);
+                    _lastCommandStatus = $"Selected Aetherium field #{fieldId}";
                     AudioServiceLocator.Play2D(SoundEventId.UI_Select);
+                    return;
                 }
-                return;
             }
 
             if (!additive)
@@ -1401,6 +1520,39 @@ namespace Nova.Presentation.UI
                 if (!economy.TryGetField(id, out AetheriumField field)) continue;
                 found++;
                 if (field.IsExhausted) continue;
+
+                float dx = field.GridPos.X + 0.5f - world.x;
+                float dy = field.GridPos.Y + 0.5f - world.z;
+                float distanceSq = dx * dx + dy * dy;
+                if (distanceSq >= best) continue;
+
+                best = distanceSq;
+                fieldId = field.FieldId;
+            }
+            return fieldId != 0;
+        }
+
+        /// <summary>
+        /// The field under a click (21.2, #86): nearest registered field
+        /// whose centre lies within <see cref="_fieldPickRadiusWorld"/> of
+        /// the ground point. Same id-probe pattern as
+        /// <see cref="TryResolveNearestField"/>, but bounded by the pick
+        /// radius and WITHOUT the exhausted filter — a depleted field must
+        /// stay clickable so its readout (0 AE, erschöpft) remains
+        /// reachable.
+        /// </summary>
+        private bool TryPickField(Vector3 world, out ushort fieldId)
+        {
+            fieldId = 0;
+            EconomySystem economy = _runner.Economy;
+            if (economy == null) return false;
+
+            float best = _fieldPickRadiusWorld * _fieldPickRadiusWorld;
+            int found = 0;
+            for (ushort id = 1; id <= EconomySystem.MaxFields && found < economy.FieldCount; id++)
+            {
+                if (!economy.TryGetField(id, out AetheriumField field)) continue;
+                found++;
 
                 float dx = field.GridPos.X + 0.5f - world.x;
                 float dy = field.GridPos.Y + 0.5f - world.z;
